@@ -267,8 +267,7 @@ class Location(object):
 class ConditionExpression(object):
     def __init__(self):
         self.expression = None
-        self.conditionSequence = []
-
+    
     def _print_(self):
         print ""
         print "CONDITION_EXPRESSION"
@@ -285,6 +284,10 @@ class ConditionExpression(object):
         return s
 
 class OperatorNotSupported(Exception):
+    def __init__(self):
+        pass
+
+class ConditionNotSupported(Exception):
     def __init__(self):
         pass
 
@@ -324,22 +327,31 @@ class ConditionOperator(object):
         s = "\n".join(strList)
         return s
 
-class Condition(object):
+class ConditionSequence(object):
     def __init__(self):
         self.conditionSequence = []
 
-    def _print_(self):
-        print ""
-        print "CONDITION"
-        for c in self.conditionSequence:
-            c._print_()
+class Condition(object):
+    def __init__(self):
+        self._condition = None
+
+    @property
+    def condition(self):
+        return self._condition
+
+    @condition.setter
+    def condition(self, value):
+        if isinstance(value,ConditionSequence) or isinstance(value,ConditionExpression):
+            self._op = value
+        else:
+            raise ConditionNotSupported()
 
     def __str__(self):
         strList = []
         strList.append("")
         strList.append("CONDITION")
-        for c in self.conditionSequence:
-            strList.append(str(c))
+        strList.append("")
+        strList.append(str(self._condition))
         s = "\n".join(strList)
         return s
 
