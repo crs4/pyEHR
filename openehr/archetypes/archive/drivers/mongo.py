@@ -158,6 +158,9 @@ class MongoDBManager(DriverInterface):
                                {'$addToSet': {'object_models': objm_id}})
         return objm_id
 
+    def add_object_models(self, archetype, object_models):
+        return super(MongoDBManager, self).add_object_models
+
     def load_object_models(self, archetype):
         return self.get_archetype_by_id(archetype.archetype_id,
                                         fetch_object_models=True)
