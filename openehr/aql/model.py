@@ -1,5 +1,3 @@
-__author__ = 'ciccio'
-
 class Primitive(object):
     def __init__(self):
         self.value = None

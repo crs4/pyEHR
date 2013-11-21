@@ -12,12 +12,12 @@ MAINTAINER = ", ".join(t[0] for t in MAINTAINER_INFO)
 MAINTAINER_EMAIL = ", ".join("<%s>" % t[1] for t in MAINTAINER_INFO)
 
 try:
-  with open("NAME") as f:
-    NAME = f.read().strip()
-  with open("VERSION") as f:
-    VERSION = f.read().strip()
+    with open("NAME") as f:
+        NAME = f.read().strip()
+    with open("VERSION") as f:
+        VERSION = f.read().strip()
 except IOError:
-  raise DistutilsSetupError("failed to read name/version info")
+    raise DistutilsSetupError("failed to read name/version info")
 
 setup(
     name=NAME,

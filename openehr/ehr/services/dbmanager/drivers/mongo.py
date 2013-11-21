@@ -1,5 +1,3 @@
-__author__ = 'ciccio'
-
 from openehr.aql.parser import *
 from openehr.ehr.services.dbmanager.drivers.interface import *
 from openehr.ehr.services.dbmanager.querymanager.query import *

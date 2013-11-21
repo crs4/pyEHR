@@ -1,5 +1,3 @@
-__author__ = 'ciccio'
-
 import sys
 import os
 import ConfigParser

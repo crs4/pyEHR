@@ -1,4 +1,3 @@
-__author__ = 'ciccio'
 import re
 from openehr.aql.model import *
 
