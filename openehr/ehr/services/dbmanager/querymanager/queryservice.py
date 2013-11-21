@@ -49,10 +49,10 @@ class QueryService():
                 resp = Response(body="An error occurred while parsing the TIME_CONSTRAINTS statement of the AQL query: " % str(pe))
             except InvalidAQLError as e:
                 print "InvalidAQLError Error: %s" % str(e)
-                resp = Response(body="Invalid AQL: " % str(pe))
+                resp = Response(body="Invalid AQL: " % str(e))
             except Exception as e:
                 print "Exception Error: %s" % str(e)
-                resp = Response(body='An Error Occurred: ' % str(pe))
+                resp = Response(body='An Error Occurred: ' % str(e))
         else:
             resp = Response(body="Method not supported")
         return resp

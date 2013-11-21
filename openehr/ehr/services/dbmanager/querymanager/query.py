@@ -1,5 +1,3 @@
-__author__ = 'ciccio'
-
 from openehr.aql.parser import Parser as Parser
 
 class ResultColumnDef():
