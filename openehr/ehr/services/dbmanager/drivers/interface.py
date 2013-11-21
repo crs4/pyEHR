@@ -1,14 +1,17 @@
-__author__ = 'ciccio'
-
-from openehr.ehr.services.dbmanager.errors import *
+from abc import ABCMeta, abstractmethod
 
 class DriverInterface(object):
 
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
     def connect(self):
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def close(self):
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def executeQuery(self, query):
-        raise NotImplementedError()
+        pass
