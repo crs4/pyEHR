@@ -33,6 +33,21 @@ class MongoDriver(DriverInterface):
         return None
 
     def connect(self):
+        """
+        You can use connect and disconnect methods
+        >>> driver = MongoDriver('localhost', 'test_database',
+        ...                       'test_collection')
+        >>> driver.connect()
+        >>> driver.is_connected
+        True
+        >>> driver.disconnect()
+
+        or you can use the context manager
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   driver.is_connected
+        True
+
+        """
         if not self.client:
             self.logger.debug('connecting to host %s', self.host)
             self.client = pymongo.MongoClient(self.host, self.port)
@@ -48,6 +63,22 @@ class MongoDriver(DriverInterface):
                               self.database_name, self.collection_name)
 
     def disconnect(self):
+        """
+        You can use connect and disconnect methods
+        >>> driver = MongoDriver('localhost', 'test_database',
+        ...                      'test_collection')
+        >>> driver.connect()
+        >>> driver.disconnect()
+        >>> driver.is_connected
+        False
+
+        or you can use the context manager
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   pass
+        >>> driver.is_connected
+        False
+
+        """
         self.logger.debug('disconnecting from host %s', self.client.host)
         self.client.disconnect()
         self.database = None
@@ -65,15 +96,50 @@ class MongoDriver(DriverInterface):
     def add_record(self, record):
         """
         Save a record within MongoDB and return the record's ID
+
+        >>> record = {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'}
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   record_id = driver.add_record(record)
+        ...   print record_id
+        ...   driver.documents_count == 1
+        ...   driver.delete_record(record_id) # cleanup
+        000000000000000000000001
+        True
         """
         self.__check_connection()
         return self.collection.insert(record)
 
     def add_records(self, records):
+        """
+        >>> records = [
+        ...   {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%023d%d' % (0, 2)), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%023d%d' % (0, 3)), 'field1': 'value1', 'field2': 'value2'},
+        ... ]
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   records_id = driver.add_records(records)
+        ...   for rid in records_id:
+        ...     print rid
+        ...   driver.documents_count == 3
+        ...   for r in driver.get_all_records():
+        ...     driver.delete_record(r['_id']) # cleanup
+        000000000000000000000001
+        000000000000000000000002
+        000000000000000000000003
+        True
+        """
         self.__check_connection()
         return super(MongoDriver, self).add_records(records)
 
     def get_record_by_id(self, record_id):
+        """
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   record_id = driver.add_record({'field1': 'value1', 'field2': 'value2'})
+        ...   rec = driver.get_record_by_id(record_id)
+        ...   print rec['field1'], rec['field2']
+        ...   driver.delete_record(record_id)
+        value1 value2
+        """
         self.__check_connection()
         res = self.collection.find_one({'_id': ObjectId(record_id)})
         if res:
