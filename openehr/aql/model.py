@@ -329,10 +329,12 @@ class ConditionOperator(object):
 
 class ConditionSequence(object):
     def __init__(self):
+        # The conditionSequence can contain ConditionExpression, ConditionOperator and ConditionSequence instances
         self.conditionSequence = []
 
 class Condition(object):
     def __init__(self):
+        # The condition can be represented by a ConditionSequence or a ConditionExpression
         self._condition = None
 
     @property
