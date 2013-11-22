@@ -7,6 +7,7 @@ services:
 
 before_install:
   - pip install pymongo
+  - pip install bottle
 
 script:
   - nosetests -v
