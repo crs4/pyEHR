@@ -1,0 +1,12 @@
+language: python
+python:
+  - 2.7
+
+services:
+  - mongodb
+
+before_install:
+  - pip install pymongo
+
+script:
+  - nosetests -v
