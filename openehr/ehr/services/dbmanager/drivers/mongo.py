@@ -4,6 +4,7 @@ from openehr.ehr.services.dbmanager.querymanager.query import *
 from openehr.ehr.services.dbmanager.errors import *
 from openehr.utils import *
 import pymongo
+from bson.objectid import ObjectId
 import re
 
 
@@ -52,6 +53,44 @@ class MongoDriver(DriverInterface):
         self.database = None
         self.collection = None
         self.client = None
+
+    @property
+    def is_connected(self):
+        return not self.client is None
+
+    def __check_connection(self):
+        if not self.is_connected:
+            raise DBManagerNotConnectedError('Connection to host %s is closed' % self.host)
+
+    def add_record(self, record):
+        """
+        Save a record within MongoDB and return the record's ID
+        """
+        self.__check_connection()
+        return self.collection.insert(record)
+
+    def add_records(self, records):
+        self.__check_connection()
+        return super(MongoDriver, self).add_records(records)
+
+    def get_record_by_id(self, record_id):
+        self.__check_connection()
+        return self.collection.find_one({'_id': ObjectId(record_id)})
+
+    def get_all_records(self):
+        self.__check_connection()
+        return (rec for rec in self.collection.find())
+
+    def delete_record(self, record_id):
+        self.__check_connection()
+        self.logger.debug('deleting document with ID %s', record_id)
+        res = self.collection.remove(ObjectId(record_id))
+        self.logger.debug('deleted %d documents', res[u'n'])
+
+    @property
+    def documents_count(self):
+        self.__check_connection()
+        return self.collection.count()
 
     def parseExpression(self, expression):
         q = expression.replace('/','.')
@@ -228,6 +267,7 @@ class MongoDriver(DriverInterface):
         return rs
 
     def executeQuery(self, query):
+        self.__check_connection()
         try:
             selection = query.selection
             location = query.location
