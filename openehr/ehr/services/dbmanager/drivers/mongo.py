@@ -75,11 +75,15 @@ class MongoDriver(DriverInterface):
 
     def get_record_by_id(self, record_id):
         self.__check_connection()
-        return self.collection.find_one({'_id': ObjectId(record_id)})
+        res = self.collection.find_one({'_id': ObjectId(record_id)})
+        if res:
+            return decode_dict(res)
+        else:
+            return res
 
     def get_all_records(self):
         self.__check_connection()
-        return (rec for rec in self.collection.find())
+        return (decode_dict(rec) for rec in self.collection.find())
 
     def delete_record(self, record_id):
         self.__check_connection()
