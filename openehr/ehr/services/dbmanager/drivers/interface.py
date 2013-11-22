@@ -10,7 +10,7 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def close(self):
+    def disconnect(self):
         pass
 
     @abstractmethod

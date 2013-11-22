@@ -1,5 +1,5 @@
 from openehr.aql.parser import *
-from openehr.ehr.services.dbmanager.drivers.interface import *
+from openehr.ehr.services.dbmanager.drivers.interface import DriverInterface
 from openehr.ehr.services.dbmanager.querymanager.query import *
 from openehr.ehr.services.dbmanager.errors import *
 from openehr.utils import *
@@ -12,19 +12,38 @@ class MongoDriver(DriverInterface):
     def __init__(self, host, database, collection,
                  port=None, user=None, passwd=None,
                  logger=None):
-        self.client = pymongo.MongoClient(host, port)
-        print "Connecting to the Client"
-        self.database = self.client[database]
-        if user:
-            self.database.authenticate(user, passwd)
-        self.collection = self.database[collection]
+        self.client = None
+        self.database = None
+        self.collection = None
+        self.host = host
+        self.database_name = database
+        self.collection_name = collection
+        self.port = port
+        self.user = user
+        self.passwd = passwd
         self.logger = logger or get_logger('mongo-db-driver')
 
     def connect(self):
-        raise NotImplementedError()
+        if not self.client:
+            self.logger.debug('connecting to host %s', self.host)
+            self.client = pymongo.MongoClient(self.host, self.port)
+            self.logger.debug('binding to database %s', self.database_name)
+            self.database = self.client[self.database_name]
+            if self.user:
+                self.logger.debug('authenticating with username %s', self.user)
+                self.database.authenticate(self.user, self.passwd)
+            self.logger.debug('using collection %s', self.collection_name)
+            self.collection = self.database[self.collection_name]
+        else:
+            self.logger.debug('Alredy connected to database %s, using collection %s',
+                              self.database_name, self.collection_name)
 
-    def close(self):
-        raise NotImplementedError()
+    def disconnect(self):
+        self.logger.debug('disconnecting from host %s', self.client.host)
+        self.client.disconnect()
+        self.database = None
+        self.collection = None
+        self.client = None
 
     def parseExpression(self, expression):
         q = expression.replace('/','.')
