@@ -367,29 +367,33 @@ class Parser():
             block = False
             end = True
             buf = ""
-            for token in tokens:
-                if token.upper() in typeKeywords:
-                    op = ConditionOperator()
-                    op.op = token.upper()
-                    cond.conditionSequence.append(op)
-                else:
-                    if token.startswith('{') or token.startswith('('):
-                        start = True
-                        block = True
-                        end = False
-                    if block:
-                        buf += token
+            if len(tokens) <= 1:
+                predExpr = self.parsePredicateExpression(tokens[0])
+                cond.condition = predExpr
+            else:
+                condSeq = ConditionSequence()
+                for token in tokens:
+                    if token.upper() in typeKeywords:
+                        op = ConditionOperator()
+                        op.op = token.upper()
+                        condSeq.conditionSequence.append(op)
                     else:
-                        buf = token
-                    if token.endswith('}') or token.endswith(')'):
-                        start = False
-                        end = True
-
-                    if end:
-                        condExpr = ConditionExpression()
-                        condExpr.expression = buf
-                        cond.conditionSequence.append(condExpr)
-                        buf = ""
+                        if token.startswith('{') or token.startswith('('):
+                            start = True
+                            block = True
+                            end = False
+                        if block:
+                            buf += token
+                        else:
+                            buf = token
+                        if token.endswith('}') or token.endswith(')'):
+                            start = False
+                            end = True
+                        if end:
+                            predExpr = self.parsePredicateExpression(buf)
+                            condSeq.conditionSequence.append(predExpr)
+                            buf = ""
+                cond.condition = condSeq
             return cond
         except Exception, e:
             raise ParseConditionError(e.message)
