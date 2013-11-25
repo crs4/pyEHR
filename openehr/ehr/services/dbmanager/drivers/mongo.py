@@ -93,6 +93,22 @@ class MongoDriver(DriverInterface):
         if not self.is_connected:
             raise DBManagerNotConnectedError('Connection to host %s is closed' % self.host)
 
+    def select_collection(self, collection_label):
+        """
+        Change the collection for the current database
+
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection_1') as driver:
+        ...   print driver.collection
+        ...   driver.select_collection('test_collection_2')
+        ...   print driver.collection
+        Collection(Database(MongoClient('localhost', 27017), u'test_database'), u'test_collection_1')
+        Collection(Database(MongoClient('localhost', 27017), u'test_database'), u'test_collection_2')
+        """
+        self.__check_connection()
+        self.logger.debug('Changing collection for database %s, old collection: %s - new collection %s',
+                          self.database.name, self.collection.name, collection_label)
+        self.collection = self.database[collection_label]
+
     def add_record(self, record):
         """
         Save a record within MongoDB and return the record's ID
