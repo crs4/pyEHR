@@ -1,41 +1,166 @@
 from openehr.aql.parser import *
-from openehr.ehr.services.dbmanager.drivers.interface import *
+from openehr.ehr.services.dbmanager.drivers.interface import DriverInterface
 from openehr.ehr.services.dbmanager.querymanager.query import *
 from openehr.ehr.services.dbmanager.errors import *
 from openehr.utils import *
 import pymongo
+from bson.objectid import ObjectId
 import re
 
-class PredicateException(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
-
-class ParseSimpleExpressionException(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
 
 class MongoDriver(DriverInterface):
 
     def __init__(self, host, database, collection,
                  port=None, user=None, passwd=None,
                  logger=None):
-        self.client = pymongo.MongoClient(host, port)
-        print "Connecting to the Client"
-        self.database = self.client[database]
-        if user:
-            self.database.authenticate(user, passwd)
-        self.collection = self.database[collection]
+        self.client = None
+        self.database = None
+        self.collection = None
+        self.host = host
+        self.database_name = database
+        self.collection_name = collection
+        self.port = port
+        self.user = user
+        self.passwd = passwd
         self.logger = logger or get_logger('mongo-db-driver')
 
-    def connect(self):
-        raise NotImplementedError()
+    def __enter__(self):
+        self.connect()
+        return self
 
-    def close(self):
-        raise NotImplementedError()
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.disconnect()
+        return None
+
+    def connect(self):
+        """
+        You can use connect and disconnect methods
+        >>> driver = MongoDriver('localhost', 'test_database',
+        ...                       'test_collection')
+        >>> driver.connect()
+        >>> driver.is_connected
+        True
+        >>> driver.disconnect()
+
+        or you can use the context manager
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   driver.is_connected
+        True
+
+        """
+        if not self.client:
+            self.logger.debug('connecting to host %s', self.host)
+            self.client = pymongo.MongoClient(self.host, self.port)
+            self.logger.debug('binding to database %s', self.database_name)
+            self.database = self.client[self.database_name]
+            if self.user:
+                self.logger.debug('authenticating with username %s', self.user)
+                self.database.authenticate(self.user, self.passwd)
+            self.logger.debug('using collection %s', self.collection_name)
+            self.collection = self.database[self.collection_name]
+        else:
+            self.logger.debug('Alredy connected to database %s, using collection %s',
+                              self.database_name, self.collection_name)
+
+    def disconnect(self):
+        """
+        You can use connect and disconnect methods
+        >>> driver = MongoDriver('localhost', 'test_database',
+        ...                      'test_collection')
+        >>> driver.connect()
+        >>> driver.disconnect()
+        >>> driver.is_connected
+        False
+
+        or you can use the context manager
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   pass
+        >>> driver.is_connected
+        False
+
+        """
+        self.logger.debug('disconnecting from host %s', self.client.host)
+        self.client.disconnect()
+        self.database = None
+        self.collection = None
+        self.client = None
+
+    @property
+    def is_connected(self):
+        return not self.client is None
+
+    def __check_connection(self):
+        if not self.is_connected:
+            raise DBManagerNotConnectedError('Connection to host %s is closed' % self.host)
+
+    def add_record(self, record):
+        """
+        Save a record within MongoDB and return the record's ID
+
+        >>> record = {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'}
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   record_id = driver.add_record(record)
+        ...   print record_id
+        ...   driver.documents_count == 1
+        ...   driver.delete_record(record_id) # cleanup
+        000000000000000000000001
+        True
+        """
+        self.__check_connection()
+        return self.collection.insert(record)
+
+    def add_records(self, records):
+        """
+        >>> records = [
+        ...   {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%023d%d' % (0, 2)), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%023d%d' % (0, 3)), 'field1': 'value1', 'field2': 'value2'},
+        ... ]
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   records_id = driver.add_records(records)
+        ...   for rid in records_id:
+        ...     print rid
+        ...   driver.documents_count == 3
+        ...   for r in driver.get_all_records():
+        ...     driver.delete_record(r['_id']) # cleanup
+        000000000000000000000001
+        000000000000000000000002
+        000000000000000000000003
+        True
+        """
+        self.__check_connection()
+        return super(MongoDriver, self).add_records(records)
+
+    def get_record_by_id(self, record_id):
+        """
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   record_id = driver.add_record({'field1': 'value1', 'field2': 'value2'})
+        ...   rec = driver.get_record_by_id(record_id)
+        ...   print rec['field1'], rec['field2']
+        ...   driver.delete_record(record_id)
+        value1 value2
+        """
+        self.__check_connection()
+        res = self.collection.find_one({'_id': ObjectId(record_id)})
+        if res:
+            return decode_dict(res)
+        else:
+            return res
+
+    def get_all_records(self):
+        self.__check_connection()
+        return (decode_dict(rec) for rec in self.collection.find())
+
+    def delete_record(self, record_id):
+        self.__check_connection()
+        self.logger.debug('deleting document with ID %s', record_id)
+        res = self.collection.remove(ObjectId(record_id))
+        self.logger.debug('deleted %d documents', res[u'n'])
+
+    @property
+    def documents_count(self):
+        self.__check_connection()
+        return self.collection.count()
 
     def parseExpression(self, expression):
         q = expression.replace('/','.')
@@ -212,6 +337,7 @@ class MongoDriver(DriverInterface):
         return rs
 
     def executeQuery(self, query):
+        self.__check_connection()
         try:
             selection = query.selection
             location = query.location

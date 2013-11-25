@@ -32,6 +32,11 @@ setup(
         'openehr.archetypes',
         'openehr.archetypes.archive',
         'openehr.archetypes.archive.drivers',
-        'openehr.aql'
+        'openehr.aql',
+        'openehr.ehr',
+        'openehr.ehr.services',
+        'openehr.ehr.services.dbmanager',
+        'openehr.ehr.services.dbmanager.drivers',
+        'openehr.ehr.services.dbmanager.querymanager',
     ],
 )
