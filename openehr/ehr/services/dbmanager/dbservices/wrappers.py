@@ -8,6 +8,7 @@ class RecordsFactory(object):
     @staticmethod
     def create_patient_record(document):
         """
+        >>> from bson import ObjectId
         >>> doc = {
         ...   u'creation_time': 1385569688.39202, 'last_update': 1385570688.39202,
         ...   u'active': True, u'ehr_records': []
@@ -16,16 +17,24 @@ class RecordsFactory(object):
         >>> print('%f %f %r %r' % (record.creation_time, record.last_update,
         ...       record.active, record.ehr_records))
         1385569688.392020 1385570688.392020 True []
+        >>> print repr(record.record_id)
+        None
+        >>> doc['_id'] = ObjectId('000000000000000000000001')
+        >>> record = RecordsFactory.create_patient_record(doc)
+        >>> print repr(record.record_id)
+        ObjectId('000000000000000000000001')
         """
         document = decode_dict(document)
         return PatientRecord(document['ehr_records'],
                              document['creation_time'],
                              document['last_update'],
-                             document['active'])
+                             document['active'],
+                             document.get('_id'))
 
     @staticmethod
     def create_clinical_record(document):
         """
+        >>> from bson import ObjectId
         >>> doc = {
         ...   u'creation_time': 1385569688.39202, u'last_update': 1385570688.39202,
         ...   u'active': True, u'ehr_data': {'field1': 'value1', 'field2': 'value2'}
@@ -34,12 +43,19 @@ class RecordsFactory(object):
         >>> print ('%f %f %r %r' % (record.creation_time, record.last_update,
         ...        record.active, record.ehr_data))
         1385569688.392020 1385570688.392020 True {'field2': 'value2', 'field1': 'value1'}
+        >>> print repr(record.record_id)
+        None
+        >>> doc['_id'] = ObjectId('000000000000000000000001')
+        >>> record = RecordsFactory.create_clinical_record(doc)
+        >>> print repr(record.record_id)
+        ObjectId('000000000000000000000001')
         """
         document = decode_dict(document)
         return ClinicalRecord(document['ehr_data'],
                               document['creation_time'],
                               document['last_update'],
-                              document['active'])
+                              document['active'],
+                              document.get('_id'))
 
 
 class Record(object):
@@ -47,10 +63,11 @@ class Record(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def __init__(self, creation_time, last_update=None, active=True):
+    def __init__(self, creation_time, last_update=None, active=True, record_id=None):
         self.creation_time = creation_time
         self.last_update = last_update or creation_time
         self.active = active
+        self.record_id = record_id
 
     @abstractmethod
     def _to_document(self):
@@ -59,15 +76,17 @@ class Record(object):
             'last_update': self.last_update,
             'active': self.active
         }
+        if self.record_id:
+            doc['_id'] = self.record_id
         return doc
 
 
 class PatientRecord(Record):
 
     def __init__(self, ehr_records=None, creation_time=None,
-                 last_update=None, active=True):
+                 last_update=None, active=True, record_id=None):
         super(PatientRecord, self).__init__(creation_time or time.time(),
-                                            last_update, active)
+                                            last_update, active, record_id)
         self.ehr_records = ehr_records or []
 
     def _to_document(self):
@@ -84,9 +103,9 @@ class PatientRecord(Record):
 class ClinicalRecord(Record):
 
     def __init__(self, ehr_data, creation_time=None, last_update=None,
-                 active=True):
+                 active=True, record_id=None):
         super(ClinicalRecord, self).__init__(creation_time or time.time(),
-                                             last_update, active)
+                                             last_update, active, record_id)
         self.ehr_data = ehr_data
 
     def _to_document(self):
