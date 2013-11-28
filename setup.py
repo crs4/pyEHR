@@ -38,5 +38,6 @@ setup(
         'openehr.ehr.services.dbmanager',
         'openehr.ehr.services.dbmanager.drivers',
         'openehr.ehr.services.dbmanager.querymanager',
+        'openehr.ehr.services.dbmanager.dbservices',
     ],
 )
