@@ -128,9 +128,9 @@ class MongoDriver(DriverInterface):
     def add_records(self, records):
         """
         >>> records = [
-        ...   {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'},
-        ...   {'_id': ObjectId('%023d%d' % (0, 2)), 'field1': 'value1', 'field2': 'value2'},
-        ...   {'_id': ObjectId('%023d%d' % (0, 3)), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%024d' % 1), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%024d' % 2), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%024d' % 3), 'field1': 'value1', 'field2': 'value2'},
         ... ]
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
         ...   records_id = driver.add_records(records)
@@ -166,6 +166,26 @@ class MongoDriver(DriverInterface):
     def get_all_records(self):
         self.__check_connection()
         return (decode_dict(rec) for rec in self.collection.find())
+
+    def get_records_by_query(self, selector):
+        """
+        >>> records = []
+        >>> for x in xrange(10):
+        ...   records.append({'value': x, 'even': True if x%2 == 0 else False, '_id': ObjectId('%024d' % x)})
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   records_id = driver.add_records(records)
+        ...   for r in driver.get_records_by_query({'even': True}):
+        ...     print r
+        ...   for id in records_id:
+        ...     driver.delete_record(id)
+        {'even': True, '_id': ObjectId('000000000000000000000000'), 'value': 0}
+        {'even': True, '_id': ObjectId('000000000000000000000002'), 'value': 2}
+        {'even': True, '_id': ObjectId('000000000000000000000004'), 'value': 4}
+        {'even': True, '_id': ObjectId('000000000000000000000006'), 'value': 6}
+        {'even': True, '_id': ObjectId('000000000000000000000008'), 'value': 8}
+        """
+        self.__check_connection()
+        return (decode_dict(rec) for rec in self.collection.find(selector))
 
     def delete_record(self, record_id):
         self.__check_connection()
