@@ -71,6 +71,11 @@ class PatientRecord(Record):
         self.ehr_records = ehr_records or []
 
     def _to_document(self):
+        """
+        >>> rec = PatientRecord([], 1385569688.39202, 1385570688.39202)
+        >>> print rec._to_document()
+        {'active': True, 'ehr_records': [], 'creation_time': 1385569688.39202, 'last_update': 1385570688.39202}
+        """
         doc = super(PatientRecord, self)._to_document()
         doc['ehr_records'] = self.ehr_records
         return doc
@@ -85,6 +90,11 @@ class ClinicalRecord(Record):
         self.ehr_data = ehr_data
 
     def _to_document(self):
+        """
+        >>> rec = ClinicalRecord({'field1': 'value1', 'field2': 'value2'}, 1385569688.39202)
+        >>> print rec._to_document()
+        {'active': True, 'ehr_data': {'field2': 'value2', 'field1': 'value1'}, 'creation_time': 1385569688.39202, 'last_update': 1385569688.39202}
+        """
         doc = super(ClinicalRecord, self)._to_document()
         doc['ehr_data'] = self.ehr_data
         return doc
