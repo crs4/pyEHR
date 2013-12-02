@@ -17,11 +17,11 @@ class DBServices(object):
         self.passwd = passwd
         self.logger = logger or get_logger('db_services')
 
-    def save_patient_record(self, patient_record):
+    def save_patient(self, patient_record):
         """
         >>> dbs = DBServices('localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
         >>> pat_rec = PatientRecord()
-        >>> pat_rec = dbs.save_patient_record(pat_rec)
+        >>> pat_rec = dbs.save_patient(pat_rec)
         >>> len(pat_rec.ehr_records) == 0
         True
         >>> pat_rec.record_id is None
