@@ -193,6 +193,23 @@ class MongoDriver(DriverInterface):
         res = self.collection.remove(record_id)
         self.logger.debug('deleted %d documents', res[u'n'])
 
+    def update_record(self, record_id, update_condition):
+        """
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   rec_id = driver.add_record({'label': 'label', 'field1': 'value1', 'field2': 'value2'})
+        ...   print driver.get_record_by_id(rec_id)['label']
+        ...   driver.update_record(rec_id, {'$set': {'label': 'new_label'}})
+        ...   print driver.get_record_by_id(rec_id)['label']
+        ...   driver.delete_record(rec_id)
+        label
+        new_label
+        """
+        self.__check_connection()
+        self.logger.debug('Updading record with ID %r, with condition %r', record_id,
+                          update_condition)
+        res = self.collection.update({'_id': record_id}, update_condition)
+        self.logger.debug('updated %d documents', res[u'n'])
+
     @property
     def documents_count(self):
         self.__check_connection()
