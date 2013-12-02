@@ -1,6 +1,7 @@
 from openehr.ehr.services.dbmanager.drivers.mongo import MongoDriver
 from openehr.utils import get_logger
 from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
+from openehr.ehr.services.dbmanager.errors import CascadeDeleteError
 
 
 class DBServices(object):
@@ -28,6 +29,7 @@ class DBServices(object):
         False
         >>> pat_rec.active
         True
+        >>> dbs.delete_patient(pat_rec) #cleanup
         """
         with MongoDriver(self.host, self.database, self.patients_collection,
                          self.port, self.user, self.passwd, self.logger) as driver:
@@ -67,10 +69,22 @@ class DBServices(object):
         False
         >>> last_update < pat_rec.last_update
         True
+        >>> dbs.delete_patient(pat_rec) #cleanup
         """
         #TODO: hide EHR records as well
         rec = self._hide_record(patient, self.patients_collection)
         return rec
+
+    def delete_patient(self, patient, cascade_delete=False):
+        if cascade_delete and len(patient.ehr_records) > 0:
+            raise CascadeDeleteError('Unable to delete patient record with ID %s, %d EHR records still connected',
+                                     patient.record_id, len(patient.ehr_records))
+        else:
+            #TODO: delete EHR records as well
+            with MongoDriver(self.host, self.database, self.patients_collection, self.port,
+                             self.user, self.passwd, self.logger) as driver:
+                driver.delete_record(patient.record_id)
+                return None
 
     def _update_record_timestamp(self, update_condition):
         import time
