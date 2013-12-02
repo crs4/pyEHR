@@ -116,10 +116,10 @@ class MongoDriver(DriverInterface):
         >>> record = {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'}
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
         ...   record_id = driver.add_record(record)
-        ...   print record_id
+        ...   print repr(record_id)
         ...   driver.documents_count == 1
         ...   driver.delete_record(record_id) # cleanup
-        000000000000000000000001
+        ObjectId('000000000000000000000001')
         True
         """
         self.__check_connection()
@@ -135,13 +135,13 @@ class MongoDriver(DriverInterface):
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
         ...   records_id = driver.add_records(records)
         ...   for rid in records_id:
-        ...     print rid
+        ...     print repr(rid)
         ...   driver.documents_count == 3
         ...   for r in driver.get_all_records():
         ...     driver.delete_record(r['_id']) # cleanup
-        000000000000000000000001
-        000000000000000000000002
-        000000000000000000000003
+        ObjectId('000000000000000000000001')
+        ObjectId('000000000000000000000002')
+        ObjectId('000000000000000000000003')
         True
         """
         self.__check_connection()
@@ -157,7 +157,7 @@ class MongoDriver(DriverInterface):
         value1 value2
         """
         self.__check_connection()
-        res = self.collection.find_one({'_id': ObjectId(record_id)})
+        res = self.collection.find_one({'_id': record_id})
         if res:
             return decode_dict(res)
         else:
@@ -176,8 +176,8 @@ class MongoDriver(DriverInterface):
         ...   records_id = driver.add_records(records)
         ...   for r in driver.get_records_by_query({'even': True}):
         ...     print r
-        ...   for id in records_id:
-        ...     driver.delete_record(id)
+        ...   for rec_id in records_id:
+        ...     driver.delete_record(rec_id)
         {'even': True, '_id': ObjectId('000000000000000000000000'), 'value': 0}
         {'even': True, '_id': ObjectId('000000000000000000000002'), 'value': 2}
         {'even': True, '_id': ObjectId('000000000000000000000004'), 'value': 4}
@@ -190,7 +190,7 @@ class MongoDriver(DriverInterface):
     def delete_record(self, record_id):
         self.__check_connection()
         self.logger.debug('deleting document with ID %s', record_id)
-        res = self.collection.remove(ObjectId(record_id))
+        res = self.collection.remove(record_id)
         self.logger.debug('deleted %d documents', res[u'n'])
 
     @property
