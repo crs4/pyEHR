@@ -54,3 +54,35 @@ class DBServices(object):
                          self.port, self.user, self.passwd, self.logger) as driver:
             return driver.get_record_by_id(patient_id)
 
+    def hide_patient(self, patient):
+        """
+        >>> dbs = DBServices('localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
+        >>> pat_rec = PatientRecord()
+        >>> pat_rec = dbs.save_patient(pat_rec)
+        >>> last_update = pat_rec.last_update
+        >>> print pat_rec.active
+        True
+        >>> pat_rec = dbs.hide_patient(pat_rec)
+        >>> print pat_rec.active
+        False
+        >>> last_update < pat_rec.last_update
+        True
+        """
+        #TODO: hide EHR records as well
+        rec = self._hide_record(patient, self.patients_collection)
+        return rec
+
+    def _update_record_timestamp(self, update_condition):
+        import time
+        update_condition['last_update'] = time.time()
+        return update_condition
+
+    def _hide_record(self, record, collection):
+        with MongoDriver(self.host, self.database, collection, self.port,
+                         self.user, self.passwd, self.logger) as driver:
+            update_condition = {'active': False}
+            driver.update_record(record.record_id,
+                                 {'$set': self._update_record_timestamp(update_condition)})
+            record.active = False
+            record.last_update = update_condition['last_update']
+            return record
