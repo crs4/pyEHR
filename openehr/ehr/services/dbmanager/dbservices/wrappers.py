@@ -25,7 +25,8 @@ class RecordsFactory(object):
         ObjectId('000000000000000000000001')
         """
         document = decode_dict(document)
-        return PatientRecord(document['ehr_records'],
+        ehr_records = [RecordsFactory.create_clinical_record(rec) for rec in document['ehr_records']]
+        return PatientRecord(ehr_records,
                              document['creation_time'],
                              document['last_update'],
                              document['active'],
@@ -96,7 +97,7 @@ class PatientRecord(Record):
         {'active': True, 'ehr_records': [], 'creation_time': 1385569688.39202, 'last_update': 1385570688.39202}
         """
         doc = super(PatientRecord, self)._to_document()
-        doc['ehr_records'] = self.ehr_records
+        doc['ehr_records'] = [ehr.record_id for ehr in self.ehr_records]
         return doc
 
 
