@@ -1,6 +1,7 @@
 from openehr.ehr.services.dbmanager.drivers.mongo import MongoDriver
 from openehr.utils import get_logger
-from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
+from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord, \
+    RecordsFactory
 from openehr.ehr.services.dbmanager.errors import CascadeDeleteError
 
 
@@ -47,14 +48,14 @@ class DBServices(object):
         with MongoDriver(self.host, self.database, self.patients_collection,
                          self.port, self.user, self.passwd, self.logger) as driver:
             if not active_records_only:
-                return driver.get_all_records()
+                return [RecordsFactory.create_patient_record(r) for r in driver.get_all_records()]
             else:
-                return self._get_active_records()
+                return [RecordsFactory.create_patient_record(r) for r in self._get_active_records()]
 
     def get_patient(self, patient_id):
         with MongoDriver(self.host, self.database, self.patients_collection,
                          self.port, self.user, self.passwd, self.logger) as driver:
-            return driver.get_record_by_id(patient_id)
+            return RecordsFactory.create_patient_record(driver.get_record_by_id(patient_id))
 
     def hide_patient(self, patient):
         """
