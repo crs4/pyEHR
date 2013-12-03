@@ -25,8 +25,7 @@ class RecordsFactory(object):
         ObjectId('000000000000000000000001')
         """
         document = decode_dict(document)
-        ehr_records = [RecordsFactory.create_clinical_record(rec) for rec in document['ehr_records']]
-        return PatientRecord(ehr_records,
+        return PatientRecord(document['ehr_records'],
                              document['creation_time'],
                              document['last_update'],
                              document['active'],
