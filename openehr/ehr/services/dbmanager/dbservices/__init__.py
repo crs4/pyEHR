@@ -41,6 +41,37 @@ class DBServices(object):
                 #TODO update or error?
                 pass
 
+    def save_ehr_record(self, ehr_record, patient_record):
+        """
+        >>> dbs = DBServices('localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
+        >>> pat_rec = PatientRecord()
+        >>> pat_rec = dbs.save_patient(pat_rec)
+        >>> ehr_rec = ClinicalRecord({'field1': 'value1', 'field2': 'value2'})
+        >>> ehr_rec, pat_rec = dbs.save_ehr_record(ehr_rec, pat_rec)
+        >>> ehr_rec.record_id is None
+        False
+        >>> len(pat_rec.ehr_records)
+        1
+        >>> pat_rec.ehr_records[0] == ehr_rec.record_id
+        True
+        """
+        with MongoDriver(self.host, self.database, self.ehr_collection,
+                         self.port, self.user, self.passwd, self.logger) as driver:
+            if ehr_record.record_id is None:
+                ehr_record.record_id = driver.add_record(ehr_record._to_document())
+            else:
+                #TODO update or error?
+                pass
+        patient_record = self.add_ehr_record(patient_record, ehr_record)
+        return ehr_record, patient_record
+
+    def add_ehr_record(self, patient_record, ehr_record):
+        with MongoDriver(self.host, self.database, self.patients_collection,
+                         self.port, self.user, self.passwd, self.logger) as driver:
+            update_condition = {'$addToSet': {'ehr_records': ehr_record.record_id}}
+            driver.update_record(patient_record.record_id, update_condition)
+        return self.get_patient(patient_record.record_id)
+
     def _get_active_records(self, driver):
         return driver.get_records_by_query({'active': True})
 
