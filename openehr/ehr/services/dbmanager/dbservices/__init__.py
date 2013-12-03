@@ -52,7 +52,7 @@ class DBServices(object):
         False
         >>> len(pat_rec.ehr_records)
         1
-        >>> pat_rec.ehr_records[0] == ehr_rec.record_id
+        >>> pat_rec.ehr_records[0].record_id == ehr_rec.record_id
         True
         """
         with MongoDriver(self.host, self.database, self.ehr_collection,
@@ -75,18 +75,28 @@ class DBServices(object):
     def _get_active_records(self, driver):
         return driver.get_records_by_query({'active': True})
 
+    def _fetch_patient_data_full(self, patient_doc):
+        with MongoDriver(self.host, self.database, self.ehr_collection,
+                         self.port, self.user, self.passwd, self.logger) as driver:
+            patient_record = RecordsFactory.create_patient_record(patient_doc)
+            ehr_records = []
+            for ehr_id in patient_record.ehr_records:
+                ehr_records.append(RecordsFactory.create_clinical_record(driver.get_record_by_id(ehr_id)))
+            patient_record.ehr_records = ehr_records
+            return patient_record
+
     def get_patients(self, active_records_only=True):
         with MongoDriver(self.host, self.database, self.patients_collection,
                          self.port, self.user, self.passwd, self.logger) as driver:
             if not active_records_only:
-                return [RecordsFactory.create_patient_record(r) for r in driver.get_all_records()]
+                return [self._fetch_patient_data_full(r) for r in driver.get_all_records()]
             else:
-                return [RecordsFactory.create_patient_record(r) for r in self._get_active_records()]
+                return [self._fetch_patient_data_full(r) for r in self._get_active_records()]
 
     def get_patient(self, patient_id):
         with MongoDriver(self.host, self.database, self.patients_collection,
                          self.port, self.user, self.passwd, self.logger) as driver:
-            return RecordsFactory.create_patient_record(driver.get_record_by_id(patient_id))
+            return self._fetch_patient_data_full(driver.get_record_by_id(patient_id))
 
     def hide_patient(self, patient):
         """
