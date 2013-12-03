@@ -76,7 +76,7 @@ class DBServices(object):
         return rec
 
     def delete_patient(self, patient, cascade_delete=False):
-        if cascade_delete and len(patient.ehr_records) > 0:
+        if not cascade_delete and len(patient.ehr_records) > 0:
             raise CascadeDeleteError('Unable to delete patient record with ID %s, %d EHR records still connected',
                                      patient.record_id, len(patient.ehr_records))
         else:
