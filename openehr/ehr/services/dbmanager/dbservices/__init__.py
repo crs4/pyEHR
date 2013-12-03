@@ -54,6 +54,7 @@ class DBServices(object):
         1
         >>> pat_rec.ehr_records[0].record_id == ehr_rec.record_id
         True
+        >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
         """
         with MongoDriver(self.host, self.database, self.ehr_collection,
                          self.port, self.user, self.passwd, self.logger) as driver:
@@ -113,8 +114,36 @@ class DBServices(object):
         True
         >>> dbs.delete_patient(pat_rec) #cleanup
         """
-        #TODO: hide EHR records as well
+        for ehr_rec in patient.ehr_records:
+            self.hide_ehr_record(ehr_rec)
         rec = self._hide_record(patient, self.patients_collection)
+        return rec
+
+    def hide_ehr_record(self, ehr_record):
+        """
+        >>> dbs = DBServices('localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
+        >>> pat_rec = dbs.save_patient(PatientRecord())
+        >>> for x in xrange(5):
+        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord({'ehr_field': 'ehr_value_%02d' % x}), pat_rec)
+        >>> pat_rec.active
+        True
+        >>> from collections import Counter
+        >>> ct = Counter()
+        >>> for ehr in pat_rec.ehr_records:
+        ...   ct[ehr.active] += 1
+        >>> print ct
+        Counter({True: 5})
+        >>> pat_rec = dbs.hide_patient(pat_rec)
+        >>> pat_rec.active
+        False
+        >>> ct = Counter()
+        >>> for ehr in pat_rec.ehr_records:
+        ...   ct[ehr.active] += 1
+        >>> print ct
+        Counter({False: 5})
+        >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
+        """
+        rec = self._hide_record(ehr_record, self.ehr_collection)
         return rec
 
     def delete_patient(self, patient, cascade_delete=False):
@@ -122,11 +151,18 @@ class DBServices(object):
             raise CascadeDeleteError('Unable to delete patient record with ID %s, %d EHR records still connected',
                                      patient.record_id, len(patient.ehr_records))
         else:
-            #TODO: delete EHR records as well
+            for ehr_record in patient.ehr_records:
+                self.delete_ehr_record(ehr_record)
             with MongoDriver(self.host, self.database, self.patients_collection, self.port,
                              self.user, self.passwd, self.logger) as driver:
                 driver.delete_record(patient.record_id)
                 return None
+
+    def delete_ehr_record(self, ehr_record):
+        with MongoDriver(self.host, self.database, self.ehr_collection, self.port,
+                         self.user, self.passwd, self.logger) as driver:
+            driver.delete_record(ehr_record.record_id)
+            return None
 
     def _update_record_timestamp(self, update_condition):
         import time
