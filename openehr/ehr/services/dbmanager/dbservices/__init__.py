@@ -73,6 +73,45 @@ class DBServices(object):
             driver.update_record(patient_record.record_id, update_condition)
         return self.get_patient(patient_record.record_id)
 
+    def remove_ehr_record(self, ehr_record, patient_record):
+        """
+        Remove an EHR record from a patient's records and delete it from the database.
+        Returns the EHR record without an ID so it can be assigned to a new patient (if needed).
+
+        >>> dbs = DBServices('localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
+        >>> pat_rec_1 = dbs.save_patient(PatientRecord())
+        >>> ehr_rec = ClinicalRecord({'field1': 'value1', 'field2': 'value2'})
+        >>> ehr_rec.record_id is None
+        True
+        >>> ehr_rec, pat_rec_1 = dbs.save_ehr_record(ehr_rec, pat_rec_1)
+        >>> ehr_rec.record_id is None
+        False
+        >>> len(pat_rec_1.ehr_records)
+        1
+        >>> ehr_rec, pat_rec_1 = dbs.remove_ehr_record(ehr_rec, pat_rec_1)
+        >>> ehr_rec.record_id is None
+        True
+        >>> len(pat_rec_1.ehr_records)
+        0
+        >>> pat_rec_2 = dbs.save_patient(PatientRecord())
+        >>> ehr_rec, pat_rec_2 = dbs.save_ehr_record(ehr_rec, pat_rec_2)
+        >>> ehr_rec.record_id is None
+        False
+        >>> len(pat_rec_2.ehr_records)
+        1
+        >>> dbs.delete_patient(pat_rec_1) # cleanup
+        >>> dbs.delete_patient(pat_rec_2, cascade_delete=True) #cleanup
+        """
+        with MongoDriver(self.host, self.database, self.patients_collection,
+                         self.port, self.user, self.passwd, self.logger) as driver:
+            update_condition = {'$pull': {'ehr_records': ehr_record.record_id}}
+            driver.update_record(patient_record.record_id, update_condition)
+        with MongoDriver(self.host, self.database, self.ehr_collection,
+                         self.port, self.user, self.passwd, self.logger) as driver:
+            driver.delete_record(ehr_record.record_id)
+        ehr_record.record_id = None
+        return ehr_record, self.get_patient(patient_record.record_id)
+
     def _get_active_records(self, driver):
         return driver.get_records_by_query({'active': True})
 
