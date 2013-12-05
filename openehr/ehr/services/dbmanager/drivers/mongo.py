@@ -4,6 +4,7 @@ from openehr.ehr.services.dbmanager.querymanager.query import *
 from openehr.ehr.services.dbmanager.errors import *
 from openehr.utils import *
 import pymongo
+import pymongo.errors
 from bson.objectid import ObjectId
 import re
 
@@ -123,7 +124,10 @@ class MongoDriver(DriverInterface):
         True
         """
         self.__check_connection()
-        return self.collection.insert(record)
+        try:
+            return self.collection.insert(record)
+        except pymongo.errors.DuplicateKeyError:
+            raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
 
     def add_records(self, records):
         """

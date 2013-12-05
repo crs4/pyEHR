@@ -35,12 +35,8 @@ class DBServices(object):
         """
         with MongoDriver(self.host, self.database, self.patients_collection,
                          self.port, self.user, self.passwd, self.logger) as driver:
-            if patient_record.record_id is None:
-                patient_record.record_id = driver.add_record(patient_record._to_document())
-                return patient_record
-            else:
-                #TODO update or error?
-                pass
+            patient_record.record_id = driver.add_record(patient_record._to_document())
+            return patient_record
 
     def save_ehr_record(self, ehr_record, patient_record):
         """
@@ -59,11 +55,7 @@ class DBServices(object):
         """
         with MongoDriver(self.host, self.database, self.ehr_collection,
                          self.port, self.user, self.passwd, self.logger) as driver:
-            if ehr_record.record_id is None:
-                ehr_record.record_id = driver.add_record(ehr_record._to_document())
-            else:
-                #TODO update or error?
-                pass
+            ehr_record.record_id = driver.add_record(ehr_record._to_document())
         patient_record = self.add_ehr_record(patient_record, ehr_record)
         return ehr_record, patient_record
 
