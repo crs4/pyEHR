@@ -3,6 +3,7 @@ from openehr.utils import get_logger
 from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord, \
     RecordsFactory
 from openehr.ehr.services.dbmanager.errors import CascadeDeleteError
+import time
 
 
 class DBServices(object):
@@ -67,10 +68,8 @@ class DBServices(object):
         return ehr_record, patient_record
 
     def add_ehr_record(self, patient_record, ehr_record):
-        with MongoDriver(self.host, self.database, self.patients_collection,
-                         self.port, self.user, self.passwd, self.logger) as driver:
-            update_condition = {'$addToSet': {'ehr_records': ehr_record.record_id}}
-            driver.update_record(patient_record.record_id, update_condition)
+        self._add_to_list(patient_record, 'ehr_records', ehr_record.record_id,
+                          self.patients_collection)
         return self.get_patient(patient_record.record_id)
 
     def remove_ehr_record(self, ehr_record, patient_record):
@@ -102,10 +101,8 @@ class DBServices(object):
         >>> dbs.delete_patient(pat_rec_1) # cleanup
         >>> dbs.delete_patient(pat_rec_2, cascade_delete=True) #cleanup
         """
-        with MongoDriver(self.host, self.database, self.patients_collection,
-                         self.port, self.user, self.passwd, self.logger) as driver:
-            update_condition = {'$pull': {'ehr_records': ehr_record.record_id}}
-            driver.update_record(patient_record.record_id, update_condition)
+        self._remove_from_list(patient_record, 'ehr_records', ehr_record.record_id,
+                               self.patients_collection)
         with MongoDriver(self.host, self.database, self.ehr_collection,
                          self.port, self.user, self.passwd, self.logger) as driver:
             driver.delete_record(ehr_record.record_id)
@@ -204,16 +201,28 @@ class DBServices(object):
             return None
 
     def _update_record_timestamp(self, update_condition):
-        import time
-        update_condition['last_update'] = time.time()
-        return update_condition
+        last_update = time.time()
+        update_condition.setdefault('$set', {})['last_update'] = last_update
+        self.logger.debug('Update condition is %r', update_condition)
+        return update_condition, last_update
 
     def _hide_record(self, record, collection):
         with MongoDriver(self.host, self.database, collection, self.port,
                          self.user, self.passwd, self.logger) as driver:
-            update_condition = {'active': False}
-            driver.update_record(record.record_id,
-                                 {'$set': self._update_record_timestamp(update_condition)})
+            update_condition, last_update = self._update_record_timestamp({'$set': {'active': False}})
+            driver.update_record(record.record_id, update_condition)
             record.active = False
-            record.last_update = update_condition['last_update']
+            record.last_update = last_update
             return record
+
+    def _add_to_list(self, record, list_label, element, collection):
+        with MongoDriver(self.host, self.database, collection, self.port,
+                         self.user, self.passwd, self.logger) as driver:
+            update_condition, last_update = self._update_record_timestamp({'$addToSet': {list_label: element}})
+            driver.update_record(record.record_id, update_condition)
+
+    def _remove_from_list(self, record, list_label, element, collection):
+        with MongoDriver(self.host, self.database, collection, self.port,
+                         self.user, self.passwd, self.logger) as driver:
+            update_condition, last_update = self._update_record_timestamp({'$pull': {list_label: element}})
+            driver.update_record(record.record_id, update_condition)
