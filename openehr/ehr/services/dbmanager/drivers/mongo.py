@@ -4,8 +4,10 @@ from openehr.ehr.services.dbmanager.querymanager.query import *
 from openehr.ehr.services.dbmanager.errors import *
 from openehr.utils import *
 import pymongo
+import pymongo.errors
 from bson.objectid import ObjectId
 import re
+import time
 
 
 class MongoDriver(DriverInterface):
@@ -93,6 +95,22 @@ class MongoDriver(DriverInterface):
         if not self.is_connected:
             raise DBManagerNotConnectedError('Connection to host %s is closed' % self.host)
 
+    def select_collection(self, collection_label):
+        """
+        Change the collection for the current database
+
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection_1') as driver:
+        ...   print driver.collection
+        ...   driver.select_collection('test_collection_2')
+        ...   print driver.collection
+        Collection(Database(MongoClient('localhost', 27017), u'test_database'), u'test_collection_1')
+        Collection(Database(MongoClient('localhost', 27017), u'test_database'), u'test_collection_2')
+        """
+        self.__check_connection()
+        self.logger.debug('Changing collection for database %s, old collection: %s - new collection %s',
+                          self.database.name, self.collection.name, collection_label)
+        self.collection = self.database[collection_label]
+
     def add_record(self, record):
         """
         Save a record within MongoDB and return the record's ID
@@ -100,32 +118,35 @@ class MongoDriver(DriverInterface):
         >>> record = {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'}
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
         ...   record_id = driver.add_record(record)
-        ...   print record_id
+        ...   print repr(record_id)
         ...   driver.documents_count == 1
         ...   driver.delete_record(record_id) # cleanup
-        000000000000000000000001
+        ObjectId('000000000000000000000001')
         True
         """
         self.__check_connection()
-        return self.collection.insert(record)
+        try:
+            return self.collection.insert(record)
+        except pymongo.errors.DuplicateKeyError:
+            raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
 
     def add_records(self, records):
         """
         >>> records = [
-        ...   {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'},
-        ...   {'_id': ObjectId('%023d%d' % (0, 2)), 'field1': 'value1', 'field2': 'value2'},
-        ...   {'_id': ObjectId('%023d%d' % (0, 3)), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%024d' % 1), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%024d' % 2), 'field1': 'value1', 'field2': 'value2'},
+        ...   {'_id': ObjectId('%024d' % 3), 'field1': 'value1', 'field2': 'value2'},
         ... ]
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
         ...   records_id = driver.add_records(records)
         ...   for rid in records_id:
-        ...     print rid
+        ...     print repr(rid)
         ...   driver.documents_count == 3
         ...   for r in driver.get_all_records():
         ...     driver.delete_record(r['_id']) # cleanup
-        000000000000000000000001
-        000000000000000000000002
-        000000000000000000000003
+        ObjectId('000000000000000000000001')
+        ObjectId('000000000000000000000002')
+        ObjectId('000000000000000000000003')
         True
         """
         self.__check_connection()
@@ -141,7 +162,7 @@ class MongoDriver(DriverInterface):
         value1 value2
         """
         self.__check_connection()
-        res = self.collection.find_one({'_id': ObjectId(record_id)})
+        res = self.collection.find_one({'_id': record_id})
         if res:
             return decode_dict(res)
         else:
@@ -151,16 +172,92 @@ class MongoDriver(DriverInterface):
         self.__check_connection()
         return (decode_dict(rec) for rec in self.collection.find())
 
+    def get_records_by_value(self, field, value):
+        return self.get_records_by_query({field: value})
+
+    def get_records_by_query(self, selector):
+        """
+        >>> records = []
+        >>> for x in xrange(10):
+        ...   records.append({'value': x, 'even': True if x%2 == 0 else False, '_id': ObjectId('%024d' % x)})
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   records_id = driver.add_records(records)
+        ...   for r in driver.get_records_by_query({'even': True}):
+        ...     print r
+        ...   for rec_id in records_id:
+        ...     driver.delete_record(rec_id)
+        {'even': True, '_id': ObjectId('000000000000000000000000'), 'value': 0}
+        {'even': True, '_id': ObjectId('000000000000000000000002'), 'value': 2}
+        {'even': True, '_id': ObjectId('000000000000000000000004'), 'value': 4}
+        {'even': True, '_id': ObjectId('000000000000000000000006'), 'value': 6}
+        {'even': True, '_id': ObjectId('000000000000000000000008'), 'value': 8}
+        """
+        self.__check_connection()
+        return (decode_dict(rec) for rec in self.collection.find(selector))
+
     def delete_record(self, record_id):
         self.__check_connection()
         self.logger.debug('deleting document with ID %s', record_id)
-        res = self.collection.remove(ObjectId(record_id))
+        res = self.collection.remove(record_id)
         self.logger.debug('deleted %d documents', res[u'n'])
+
+    def update_record(self, record_id, update_condition):
+        """
+        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
+        ...   rec_id = driver.add_record({'label': 'label', 'field1': 'value1', 'field2': 'value2'})
+        ...   print driver.get_record_by_id(rec_id)['label']
+        ...   driver.update_record(rec_id, {'$set': {'label': 'new_label'}})
+        ...   print driver.get_record_by_id(rec_id)['label']
+        ...   driver.delete_record(rec_id)
+        label
+        new_label
+        """
+        self.__check_connection()
+        self.logger.debug('Updading record with ID %r, with condition %r', record_id,
+                          update_condition)
+        res = self.collection.update({'_id': record_id}, update_condition)
+        self.logger.debug('updated %d documents', res[u'n'])
 
     @property
     def documents_count(self):
         self.__check_connection()
         return self.collection.count()
+
+    def _update_record_timestamp(self, timestamp_field, update_statement):
+        last_update = time.time()
+        update_statement.setdefault('$set', {})[timestamp_field] = last_update
+        self.logger.debug('Update statement is %r', update_statement)
+        return update_statement, last_update
+
+    def update_field(self, record_id, field_label, field_value, update_timestamp_label=None):
+        update_statement = {'$set': {field_label: field_value}}
+        if update_timestamp_label:
+            update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
+                                                                          update_statement)
+        else:
+            last_update = None
+        self.update_record(record_id, update_statement)
+        return last_update
+
+    def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+        update_statement = {'$addToSet': {list_label: item_value}}
+        if update_timestamp_label:
+            update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
+                                                                          update_statement)
+        else:
+            last_update = None
+        self.update_record(record_id, update_statement)
+        return last_update
+
+    def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+        update_statement = {'$pull': {list_label: item_value}}
+        if update_timestamp_label:
+            update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
+                                                                          update_statement)
+        else:
+            last_update = None
+        self.update_record(record_id, update_statement)
+        return last_update
 
     def parseExpression(self, expression):
         q = expression.replace('/','.')

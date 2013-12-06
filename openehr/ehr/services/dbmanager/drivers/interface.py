@@ -36,3 +36,22 @@ class DriverInterface(object):
     @abstractmethod
     def delete_record(self, record_id):
         pass
+
+    @abstractmethod
+    def update_record(self, record_id, update_condition):
+        pass
+
+    @abstractmethod
+    def update_field(self, record_id, field_label, field_value,
+                     update_timestamp_label):
+        pass
+
+    @abstractmethod
+    def add_to_list(self, record_id, list_label, item_value,
+                    update_timestamp_label):
+        pass
+
+    @abstractmethod
+    def remove_from_list(self, record_id, list_label, item_Value,
+                         update_timestamp_label):
+        pass
