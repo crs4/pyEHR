@@ -146,9 +146,12 @@ class DBServices(object):
         True
         >>> dbs.delete_patient(pat_rec) #cleanup
         """
-        for ehr_rec in patient.ehr_records:
-            self.hide_ehr_record(ehr_rec)
-        rec = self._hide_record(patient, self.patients_repository)
+        if patient.active:
+            for ehr_rec in patient.ehr_records:
+                self.hide_ehr_record(ehr_rec)
+            rec = self._hide_record(patient, self.patients_repository)
+        else:
+            rec = patient
         return rec
 
     def hide_ehr_record(self, ehr_record):
@@ -175,7 +178,10 @@ class DBServices(object):
         Counter({False: 5})
         >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
         """
-        rec = self._hide_record(ehr_record, self.ehr_repository)
+        if ehr_record.active:
+            rec = self._hide_record(ehr_record, self.ehr_repository)
+        else:
+            rec = ehr_record
         return rec
 
     def delete_patient(self, patient, cascade_delete=False):
