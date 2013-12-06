@@ -108,53 +108,42 @@ class DBServices(object):
     def _get_active_records(self, driver):
         return driver.get_records_by_value('active', True)
 
-    def _fetch_patient_data_full(self, patient_doc):
+    def _fetch_patient_data_full(self, patient_doc, fetch_ehr_records=True,
+                                 fetch_hidden_ehr=False):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             patient_record = RecordsFactory.create_patient_record(patient_doc)
             ehr_records = []
             for ehr_id in patient_record.ehr_records:
-                ehr_records.append(RecordsFactory.create_clinical_record(driver.get_record_by_id(ehr_id)))
+                ehr_doc = driver.get_record_by_id(ehr_id)
+                if fetch_hidden_ehr or (not fetch_hidden_ehr and ehr_doc['active']):
+                    self.logger.debug('fetch_hidden_ehr: %s --- ehr_doc[\'active\']: %s',
+                                      fetch_hidden_ehr, ehr_doc['active'])
+                    ehr_records.append(RecordsFactory.create_clinical_record(ehr_doc,
+                                                                             not fetch_ehr_records))
+                    self.logger.debug('ehr_records: %r', ehr_records)
+                else:
+                    self.logger.debug('Ignoring hidden EHR record %r', ehr_doc['_id'])
             patient_record.ehr_records = ehr_records
             return patient_record
 
-    def get_patients(self, active_records_only=True):
+    def get_patients(self, active_records_only=True, fetch_ehr_records=True,
+                     fetch_hidden_ehr=False):
         drf = self._get_drivers_factory(self.patients_repository)
         with drf.get_driver() as driver:
             if not active_records_only:
-                return [self._fetch_patient_data_full(r) for r in driver.get_all_records()]
+                return [self._fetch_patient_data_full(r, fetch_ehr_records,
+                                                      fetch_hidden_ehr) for r in driver.get_all_records()]
             else:
                 return [self._fetch_patient_data_full(r) for r in self._get_active_records()]
 
-    def get_patient(self, patient_id):
+    def get_patient(self, patient_id, fetch_ehr_records=True, fetch_hidden_ehr=False):
         drf = self._get_drivers_factory(self.patients_repository)
         with drf.get_driver() as driver:
-            return self._fetch_patient_data_full(driver.get_record_by_id(patient_id))
+            return self._fetch_patient_data_full(driver.get_record_by_id(patient_id),
+                                                 fetch_ehr_records, fetch_hidden_ehr)
 
     def hide_patient(self, patient):
-        """
-        >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
-        >>> pat_rec = PatientRecord()
-        >>> pat_rec = dbs.save_patient(pat_rec)
-        >>> last_update = pat_rec.last_update
-        >>> print pat_rec.active
-        True
-        >>> pat_rec = dbs.hide_patient(pat_rec)
-        >>> print pat_rec.active
-        False
-        >>> last_update < pat_rec.last_update
-        True
-        >>> dbs.delete_patient(pat_rec) #cleanup
-        """
-        if patient.active:
-            for ehr_rec in patient.ehr_records:
-                self.hide_ehr_record(ehr_rec)
-            rec = self._hide_record(patient, self.patients_repository)
-        else:
-            rec = patient
-        return rec
-
-    def hide_ehr_record(self, ehr_record):
         """
         >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
         >>> pat_rec = dbs.save_patient(PatientRecord())
@@ -178,6 +167,43 @@ class DBServices(object):
         Counter({False: 5})
         >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
         """
+        if patient.active:
+            for ehr_rec in patient.ehr_records:
+                self.hide_ehr_record(ehr_rec)
+            rec = self._hide_record(patient, self.patients_repository)
+        else:
+            rec = patient
+        return rec
+
+    def hide_ehr_record(self, ehr_record):
+        """
+        >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
+        >>> pat_rec = dbs.save_patient(PatientRecord())
+        >>> for x in xrange(5):
+        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord({'ehr_field': 'ehr_value_%02d' % x}), pat_rec)
+        >>> len(pat_rec.ehr_records)
+        5
+        >>> from collections import Counter
+        >>> ct = Counter()
+        >>> for ehr in pat_rec.ehr_records:
+        ...   ct[ehr.active] += 1
+        >>> print ct
+        Counter({True: 5})
+        >>> for ehr in pat_rec.ehr_records[2:]:
+        ...   rec = dbs.hide_ehr_record(ehr)
+        >>> pat_rec = dbs.get_patient(pat_rec.record_id)
+        >>> print len(pat_rec.ehr_records)
+        2
+        >>> pat_rec = dbs.get_patient(pat_rec.record_id, fetch_hidden_ehr=True)
+        >>> print len(pat_rec.ehr_records)
+        5
+        >>> ct = Counter()
+        >>> for ehr in pat_rec.ehr_records:
+        ...   ct[ehr.active] += 1
+        >>> print ct
+        Counter({False: 3, True: 2})
+        >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
+        """
         if ehr_record.active:
             rec = self._hide_record(ehr_record, self.ehr_repository)
         else:
@@ -185,6 +211,10 @@ class DBServices(object):
         return rec
 
     def delete_patient(self, patient, cascade_delete=False):
+        def reload_patient(patient):
+            return self.get_patient(patient.record_id, fetch_ehr_records=False,
+                                    fetch_hidden_ehr=True)
+        patient = reload_patient(patient)
         if not cascade_delete and len(patient.ehr_records) > 0:
             raise CascadeDeleteError('Unable to delete patient record with ID %s, %d EHR records still connected',
                                      patient.record_id, len(patient.ehr_records))

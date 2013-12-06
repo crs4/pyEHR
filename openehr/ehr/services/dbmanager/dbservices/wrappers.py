@@ -32,7 +32,7 @@ class RecordsFactory(object):
                              document.get('_id'))
 
     @staticmethod
-    def create_clinical_record(document):
+    def create_clinical_record(document, unload_object=False):
         """
         >>> from bson import ObjectId
         >>> doc = {
@@ -49,13 +49,24 @@ class RecordsFactory(object):
         >>> record = RecordsFactory.create_clinical_record(doc)
         >>> print repr(record.record_id)
         ObjectId('000000000000000000000001')
+        >>> record.ehr_data is None
+        False
+        >>> record = RecordsFactory.create_clinical_record(doc, unload_object=True)
+        >>> print repr(record.record_id)
+        ObjectId('000000000000000000000001')
+        >>> record.ehr_data is None
+        True
         """
         document = decode_dict(document)
-        return ClinicalRecord(document['ehr_data'],
-                              document['creation_time'],
-                              document['last_update'],
-                              document['active'],
-                              document.get('_id'))
+        if not unload_object:
+            return ClinicalRecord(document['ehr_data'],
+                                  document['creation_time'],
+                                  document['last_update'],
+                                  document['active'],
+                                  document.get('_id'))
+        else:
+            return ClinicalRecord(ehr_data=None,
+                                  record_id=document.get('_id'))
 
 
 class Record(object):
