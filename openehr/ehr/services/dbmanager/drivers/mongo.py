@@ -7,6 +7,7 @@ import pymongo
 import pymongo.errors
 from bson.objectid import ObjectId
 import re
+import time
 
 
 class MongoDriver(DriverInterface):
@@ -218,6 +219,42 @@ class MongoDriver(DriverInterface):
     def documents_count(self):
         self.__check_connection()
         return self.collection.count()
+
+    def _update_record_timestamp(self, timestamp_field, update_statement):
+        last_update = time.time()
+        update_statement.setdefault('$set', {})[timestamp_field] = last_update
+        self.logger.debug('Update statement is %r', update_statement)
+        return update_statement, last_update
+
+    def update_field(self, record_id, field_label, field_value, update_timestamp_label=None):
+        update_statement = {'$set': {field_label: field_value}}
+        if update_timestamp_label:
+            update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
+                                                                          update_statement)
+        else:
+            last_update = None
+        self.update_record(record_id, update_statement)
+        return last_update
+
+    def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+        update_statement = {'$addToSet': {list_label: item_value}}
+        if update_timestamp_label:
+            update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
+                                                                          update_statement)
+        else:
+            last_update = None
+        self.update_record(record_id, update_statement)
+        return last_update
+
+    def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+        update_statement = {'$pull': {list_label: item_value}}
+        if update_timestamp_label:
+            update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
+                                                                          update_statement)
+        else:
+            last_update = None
+        self.update_record(record_id, update_statement)
+        return last_update
 
     def parseExpression(self, expression):
         q = expression.replace('/','.')

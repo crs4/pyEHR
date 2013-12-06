@@ -202,23 +202,20 @@ class DBServices(object):
         self.logger.debug('Update condition is %r', update_condition)
         return update_condition, last_update
 
-    def _hide_record(self, record, collection):
-        drf = self._get_drivers_factory(collection)
+    def _hide_record(self, record, repository):
+        drf = self._get_drivers_factory(repository)
         with drf.get_driver() as driver:
-            update_condition, last_update = self._update_record_timestamp({'$set': {'active': False}})
-            driver.update_record(record.record_id, update_condition)
-            record.active = False
-            record.last_update = last_update
-            return record
+            last_update = driver.update_field(record.record_id, 'active', False, 'last_update')
+        record.active = False
+        record.last_update = last_update
+        return record
 
-    def _add_to_list(self, record, list_label, element, collection):
-        drf = self._get_drivers_factory(collection)
+    def _add_to_list(self, record, list_label, element, repository):
+        drf = self._get_drivers_factory(repository)
         with drf.get_driver() as driver:
-            update_condition, last_update = self._update_record_timestamp({'$addToSet': {list_label: element}})
-            driver.update_record(record.record_id, update_condition)
+            driver.add_to_list(record.record_id, list_label, element, 'last_update')
 
-    def _remove_from_list(self, record, list_label, element, collection):
-        drf = self._get_drivers_factory(collection)
+    def _remove_from_list(self, record, list_label, element, repository):
+        drf = self._get_drivers_factory(repository)
         with drf.get_driver() as driver:
-            update_condition, last_update = self._update_record_timestamp({'$pull': {list_label: element}})
-            driver.update_record(record.record_id, update_condition)
+            driver.remove_from_list(record.record_id, list_label, element, 'last_update')
