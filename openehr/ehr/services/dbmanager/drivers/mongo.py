@@ -172,6 +172,9 @@ class MongoDriver(DriverInterface):
         self.__check_connection()
         return (decode_dict(rec) for rec in self.collection.find())
 
+    def get_records_by_value(self, field, value):
+        return self.get_records_by_query({field: value})
+
     def get_records_by_query(self, selector):
         """
         >>> records = []

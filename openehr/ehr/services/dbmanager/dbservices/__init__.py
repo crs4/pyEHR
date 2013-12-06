@@ -106,7 +106,7 @@ class DBServices(object):
         return ehr_record, self.get_patient(patient_record.record_id)
 
     def _get_active_records(self, driver):
-        return driver.get_records_by_query({'active': True})
+        return driver.get_records_by_value('active', True)
 
     def _fetch_patient_data_full(self, patient_doc):
         drf = self._get_drivers_factory(self.ehr_repository)
