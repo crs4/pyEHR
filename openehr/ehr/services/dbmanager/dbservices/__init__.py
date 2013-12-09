@@ -143,6 +143,36 @@ class DBServices(object):
             return self._fetch_patient_data_full(driver.get_record_by_id(patient_id),
                                                  fetch_ehr_records, fetch_hidden_ehr)
 
+    def load_ehr_records(self, patient):
+        """
+        >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
+        >>> pat_rec = dbs.save_patient(PatientRecord(record_id='PATIENT_01'))
+        >>> for x in xrange(5):
+        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord({'ehr_field': 'ehr_value%02d' % x}), pat_rec)
+        >>> pat_rec = dbs.get_patient('PATIENT_01', fetch_ehr_records=False)
+        >>> for ehr in pat_rec.ehr_records:
+        ...   print ehr.ehr_data is None
+        True
+        True
+        True
+        True
+        True
+        >>> pat_rec = dbs.load_ehr_records(pat_rec)
+        >>> for ehr in pat_rec.ehr_records:
+        ...   print ehr.ehr_data is None
+        False
+        False
+        False
+        False
+        False
+        >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
+        """
+        drf = self._get_drivers_factory(self.ehr_repository)
+        with drf.get_driver() as driver:
+            ehr_records = [driver.get_record_by_id(ehr.record_id) for ehr in patient.ehr_records]
+            patient.ehr_records = [RecordsFactory.create_clinical_record(ehr) for ehr in ehr_records]
+        return patient
+
     def hide_patient(self, patient):
         """
         >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
