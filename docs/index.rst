@@ -6,11 +6,14 @@
 Welcome to pyEHR's documentation!
 =================================
 
+Welcome to the documentation for pyEHR |release|.
+
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
+   api_doc/index
 
 
 Indices and tables
