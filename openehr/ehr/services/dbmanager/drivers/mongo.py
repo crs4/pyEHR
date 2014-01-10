@@ -11,6 +11,12 @@ import time
 
 
 class MongoDriver(DriverInterface):
+    """
+    Create a driver to handle I\O with a MongoDB server. Using the given *host* and, if needed, *port*, *user*
+    and *password* the driver will contact MongoDB when a connection is needed and will interrogate a specific
+    *collection* stored in one *database* within the server. If no *logger* object is passed to constructor, a
+    new one is created.
+    """
 
     def __init__(self, host, database, collection,
                  port=None, user=None, passwd=None,
