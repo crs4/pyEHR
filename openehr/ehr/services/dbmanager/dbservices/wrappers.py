@@ -4,10 +4,19 @@ import time
 
 
 class RecordsFactory(object):
+    """
+    This class acts as a factory to create `PatientRecord` and `ClinicalRecord` objects from documents
+    """
 
     @staticmethod
     def create_patient_record(document):
         """
+        Create a :class:`PatientRecord` object from the given document
+
+        :param document: the document that must be wrapped
+        :type document: dictionary
+        :return: a :class:`PatientRecord` object
+
         >>> from bson import ObjectId
         >>> doc = {
         ...   u'creation_time': 1385569688.39202, 'last_update': 1385570688.39202,
@@ -34,6 +43,15 @@ class RecordsFactory(object):
     @staticmethod
     def create_clinical_record(document, unload_object=False):
         """
+        Create a :class:`ClinicalRecord` object from the given document
+
+        :param document: the document that must be wrapped
+        :type document: dictionary
+        :param unload_object: if True only the record_id field of the `ClinicalRecord` object will have a value,
+          if True the document will be completely mapped
+        :type unload_object: boolean
+        :return: a `ClinicalRecord` object
+
         >>> from bson import ObjectId
         >>> doc = {
         ...   u'creation_time': 1385569688.39202, u'last_update': 1385570688.39202,
@@ -70,6 +88,14 @@ class RecordsFactory(object):
 
 
 class Record(object):
+    """
+    Generic record abstract class containing record's base fields.
+
+    :ivar record_id: record's unique identifier
+    :ivar creation_time: timestamp of record's creation
+    :ivar last_update: timestamp of the last update occurred on the record
+    :ivar active: boolean representing if the record is active or not
+    """
 
     __metaclass__ = ABCMeta
 
@@ -93,6 +119,11 @@ class Record(object):
 
 
 class PatientRecord(Record):
+    """
+    Class representing a patient's record
+
+    :ivar ehr_records: the list of clinical records related to this patient
+    """
 
     def __init__(self, ehr_records=None, creation_time=None,
                  last_update=None, active=True, record_id=None):
@@ -112,6 +143,11 @@ class PatientRecord(Record):
 
 
 class ClinicalRecord(Record):
+    """
+    Class representing a clinical record
+
+    :ivar ehr_data: clinical data in OpenEHR syntax
+    """
 
     def __init__(self, ehr_data, creation_time=None, last_update=None,
                  active=True, record_id=None):
