@@ -36,7 +36,10 @@ class MongoDriver(DriverInterface):
 
     def connect(self):
         """
-        You can use connect and disconnect methods
+        Open a connection to a MongoDB server.
+
+        The connection can be explicity managed using this method and the disconnect one
+
         >>> driver = MongoDriver('localhost', 'test_database',
         ...                       'test_collection')
         >>> driver.connect()
@@ -44,7 +47,8 @@ class MongoDriver(DriverInterface):
         True
         >>> driver.disconnect()
 
-        or you can use the context manager
+        or can be handled using the context manager
+
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
         ...   driver.is_connected
         True
@@ -66,7 +70,8 @@ class MongoDriver(DriverInterface):
 
     def disconnect(self):
         """
-        You can use connect and disconnect methods
+        Close a connection to a MongoDB server.
+
         >>> driver = MongoDriver('localhost', 'test_database',
         ...                      'test_collection')
         >>> driver.connect()
@@ -74,7 +79,8 @@ class MongoDriver(DriverInterface):
         >>> driver.is_connected
         False
 
-        or you can use the context manager
+        Connection and disconnection can be handled using the context manager
+
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
         ...   pass
         >>> driver.is_connected
@@ -89,6 +95,12 @@ class MongoDriver(DriverInterface):
 
     @property
     def is_connected(self):
+        """
+        Check if the connection to the MongoDB server is opened.
+
+        :rtype: boolean
+        :return: True if the connection is open, False if it is closed.
+        """
         return not self.client is None
 
     def __check_connection(self):
@@ -98,6 +110,9 @@ class MongoDriver(DriverInterface):
     def select_collection(self, collection_label):
         """
         Change the collection for the current database
+
+        :param collection_label: the label of the collection that must be selected
+        :type collection_label: string
 
         >>> with MongoDriver('localhost', 'test_database', 'test_collection_1') as driver:
         ...   print driver.collection
@@ -114,6 +129,10 @@ class MongoDriver(DriverInterface):
     def add_record(self, record):
         """
         Save a record within MongoDB and return the record's ID
+
+        :param record: the record that is going to be saved
+        :type record: dictionary
+        :return: the ID of the record
 
         >>> record = {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'}
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
@@ -132,6 +151,13 @@ class MongoDriver(DriverInterface):
 
     def add_records(self, records):
         """
+        Save a list of records within MongoDB and return records' IDs
+
+        :param records: the list of records that is going to be saved
+        :type record: list
+        :return: a list of records' IDs
+        :rtype: list
+
         >>> records = [
         ...   {'_id': ObjectId('%024d' % 1), 'field1': 'value1', 'field2': 'value2'},
         ...   {'_id': ObjectId('%024d' % 2), 'field1': 'value1', 'field2': 'value2'},
@@ -154,6 +180,12 @@ class MongoDriver(DriverInterface):
 
     def get_record_by_id(self, record_id):
         """
+        Retrieve a record using its ID
+
+        :param record_id: the ID of the record
+        :return: the record of None if no match was found for the given record
+        :rtype: dictionary or None
+
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
         ...   record_id = driver.add_record({'field1': 'value1', 'field2': 'value2'})
         ...   rec = driver.get_record_by_id(record_id)
@@ -169,14 +201,36 @@ class MongoDriver(DriverInterface):
             return res
 
     def get_all_records(self):
+        """
+        Retrieve all records within current collection
+
+        :return: all the records stored in the current collection
+        :rtype: list
+        """
         self.__check_connection()
         return (decode_dict(rec) for rec in self.collection.find())
 
     def get_records_by_value(self, field, value):
+        """
+        Retrieve all records whose field *field* matches the given value
+
+        :param field: the field used for the selection
+        :type field: string
+        :param value: the value that must be matched for the given field
+        :return: a list of records
+        :rtype: list
+        """
         return self.get_records_by_query({field: value})
 
     def get_records_by_query(self, selector):
         """
+        Retrieve all records matching the given query
+
+        :param selector: the selector (in MongoDB syntax) used to select data
+        :type selector: dictionary
+        :return: a list with the matching records
+        :rtype: list
+
         >>> records = []
         >>> for x in xrange(10):
         ...   records.append({'value': x, 'even': True if x%2 == 0 else False, '_id': ObjectId('%024d' % x)})
@@ -196,6 +250,11 @@ class MongoDriver(DriverInterface):
         return (decode_dict(rec) for rec in self.collection.find(selector))
 
     def delete_record(self, record_id):
+        """
+        Delete an existing record
+
+        :param record_id: record's ID
+        """
         self.__check_connection()
         self.logger.debug('deleting document with ID %s', record_id)
         res = self.collection.remove(record_id)
@@ -203,6 +262,12 @@ class MongoDriver(DriverInterface):
 
     def update_record(self, record_id, update_condition):
         """
+        Update an existing record
+
+        :param_record_id: record's ID
+        :param update_condition: the update condition (in MongoDB syntax)
+        :type update_condition: dictionary
+
         >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
         ...   rec_id = driver.add_record({'label': 'label', 'field1': 'value1', 'field2': 'value2'})
         ...   print driver.get_record_by_id(rec_id)['label']
@@ -220,6 +285,12 @@ class MongoDriver(DriverInterface):
 
     @property
     def documents_count(self):
+        """
+        Get the number of documents within current collection
+
+        :return: the number of current collection's documents
+        :rtype: int
+        """
         self.__check_connection()
         return self.collection.count()
 
@@ -230,6 +301,18 @@ class MongoDriver(DriverInterface):
         return update_statement, last_update
 
     def update_field(self, record_id, field_label, field_value, update_timestamp_label=None):
+        """
+        Update record's field *field* with given value
+
+        :param record_id: record's ID
+        :param field_label: field's label
+        :type field_label: string
+        :param field_value: new value for the selected field
+        :param update_timestamp_label: the label of the *last_update* field of the record if the last update timestamp
+          must be recorded or None
+        :type update_timestamp_label: field label or None
+        :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
+        """
         update_statement = {'$set': {field_label: field_value}}
         if update_timestamp_label:
             update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
@@ -240,6 +323,18 @@ class MongoDriver(DriverInterface):
         return last_update
 
     def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+        """
+        Append a value to a list within a document
+
+        :param record_id: record's ID
+        :param list_label: the label of the field containing the list
+        :type list_label: string
+        :param item_value: the item that will be appended to the list
+        :param update_timestamp_label: the label of the *last_update* field of the record if the last update timestamp
+          must be recorded or None
+        :type update_timestamp_label: field label or None
+        :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
+        """
         update_statement = {'$addToSet': {list_label: item_value}}
         if update_timestamp_label:
             update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
@@ -250,6 +345,18 @@ class MongoDriver(DriverInterface):
         return last_update
 
     def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+        """
+        Remove a value from a list within a document
+
+        :param record_id: record's ID
+        :param list_label: the label of the field containing the list
+        :type list_label: string
+        :param item_value: the item that will be removed from the list
+        :param update_timestamp_label: the label of the *last_update* field of the record if the last update timestamp
+          must be recorded or None
+        :type update_timestamp_label: field label or None
+        :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
+        """
         update_statement = {'$pull': {list_label: item_value}}
         if update_timestamp_label:
             update_statement, last_update = self._update_record_timestamp(update_timestamp_label,

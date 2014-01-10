@@ -2,7 +2,10 @@ from abc import ABCMeta, abstractmethod
 
 
 class DriverInterface(object):
-
+    """
+    This abstract class acts as an interface for all the driver classes
+    implemented to provide database services
+    """
     __metaclass__ = ABCMeta
 
     @abstractmethod
