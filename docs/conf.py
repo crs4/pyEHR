@@ -34,6 +34,7 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.ifconfig',
     'sphinx.ext.todo',
+    'sphinx.ext.intersphinx',
 ]
 todo_include_todos = True
 
