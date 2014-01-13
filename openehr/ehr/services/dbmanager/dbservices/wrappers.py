@@ -5,7 +5,8 @@ import time
 
 class RecordsFactory(object):
     """
-    This class acts as a factory to create `PatientRecord` and `ClinicalRecord` objects from documents
+    This class acts as a factory to create :class:`PatientRecord` and
+    :class:`ClinicalRecord` objects from documents
     """
 
     @staticmethod
@@ -47,10 +48,10 @@ class RecordsFactory(object):
 
         :param document: the document that must be wrapped
         :type document: dictionary
-        :param unload_object: if True only the record_id field of the `ClinicalRecord` object will have a value,
-          if True the document will be completely mapped
+        :param unload_object: if True only the record_id field of the :class:`ClinicalRecord` object
+          will have a value, if True the document will be completely mapped
         :type unload_object: boolean
-        :return: a `ClinicalRecord` object
+        :return: a :class:`ClinicalRecord` object
 
         >>> from bson import ObjectId
         >>> doc = {
