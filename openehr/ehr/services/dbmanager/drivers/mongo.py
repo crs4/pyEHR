@@ -98,7 +98,7 @@ class MongoDriver(DriverInterface):
         self.database = None
         self.collection = None
         self.client = None
-        
+
     def init_structure(self, structure_def):
         # MongoDB doesn't need structures initilization
         pass

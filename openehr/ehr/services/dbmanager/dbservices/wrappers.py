@@ -56,12 +56,13 @@ class RecordsFactory(object):
         >>> from bson import ObjectId
         >>> doc = {
         ...   u'creation_time': 1385569688.39202, u'last_update': 1385570688.39202,
-        ...   u'active': True, u'ehr_data': {'field1': 'value1', 'field2': 'value2'}
+        ...   u'active': True, u'ehr_data': {'field1': 'value1', 'field2': 'value2'},
+        ...   u'archetype': 'openEHR-EHR-EVALUATION.dummy-evaluation.v1'
         ... }
         >>> record = RecordsFactory.create_clinical_record(doc)
-        >>> print ('%f %f %r %r' % (record.creation_time, record.last_update,
-        ...        record.active, record.ehr_data))
-        1385569688.392020 1385570688.392020 True {'field2': 'value2', 'field1': 'value1'}
+        >>> print ('%f %f %r %r %s' % (record.creation_time, record.last_update,
+        ...        record.active, record.ehr_data, record.archetype))
+        1385569688.392020 1385570688.392020 True {'field2': 'value2', 'field1': 'value1'} openEHR-EHR-EVALUATION.dummy-evaluation.v1
         >>> print repr(record.record_id)
         None
         >>> doc['_id'] = ObjectId('000000000000000000000001')
@@ -78,14 +79,20 @@ class RecordsFactory(object):
         """
         document = decode_dict(document)
         if not unload_object:
-            return ClinicalRecord(document['ehr_data'],
-                                  document['creation_time'],
-                                  document['last_update'],
-                                  document['active'],
-                                  document.get('_id'))
+            return ClinicalRecord(
+                document['archetype'],
+                document['ehr_data'],
+                document['creation_time'],
+                document['last_update'],
+                document['active'],
+                document.get('_id')
+            )
         else:
-            return ClinicalRecord(ehr_data=None,
-                                  record_id=document.get('_id'))
+            return ClinicalRecord(
+                archetype=document['archetype'],
+                ehr_data=None,
+                record_id=document.get('_id')
+            )
 
 
 class Record(object):
@@ -147,21 +154,25 @@ class ClinicalRecord(Record):
     """
     Class representing a clinical record
 
+    :ivar archetype: the OpenEHR archetype class related to this clinical record
     :ivar ehr_data: clinical data in OpenEHR syntax
     """
 
-    def __init__(self, ehr_data, creation_time=None, last_update=None,
+    def __init__(self, archetype, ehr_data, creation_time=None, last_update=None,
                  active=True, record_id=None):
         super(ClinicalRecord, self).__init__(creation_time or time.time(),
                                              last_update, active, record_id)
+        self.archetype = archetype
         self.ehr_data = ehr_data
 
     def _to_document(self):
         """
-        >>> rec = ClinicalRecord({'field1': 'value1', 'field2': 'value2'}, 1385569688.39202)
+        >>> rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+        ...                     {'field1': 'value1', 'field2': 'value2'}, 1385569688.39202)
         >>> print rec._to_document()
-        {'active': True, 'ehr_data': {'field2': 'value2', 'field1': 'value1'}, 'creation_time': 1385569688.39202, 'last_update': 1385569688.39202}
+        {'active': True, 'archetype': 'openEHR-EHR-EVALUATION.dummy-evaluation.v1', 'ehr_data': {'field2': 'value2', 'field1': 'value1'}, 'creation_time': 1385569688.39202, 'last_update': 1385569688.39202}
         """
         doc = super(ClinicalRecord, self)._to_document()
+        doc['archetype'] = self.archetype
         doc['ehr_data'] = self.ehr_data
         return doc

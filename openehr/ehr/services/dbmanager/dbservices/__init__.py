@@ -77,7 +77,8 @@ class DBServices(object):
         >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
         >>> pat_rec = PatientRecord()
         >>> pat_rec = dbs.save_patient(pat_rec)
-        >>> ehr_rec = ClinicalRecord({'field1': 'value1', 'field2': 'value2'})
+        >>> ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+        ...                          {'field1': 'value1', 'field2': 'value2'})
         >>> ehr_rec, pat_rec = dbs.save_ehr_record(ehr_rec, pat_rec)
         >>> ehr_rec.record_id is None
         False
@@ -122,7 +123,8 @@ class DBServices(object):
 
         >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
         >>> pat_rec_1 = dbs.save_patient(PatientRecord())
-        >>> ehr_rec = ClinicalRecord({'field1': 'value1', 'field2': 'value2'})
+        >>> ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+        ...                          {'field1': 'value1', 'field2': 'value2'})
         >>> ehr_rec.record_id is None
         True
         >>> ehr_rec, pat_rec_1 = dbs.save_ehr_record(ehr_rec, pat_rec_1)
@@ -228,7 +230,8 @@ class DBServices(object):
         >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
         >>> pat_rec = dbs.save_patient(PatientRecord(record_id='PATIENT_01'))
         >>> for x in xrange(5):
-        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord({'ehr_field': 'ehr_value%02d' % x}), pat_rec)
+        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+        ...                                                         {'ehr_field': 'ehr_value%02d' % x}), pat_rec)
         >>> pat_rec = dbs.get_patient('PATIENT_01', fetch_ehr_records=False)
         >>> for ehr in pat_rec.ehr_records:
         ...   print ehr.ehr_data is None
@@ -265,7 +268,8 @@ class DBServices(object):
         >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
         >>> pat_rec = dbs.save_patient(PatientRecord())
         >>> for x in xrange(5):
-        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord({'ehr_field': 'ehr_value_%02d' % x}), pat_rec)
+        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+        ...                                                         {'ehr_field': 'ehr_value_%02d' % x}), pat_rec)
         >>> pat_rec.active
         True
         >>> from collections import Counter
@@ -304,7 +308,8 @@ class DBServices(object):
         >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
         >>> pat_rec = dbs.save_patient(PatientRecord())
         >>> for x in xrange(5):
-        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord({'ehr_field': 'ehr_value_%02d' % x}), pat_rec)
+        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+        ...                                                         {'ehr_field': 'ehr_value_%02d' % x}), pat_rec)
         >>> len(pat_rec.ehr_records)
         5
         >>> from collections import Counter
