@@ -19,8 +19,15 @@ def get_logger(logger_label,
     return logger
 
 
-# transform unicodes in list to strings
 def decode_list(data):
+    """
+    Transforms UNICODE in list into strings
+
+    :param: data the list with unicode values that must be converted
+    :type data: list
+    :return: the list with converted unicode
+    :rtype: list
+    """
     decoded = []
     for item in data:
         if isinstance(item, unicode):
@@ -33,8 +40,15 @@ def decode_list(data):
     return decoded
 
 
-# transform unicodes in dictionary to strings (both in keys and values)
 def decode_dict(data):
+    """
+    Transforms UNICODE in dictionary (both in keys and values) into strings
+
+    :param data: the dictionary with unicode that must be converted
+    :type data: dictionary
+    :return: the dictionary with unicode replaced by strings
+    :rtype: dictionary
+    """
     decoded = {}
     for key, val in data.iteritems():
         if isinstance(key, unicode):
