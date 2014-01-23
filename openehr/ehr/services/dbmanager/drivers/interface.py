@@ -17,6 +17,10 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
+    def init_structure(self, structure_def):
+        pass
+
+    @abstractmethod
     def executeQuery(self, query):
         pass
 
