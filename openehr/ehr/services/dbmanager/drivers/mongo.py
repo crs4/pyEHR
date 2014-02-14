@@ -18,6 +18,9 @@ class MongoDriver(DriverInterface):
     new one is created.
     """
 
+    # This map is used to encode\decode data when writing\reading to\from MongoDB
+    ENCODINGS_MAP = {'.': '-'}
+
     def __init__(self, host, database, collection,
                  port=None, user=None, passwd=None,
                  logger=None):
@@ -135,6 +138,131 @@ class MongoDriver(DriverInterface):
         self.logger.debug('Changing collection for database %s, old collection: %s - new collection %s',
                           self.database.name, self.collection.name, collection_label)
         self.collection = self.database[collection_label]
+
+    def _encode_patient_record(self, patient_record):
+        encoded_record = {
+            'creation_time': patient_record.creation_time,
+            'last_update': patient_record.last_update,
+            'active': patient_record.active,
+            'ehr_records': [ehr.record_id for ehr in patient_record.ehr_records]
+        }
+        if patient_record.record_id:
+            encoded_record['_id'] = patient_record.record_id
+        return encoded_record
+
+    def _encode_clinical_record(self, clinical_record):
+        def normalize_keys(document, original, encoded):
+            normalized_doc = {}
+            for k, v in document.iteritems():
+                k = k.replace(original, encoded)
+                if not isinstance(v, dict):
+                    normalized_doc[k] = v
+                else:
+                    normalized_doc[k] = normalize_keys(v, original, encoded)
+            return normalized_doc
+
+        ehr_data = clinical_record.ehr_data
+        for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
+            ehr_data = normalize_keys(ehr_data, original_value, encoded_value)
+        encoded_record = {
+            'creation_time': clinical_record.creation_time,
+            'last_update': clinical_record.last_update,
+            'active': clinical_record.active,
+            'archetype': clinical_record.archetype,
+            'ehr_data': ehr_data
+        }
+        if clinical_record.record_id:
+            encoded_record['_id'] = clinical_record.record_id
+        return encoded_record
+
+    def encode_record(self, record):
+        """
+        Encode a :class:`Record` object into a data structure that can be saved within
+        MongoDB
+
+        :param record: the record that must be encoded
+        :type record: a :class:`Record` subclass
+        :return: the record encoded as a MongoDB document
+        """
+        from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
+
+        if isinstance(record, PatientRecord):
+            return self._encode_patient_record(record)
+        elif isinstance(record, ClinicalRecord):
+            return self._encode_clinical_record(record)
+        else:
+            raise InvalidRecordTypeError('Unable to map record %r' % record)
+
+    def _decode_patient_record(self, record, loaded):
+        from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord
+
+        record = decode_dict(record)
+        if loaded:
+            # by default, clinical records are attached as "unloaded"
+            ehr_records = [self._decode_clinical_record({'_id': ehr}, loaded=False)
+                           for ehr in record['ehr_records']]
+            return PatientRecord(
+                record['ehr_records'],
+                record['creation_time'],
+                record['last_update'],
+                record['active'],
+                record.get('_id'),
+            )
+        else:
+            return PatientRecord(
+                creation_time=record['creation_time'],
+                record_id=record.get('_id')
+            )
+
+    def _decode_clinical_record(self, record, loaded):
+        from openehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord
+
+        def decode_keys(document, encoded, original):
+            normalized_doc = {}
+            for k, v in document.iteritems():
+                k = k.replace(encoded, original)
+                if not isinstance(v, dict):
+                    normalized_doc[k] = v
+                else:
+                    normalized_doc[k] = decode_keys(v, encoded, original)
+            return normalized_doc
+
+        record = decode_dict(record)
+        if loaded:
+            ehr_data = record['ehr_data']
+            for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
+                ehr_data = decode_keys(ehr_data, encoded_value, original_value)
+            return ClinicalRecord(
+                record['archetype'],
+                ehr_data,
+                record['creation_time'],
+                record['last_update'],
+                record['active'],
+                record.get('_id')
+            )
+        else:
+            return ClinicalRecord(
+                creation_time=record.get('creation_time'),
+                record_id=record.get('_id'),
+                archetype=record.get('archetype'),
+                ehr_data=None
+            )
+
+    def decode_record(self, record, loaded=True):
+        """
+        Create a :class:`Record` object from data retrieved from MongoDB
+
+        :param record: the MongoDB record that must be decoded
+        :type record: a MongoDB dictionary
+        :param loaded: if True, return a :class:`Record` with all values, if False all fields with
+          the exception of the record_id one will have a None value
+        :type loaded: boolean
+        :return: the MongoDB document encoded as a :class:`Record` object
+        """
+        if 'archetype' in record:
+            return self._decode_clinical_record(record, loaded)
+        else:
+            return self._decode_patient_record(record, loaded)
 
     def add_record(self, record):
         """
