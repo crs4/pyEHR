@@ -1,7 +1,6 @@
 from openehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from openehr.utils import get_logger
-from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord, \
-    RecordsFactory
+from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 from openehr.ehr.services.dbmanager.errors import CascadeDeleteError
 import time
 
@@ -60,7 +59,7 @@ class DBServices(object):
         """
         drf = self._get_drivers_factory(self.patients_repository)
         with drf.get_driver() as driver:
-            patient_record.record_id = driver.add_record(patient_record._to_document())
+            patient_record.record_id = driver.add_record(driver.encode_record(patient_record))
             return patient_record
 
     def save_ehr_record(self, ehr_record, patient_record):
@@ -90,7 +89,7 @@ class DBServices(object):
         """
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
-            ehr_record.record_id = driver.add_record(ehr_record._to_document())
+            ehr_record.record_id = driver.add_record(driver.encode_record(ehr_record))
         patient_record = self.add_ehr_record(patient_record, ehr_record)
         return ehr_record, patient_record
 
@@ -161,15 +160,14 @@ class DBServices(object):
                                  fetch_hidden_ehr=False):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
-            patient_record = RecordsFactory.create_patient_record(patient_doc)
+            patient_record = driver.decode_record(patient_doc)
             ehr_records = []
             for ehr_id in patient_record.ehr_records:
                 ehr_doc = driver.get_record_by_id(ehr_id)
                 if fetch_hidden_ehr or (not fetch_hidden_ehr and ehr_doc['active']):
                     self.logger.debug('fetch_hidden_ehr: %s --- ehr_doc[\'active\']: %s',
                                       fetch_hidden_ehr, ehr_doc['active'])
-                    ehr_records.append(RecordsFactory.create_clinical_record(ehr_doc,
-                                                                             not fetch_ehr_records))
+                    ehr_records.append(driver.decode_record(ehr_doc, fetch_ehr_records))
                     self.logger.debug('ehr_records: %r', ehr_records)
                 else:
                     self.logger.debug('Ignoring hidden EHR record %r', ehr_doc['_id'])
@@ -253,7 +251,7 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             ehr_records = [driver.get_record_by_id(ehr.record_id) for ehr in patient.ehr_records]
-            patient.ehr_records = [RecordsFactory.create_clinical_record(ehr) for ehr in ehr_records]
+            patient.ehr_records = [driver.decode_record(ehr) for ehr in ehr_records]
         return patient
 
     def hide_patient(self, patient):

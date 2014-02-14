@@ -25,6 +25,14 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
+    def encode_record(self, record):
+        pass
+
+    @abstractmethod
+    def decode_record(self, record):
+        pass
+
+    @abstractmethod
     def add_record(self, record):
         pass
 
