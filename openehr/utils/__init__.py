@@ -61,3 +61,20 @@ def decode_dict(data):
             val = decode_dict(val)
         decoded[key] = val
     return decoded
+
+
+def cleanup_json(data):
+    """
+    Remove all keys with a None value from the given JSON dictionary
+    in order to avoid validation errors
+
+    :param data: the dictionary that is going to be cleaned up
+    :type data: dictionary
+    :return: the cleaned dictionary
+    :rtype: dictionary
+    """
+    cleanead_data = {}
+    for k, v in data.iteritems():
+        if not v is None:
+            cleanead_data[k] = v
+    return cleanead_data
