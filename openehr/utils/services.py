@@ -10,7 +10,7 @@ class ServiceConfig(object):
         self.db_driver = db_driver
         self.db_host = db_host
         self.db_database = db_database
-        self.db_port = db_port,
+        self.db_port = int(db_port)
         self.db_user = db_user
         self.db_passwd = db_passwd
         self.db_patients_repository = db_patients_repository
