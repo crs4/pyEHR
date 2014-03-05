@@ -35,8 +35,16 @@ class DBServices(object):
         self.logger = logger or get_logger('db_services')
 
     def _get_drivers_factory(self, repository):
-        return DriversFactory(self.driver, self.host, self.database, repository,
-                              self.user, self.passwd, self.logger)
+        return DriversFactory(
+            driver=self.driver,
+            host=self.host,
+            database=self.database,
+            repository=repository,
+            port=self.port,
+            user=self.user,
+            passwd=self.passwd,
+            logger=self.logger
+        )
 
     def save_patient(self, patient_record):
         """
