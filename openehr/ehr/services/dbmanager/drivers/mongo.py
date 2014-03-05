@@ -65,7 +65,11 @@ class MongoDriver(DriverInterface):
         """
         if not self.client:
             self.logger.debug('connecting to host %s', self.host)
-            self.client = pymongo.MongoClient(self.host, self.port)
+            try:
+                self.client = pymongo.MongoClient(self.host, self.port)
+            except pymongo.errors.ConnectionFailure:
+                raise DBManagerNotConnectedError('Unable to connect to MongoDB at %s:%s' %
+                                                (self.host, self.port))
             self.logger.debug('binding to database %s', self.database_name)
             self.database = self.client[self.database_name]
             if self.user:
