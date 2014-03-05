@@ -72,8 +72,9 @@ class PatientRecord(Record):
         json = dict()
         for a in attrs:
             json[a] = getattr(self, a)
+        json['ehr_records'] = []
         for e in self.ehr_records:
-            json.setdefault('ehr_records', []).append(e.to_json())
+            json['ehr_records'].append(e.to_json())
         return json
 
     @staticmethod
