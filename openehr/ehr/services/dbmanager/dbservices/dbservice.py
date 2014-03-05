@@ -29,6 +29,9 @@ class DBService(object):
         }
         abort(error_code, json.dumps(body))
 
+    def _success(self, body, return_code=200):
+        return Response(json.dumps(body), return_code)
+
     def _get_bool(self, str_val):
         if str_val.upper() == 'TRUE':
             return True
@@ -77,7 +80,7 @@ class DBService(object):
             'SUCCESS': True,
             'RECORD': prec.to_json()
         }
-        return Response(json.dumps(response_body), 200)
+        return self._success(response_body)
 
     def start_service(self, host, port, debug=False):
         self.logger.info('Starting DBService daemon with DEBUG set to %s', debug)
