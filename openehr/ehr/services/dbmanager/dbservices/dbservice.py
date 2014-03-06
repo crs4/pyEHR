@@ -1,7 +1,7 @@
 import sys, argparse, json
 from functools import wraps
 
-from bottle import route, run, Response, request, abort, HTTPError
+from bottle import post, run, Response, request, abort, HTTPError
 
 from openehr.utils import get_logger
 from openehr.utils.services import get_service_configuration
@@ -20,8 +20,9 @@ class DBService(object):
         #######################################################
         # Web Service methods
         #######################################################
-        route('/patient/add')(self.save_patient)
-        route('/patient/hide')(self.hide_patient)
+        post('/patient/add')(self.save_patient)
+        post('/patient/hide')(self.hide_patient)
+        post('/ehr/add')(self.save_ehr_record)
 
     def exceptions_handler(f):
         @wraps(f)
@@ -37,6 +38,8 @@ class DBService(object):
                 #if an abort was called in wrapped function, raise the generated HTTPError
                 raise
             except Exception, e:
+                import traceback
+                inst.logger.error(traceback.print_stack())
                 msg = 'Unexpected error: %s' % e.message
                 inst._error(msg, 500)
         return wrapper
@@ -66,31 +69,72 @@ class DBService(object):
         Create a new PatientRecord from the given values. Returns the saved record in
         its JSON encoding
         """
-        params = request.query
+        params = request.forms
         try:
             record_id = params.get('patient_id')
             if not record_id:
                 msg = 'Missing record ID, cannot create a patient record'
-                self._error(msg, 500)
-            prec_conf = {
+                self._error(msg, 400)
+            patient_record_conf = {
                 'record_id': record_id,
             }
             if params.get('creation_time'):
-                prec_conf['creation_time'] = float(params.get('creation_time'))
+                patient_record_conf['creation_time'] = float(params.get('creation_time'))
             if params.get('active'):
-                prec_conf['active'] = self._get_bool(params.get('active'))
-            prec = PatientRecord(**prec_conf)
-            prec = self.dbs.save_patient(prec)
+                patient_record_conf['active'] = self._get_bool(params.get('active'))
+            patient_record = PatientRecord(**patient_record_conf)
+            patient_record = self.dbs.save_patient(patient_record)
             response_body = {
                 'SUCCESS': True,
-                'RECORD': prec.to_json()
+                'RECORD': patient_record.to_json()
             }
             return self._success(response_body)
         except pyehr_errors.DuplicatedKeyError:
-            msg = 'Duplicated key error for PatientRecord with ID %s' % prec.record_id
+            msg = 'Duplicated key error for PatientRecord with ID %s' % patient_record.record_id
             self._error(msg, 500)
         except pyehr_errors.InvalidRecordTypeError:
             msg = 'Invalid PatientRecord, unable to save'
+            self._error(msg, 500)
+        except ValueError, ve:
+            self._error(str(ve), 500)
+
+    @exceptions_handler
+    def save_ehr_record(self):
+        """
+        Save a new EHR record and link it to an existing patient record.
+        EHR record must be a valid JSON dictionary.
+        """
+        params = request.forms
+        try:
+            patient_id = params.get('patient_id')
+            if not patient_id:
+                msg = 'Missing patient ID, cannot create a clinical record'
+                self._error(msg, 400)
+            ehr_record_conf = params.get('ehr_record')
+            self.logger.info('%r', ehr_record_conf)
+            if not ehr_record_conf:
+                msg = 'Missing EHR data, cannot create a clinical record'
+                self._error(msg, 400)
+            ehr_record = ClinicalRecord.from_json(json.loads(ehr_record_conf))
+            patient_record = self.dbs.get_patient(patient_id)
+            if not patient_record:
+                # TODO: check if an error is a better solution here
+                response_body = {
+                    'SUCCESS': False,
+                    'ERROR': 'There is no patient record with ID %s' % patient_id
+                }
+                return self._success(response_body)
+            ehr_record, _ = self.dbs.save_ehr_record(ehr_record, patient_record)
+            response_body = {
+                'SUCCESS': True,
+                'RECORD': ehr_record.to_json()
+            }
+            return self._success(response_body)
+        except pyehr_errors.InvalidJsonStructureError:
+            msg = 'Invalid EHR record, unable to save'
+            self._error(msg, 500)
+        except pyehr_errors.DuplicatedKeyError:
+            msg = 'Duplicated key error for EHR record with ID %s' % ehr_record.record_id
             self._error(msg, 500)
         except ValueError, ve:
             self._error(str(ve), 500)
@@ -100,19 +144,19 @@ class DBService(object):
         """
         Hide a patient record and related EHR records
         """
-        params = request.query
+        params = request.forms
         patient_id = params.get('patient_id')
         if not patient_id:
             msg = 'Missing patient ID, cannot hide record'
-            self._error(msg, 500)
+            self._error(msg, 400)
         prec = self.dbs.get_patient(patient_id)
         if not prec:
             # TODO: check if an error is a better solution here
-            body = {
+            response_body = {
                 'SUCCESS': False,
                 'ERROR': 'There is no patient record with ID %s' % patient_id
             }
-            return self._success(body)
+            return self._success(response_body)
         prec = self.dbs.hide_patient(prec)
         response_body = {
             'SUCCESS': True,

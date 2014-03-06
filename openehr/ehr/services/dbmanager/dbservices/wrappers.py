@@ -4,7 +4,7 @@ import time
 from bson import ObjectId
 
 from openehr.ehr.services.dbmanager.errors import InvalidJsonStructureError
-from openehr.utils import cleanup_json
+from openehr.utils import cleanup_json, decode_dict
 
 
 class Record(object):
@@ -116,7 +116,7 @@ class PatientRecord(Record):
             Required('ehr_records'): list
         })
         try:
-            json_data = cleanup_json(json_data)
+            json_data = cleanup_json(decode_dict(json_data))
             schema(json_data)
             ehr_records = [ClinicalRecord.from_json(ehr) for ehr in json_data['ehr_records']]
             json_data['ehr_records'] = ehr_records
@@ -175,9 +175,9 @@ class ClinicalRecord(Record):
             'record_id': Coerce(ObjectId),
         })
         try:
-            json_data = cleanup_json(json_data)
+            json_data = cleanup_json(decode_dict(json_data))
             schema(json_data)
-            if json_data.has_key('record_id'):
+            if 'record_id' in json_data:
                 json_data['record_id'] = ObjectId(json_data['record_id'])
             return ClinicalRecord(**json_data)
         except MultipleInvalid:
