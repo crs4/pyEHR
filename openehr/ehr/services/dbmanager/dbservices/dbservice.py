@@ -22,6 +22,7 @@ class DBService(object):
         #######################################################
         post('/patient/add')(self.save_patient)
         post('/patient/hide')(self.hide_patient)
+        post('/patient/delete')(self.delete_patient)
         post('/ehr/add')(self.save_ehr_record)
 
     def exceptions_handler(f):
@@ -138,6 +139,37 @@ class DBService(object):
             self._error(msg, 500)
         except ValueError, ve:
             self._error(str(ve), 500)
+
+    @exceptions_handler
+    def delete_patient(self):
+        params = request.forms
+        try:
+            patient_id = params.get('patient_id')
+            if not patient_id:
+                msg = 'Missing patient ID, cannot delete record'
+                self._error(msg, 400)
+            cascade_delete = params.get('cascade_delete')
+            if cascade_delete:
+                cascade_delete = self._get_bool(cascade_delete)
+            else:
+                cascade_delete = False
+            patient_record = self.dbs.get_patient(patient_id)
+            if not patient_record:
+                # TODO: check if an error is a better solution here
+                response_body = {
+                    'SUCCESS': False,
+                    'ERROR': 'There is no patient record with ID %s' % patient_id
+                }
+                return self._success(response_body)
+            self.dbs.delete_patient(patient_record, cascade_delete)
+            response_body = {
+                'SUCCESS': True,
+                'MESSAGE': 'Patient record with ID %s successfully deleted' % patient_id
+            }
+            return self._success(response_body)
+        except pyehr_errors.CascadeDeleteError:
+            msg = 'Patient record is connected to one or more EHR records, enable cascade deletion to continue'
+            self._error(msg, 500)
 
     @exceptions_handler
     def hide_patient(self):
