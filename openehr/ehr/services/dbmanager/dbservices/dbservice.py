@@ -149,18 +149,18 @@ class DBService(object):
         if not patient_id:
             msg = 'Missing patient ID, cannot hide record'
             self._error(msg, 400)
-        prec = self.dbs.get_patient(patient_id)
-        if not prec:
+        patient_record = self.dbs.get_patient(patient_id)
+        if not patient_record:
             # TODO: check if an error is a better solution here
             response_body = {
                 'SUCCESS': False,
                 'ERROR': 'There is no patient record with ID %s' % patient_id
             }
             return self._success(response_body)
-        prec = self.dbs.hide_patient(prec)
+        patient_record = self.dbs.hide_patient(patient_record)
         response_body = {
             'SUCCESS': True,
-            'RECORD': prec.to_json()
+            'RECORD': patient_record.to_json()
         }
         return self._success(response_body)
 
