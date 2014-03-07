@@ -221,8 +221,11 @@ class DBServices(object):
         """
         drf = self._get_drivers_factory(self.patients_repository)
         with drf.get_driver() as driver:
-            return self._fetch_patient_data_full(driver.get_record_by_id(patient_id),
-                                                 fetch_ehr_records, fetch_hidden_ehr)
+            patient_record = driver.get_record_by_id(patient_id)
+            if not patient_record:
+                return None
+            return self._fetch_patient_data_full(patient_record, fetch_ehr_records,
+                                                 fetch_hidden_ehr)
 
     def load_ehr_records(self, patient):
         """
