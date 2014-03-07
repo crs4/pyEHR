@@ -23,6 +23,7 @@ class DBService(object):
         post('/patient/add')(self.save_patient)
         post('/patient/hide')(self.hide_patient)
         post('/patient/delete')(self.delete_patient)
+        post('/patient/get')(self.get_patient)
         post('/ehr/add')(self.save_ehr_record)
 
     def exceptions_handler(f):
@@ -194,6 +195,32 @@ class DBService(object):
             'SUCCESS': True,
             'RECORD': patient_record.to_json()
         }
+        return self._success(response_body)
+
+    @exceptions_handler
+    def get_patient(self):
+        params = request.forms
+        patient_id = params.get('patient_id')
+        if not patient_id:
+            msg = 'Missing patient ID, cannot fetch data'
+            self._error(msg, 400)
+        fetch_ehr = params.get('fetch_ehr_records')
+        if fetch_ehr:
+            fetch_ehr = self._get_bool(fetch_ehr)
+        else:
+            fetch_ehr = True
+        fetch_hidden_ehr = params.get('fetch_hidden_ehr_records')
+        if fetch_hidden_ehr:
+            fetch_hidden_ehr = self._get_bool(fetch_hidden_ehr)
+        else:
+            fetch_hidden_ehr = False
+        patient_record = self.dbs.get_patient(patient_id, fetch_ehr,
+                                              fetch_hidden_ehr)
+        response_body = {'SUCCESS': True}
+        if not patient_record:
+            response_body['RECORD'] = None
+        else:
+            response_body['RECORD'] = patient_record.to_json()
         return self._success(response_body)
 
     def start_service(self, host, port, debug=False):
