@@ -201,10 +201,11 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.patients_repository)
         with drf.get_driver() as driver:
             if not active_records_only:
-                return [self._fetch_patient_data_full(r, fetch_ehr_records,
-                                                      fetch_hidden_ehr) for r in driver.get_all_records()]
+                patient_records = driver.get_all_records()
             else:
-                return [self._fetch_patient_data_full(r) for r in self._get_active_records()]
+                patient_records = self._get_active_records(driver)
+        return [self._fetch_patient_data_full(r, fetch_ehr_records,
+                                              fetch_hidden_ehr) for r in patient_records]
 
     def get_patient(self, patient_id, fetch_ehr_records=True, fetch_hidden_ehr=False):
         """
