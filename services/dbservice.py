@@ -25,6 +25,7 @@ class DBService(object):
         post('/patient/delete')(self.delete_patient)
         post('/patient/get')(self.get_patient)
         post('/ehr/add')(self.save_ehr_record)
+        post('/ehr/hide')(self.hide_ehr_record)
         post('/ehr/delete')(self.delete_ehr_record)
 
     def exceptions_handler(f):
@@ -55,6 +56,10 @@ class DBService(object):
         }
         abort(error_code, json.dumps(body))
 
+    def _missing_mandatory_field(self, field_label):
+        msg = 'Missing mandatory field, can\'t continue with the request'
+        self._error(msg, 400)
+
     def _success(self, body, return_code=200):
         return Response(json.dumps(body), return_code)
 
@@ -76,8 +81,7 @@ class DBService(object):
         try:
             record_id = params.get('patient_id')
             if not record_id:
-                msg = 'Missing record ID, cannot create a patient record'
-                self._error(msg, 400)
+                self._missing_mandatory_field('patient_id')
             patient_record_conf = {
                 'record_id': record_id,
             }
@@ -111,13 +115,11 @@ class DBService(object):
         try:
             patient_id = params.get('patient_id')
             if not patient_id:
-                msg = 'Missing patient ID, cannot create a clinical record'
-                self._error(msg, 400)
+                self._missing_mandatory_field('patient_id')
             ehr_record_conf = params.get('ehr_record')
             self.logger.debug('EHR data: %r', ehr_record_conf)
             if not ehr_record_conf:
-                msg = 'Missing EHR data, cannot create a clinical record'
-                self._error(msg, 400)
+                self._missing_mandatory_field('ehr_record')
             ehr_record = ClinicalRecord.from_json(json.loads(ehr_record_conf))
             patient_record = self.dbs.get_patient(patient_id)
             if not patient_record:
@@ -148,8 +150,7 @@ class DBService(object):
         try:
             patient_id = params.get('patient_id')
             if not patient_id:
-                msg = 'Missing patient ID, cannot delete record'
-                self._error(msg, 400)
+                self._missing_mandatory_field('patient_id')
             cascade_delete = params.get('cascade_delete')
             if cascade_delete:
                 cascade_delete = self._get_bool(cascade_delete)
@@ -178,12 +179,10 @@ class DBService(object):
         params = request.forms
         patient_id = params.get('patient_id')
         if not patient_id:
-            msg = 'Missing patient ID, cannot delete record'
-            self._error(msg, 400)
+            self._missing_mandatory_field('patient_id')
         ehr_record_id = params.get('ehr_record_id')
         if not ehr_record_id:
-            msg = 'Missing EHR record ID, cannot delete record'
-            self._error(msg, 400)
+            self._missing_mandatory_field('ehr_record_id')
         patient_record = self.dbs.get_patient(patient_id, fetch_ehr_records=False,
                                               fetch_hidden_ehr=True)
         if not patient_record:
@@ -215,8 +214,7 @@ class DBService(object):
         params = request.forms
         patient_id = params.get('patient_id')
         if not patient_id:
-            msg = 'Missing patient ID, cannot hide record'
-            self._error(msg, 400)
+            self._missing_mandatory_field('patient_id')
         patient_record = self.dbs.get_patient(patient_id)
         if not patient_record:
             # TODO: check if an error is a better solution here
@@ -233,12 +231,44 @@ class DBService(object):
         return self._success(response_body)
 
     @exceptions_handler
+    def hide_ehr_record(self):
+        """
+        Hide an EHR record by ID
+        """
+        params = request.forms
+        patient_id = params.get('patient_id')
+        if not patient_id:
+            self._missing_mandatory_field('patient_id')
+        ehr_record_id = params.get('ehr_record_id')
+        if not ehr_record_id:
+            self._missing_mandatory_field('ehr_record_id')
+        patient_record = self.dbs.get_patient(patient_id, fetch_ehr_records=False)
+        if not patient_record:
+            response_body = {
+                'SUCCESS': False,
+                'MESSAGE': 'There is no patient record with ID %s' % patient_id
+            }
+            return self._success(response_body)
+        ehr_record = patient_record.get_clinical_record_by_id(ehr_record_id)
+        if not ehr_record:
+            response_body = {
+                'SUCCESS': False,
+                'MESSAGE': 'EHR record with ID %s is not connected to patient record or it alredy an hidden record' % ehr_record_id
+            }
+        else:
+            self.dbs.hide_ehr_record(ehr_record)
+            response_body = {
+                'SUCCESS': True,
+                'MESSAGE': 'EHR record with ID %s successfully hidden' % ehr_record_id
+            }
+        return self._success(response_body)
+
+    @exceptions_handler
     def get_patient(self):
         params = request.forms
         patient_id = params.get('patient_id')
         if not patient_id:
-            msg = 'Missing patient ID, cannot fetch data'
-            self._error(msg, 400)
+            self._missing_mandatory_field('patient_id')
         fetch_ehr = params.get('fetch_ehr_records')
         if fetch_ehr:
             fetch_ehr = self._get_bool(fetch_ehr)
