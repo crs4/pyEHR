@@ -25,6 +25,7 @@ class DBService(object):
         post('/patient/delete')(self.delete_patient)
         post('/patient/get')(self.get_patient)
         post('/ehr/add')(self.save_ehr_record)
+        post('/ehr/delete')(self.delete_ehr_record)
 
     def exceptions_handler(f):
         @wraps(f)
@@ -113,7 +114,7 @@ class DBService(object):
                 msg = 'Missing patient ID, cannot create a clinical record'
                 self._error(msg, 400)
             ehr_record_conf = params.get('ehr_record')
-            self.logger.info('%r', ehr_record_conf)
+            self.logger.debug('EHR data: %r', ehr_record_conf)
             if not ehr_record_conf:
                 msg = 'Missing EHR data, cannot create a clinical record'
                 self._error(msg, 400)
@@ -171,6 +172,40 @@ class DBService(object):
         except pyehr_errors.CascadeDeleteError:
             msg = 'Patient record is connected to one or more EHR records, enable cascade deletion to continue'
             self._error(msg, 500)
+
+    @exceptions_handler
+    def delete_ehr_record(self):
+        params = request.forms
+        patient_id = params.get('patient_id')
+        if not patient_id:
+            msg = 'Missing patient ID, cannot delete record'
+            self._error(msg, 400)
+        ehr_record_id = params.get('ehr_record_id')
+        if not ehr_record_id:
+            msg = 'Missing EHR record ID, cannot delete record'
+            self._error(msg, 400)
+        patient_record = self.dbs.get_patient(patient_id, fetch_ehr_records=False,
+                                              fetch_hidden_ehr=True)
+        if not patient_record:
+            response_body = {
+                'SUCCESS': False,
+                'MESSAGE': 'There is no patient record with ID %s' % patient_id
+            }
+            return self._success(response_body)
+        ehr_record = patient_record.get_clinical_record_by_id(ehr_record_id)
+        if not ehr_record:
+            response_body = {
+                'SUCCESS': False,
+                'MESSAGE': 'Patient record %s is not connected to an EHR record with ID %s' % (patient_id,
+                                                                                               ehr_record_id)
+            }
+        else:
+            self.dbs.remove_ehr_record(ehr_record, patient_record)
+            response_body = {
+                'SUCCESS': True,
+                'MESSAGE': 'EHR record with ID %s successfully deleted' % ehr_record_id
+            }
+        return self._success(response_body)
 
     @exceptions_handler
     def hide_patient(self):
