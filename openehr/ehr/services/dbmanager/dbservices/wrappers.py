@@ -49,6 +49,33 @@ class PatientRecord(Record):
                                             last_update, active, record_id)
         self.ehr_records = ehr_records or []
 
+    def get_clinical_record_by_id(self, clinical_record_id):
+        """
+        Get a :class:`ClinicalRecord` related to the current :class:`PatientRecord`
+        by specifying its ID
+
+        :param clinical_record_id: the ID of the :class:`ClinicalRecord` that is going
+        to be retrieved
+        :type clinical_record_id: the ID as a String or as an ObjectId
+        :return: the :class:`ClinicalRecord` if the ID was matched or None
+        :rtype: :class:`ClinicalRecord` or None
+
+        >>> crec = ClinicalRecord(ehr_data={'field1': 'value1', 'field2': 'value2'},
+        ...                       archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+        ...                       record_id = ObjectId('5314b3a55c98931a8a3d1a2c'))
+        >>> prec = PatientRecord(ehr_records=[crec], record_id='V01245AC14CE2412412340')
+        >>> type(prec.get_clinical_record_by_id('5314b3a55c98931a8a3d1a2c'))
+        <class 'openehr.ehr.services.dbmanager.dbservices.wrappers.ClinicalRecord'>
+        >>> type(prec.get_clinical_record_by_id(ObjectId('5314b3a55c98931a8a3d1a2c')))
+        <class 'openehr.ehr.services.dbmanager.dbservices.wrappers.ClinicalRecord'>
+        >>> prec.get_clinical_record_by_id('FAKE_EHR_ID') is None
+        True
+        """
+        for e in self.ehr_records:
+            if str(e.record_id) == str(clinical_record_id):
+                return e
+        return None
+
     def to_json(self):
         """
         Encode current record into a JSON dictionary
