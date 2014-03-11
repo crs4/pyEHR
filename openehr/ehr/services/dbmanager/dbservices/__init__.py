@@ -271,7 +271,7 @@ class DBServices(object):
         Hide a ;class:`PatientRecord` object
 
         :param patient: the patient record that is going to be hidden
-        :type param: :class:`PatientRecord`
+        :type patient: :class:`PatientRecord`
         :return: the patient record
         :rtype: :class:`PatientRecord`
 
