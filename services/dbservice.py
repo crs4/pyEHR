@@ -1,7 +1,7 @@
 import sys, argparse, json
 from functools import wraps
 
-from bottle import post, run, Response, request, abort, HTTPError
+from bottle import post, run, response, request, abort, HTTPError
 
 from openehr.utils import get_logger
 from openehr.utils.services import get_service_configuration
@@ -62,7 +62,9 @@ class DBService(object):
         self._error(msg, 400)
 
     def _success(self, body, return_code=200):
-        return Response(json.dumps(body), return_code)
+        response.content_type = 'application/json'
+        response.status = return_code
+        return body
 
     def _get_bool(self, str_val):
         if str_val.upper() == 'TRUE':
