@@ -24,6 +24,7 @@ class DBService(object):
         post('/patient/hide')(self.hide_patient)
         post('/patient/delete')(self.delete_patient)
         post('/patient/get')(self.get_patient)
+        post('/patient/load_ehr_records')(self.load_ehr_records)
         post('/ehr/add')(self.save_ehr_record)
         post('/ehr/hide')(self.hide_ehr_record)
         post('/ehr/delete')(self.delete_ehr_record)
@@ -294,6 +295,30 @@ class DBService(object):
             run(host=host, port=port, debug=debug)
         except Exception, e:
             self.logger.critical('An errore has occurred: %s', e)
+
+    @exceptions_handler
+    def load_ehr_records(self):
+        """
+        Load EHR records data for a given PatientRecord (in JSON format), this method is usefull
+        if the PatientRecord was retrieved with the fetch_ehr_records flag set up to False.
+        Only the ClinicalRecords (in JSON format) embedded in the PatientRecord will be loaded,
+        other records connected to the given PatientRecord will be ignored.
+        """
+        params = request.forms
+        try:
+            patient_record = params.get('patient_record')
+            if not patient_record:
+                self._missing_mandatory_field('patient_record')
+            patient_record = PatientRecord.from_json(json.loads(patient_record))
+            patient_record = self.dbs.load_ehr_records(patient_record)
+            response_body = {
+                'SUCCESS': True,
+                'RECORD': patient_record.to_json()
+            }
+            return self._success(response_body)
+        except pyehr_errors.InvalidJsonStructureError:
+            msg = 'Invalid PatientRecord JSON structure'
+            self._error(msg, 500)
 
 
 def get_parser():
