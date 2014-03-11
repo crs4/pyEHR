@@ -249,7 +249,7 @@ class MongoDriver(DriverInterface):
                 creation_time=record.get('creation_time'),
                 record_id=record.get('_id'),
                 archetype=record.get('archetype'),
-                ehr_data=None
+                ehr_data={}
             )
 
     def decode_record(self, record, loaded=True):
