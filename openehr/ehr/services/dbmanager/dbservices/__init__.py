@@ -244,7 +244,7 @@ class DBServices(object):
         ...                                                         {'ehr_field': 'ehr_value%02d' % x}), pat_rec)
         >>> pat_rec = dbs.get_patient('PATIENT_01', fetch_ehr_records=False)
         >>> for ehr in pat_rec.ehr_records:
-        ...   print ehr.ehr_data is None
+        ...   len(ehr.ehr_data) == 0
         True
         True
         True
