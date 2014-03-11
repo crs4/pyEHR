@@ -206,7 +206,7 @@ class MongoDriver(DriverInterface):
             ehr_records = [self._decode_clinical_record({'_id': ehr}, loaded=False)
                            for ehr in record['ehr_records']]
             return PatientRecord(
-                record['ehr_records'],
+                ehr_records,
                 record['creation_time'],
                 record['last_update'],
                 record['active'],

@@ -170,8 +170,8 @@ class DBServices(object):
         with drf.get_driver() as driver:
             patient_record = driver.decode_record(patient_doc)
             ehr_records = []
-            for ehr_id in patient_record.ehr_records:
-                ehr_doc = driver.get_record_by_id(ehr_id)
+            for ehr in patient_record.ehr_records:
+                ehr_doc = driver.get_record_by_id(ehr.record_id)
                 if fetch_hidden_ehr or (not fetch_hidden_ehr and ehr_doc['active']):
                     self.logger.debug('fetch_hidden_ehr: %s --- ehr_doc[\'active\']: %s',
                                       fetch_hidden_ehr, ehr_doc['active'])
