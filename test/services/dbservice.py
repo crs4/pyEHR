@@ -55,25 +55,7 @@ class TestDBService(unittest.TestCase):
         except serror:
             sys.exit('Unable to connect to %s, can\'t run the test' % target.geturl())
 
-    def test_add_patient_simple(self):
-        add_path = '/patient/add'
-        delete_path = '/patient/delete'
-        patient_details = self._build_add_patient_request(patient_id='TEST_PATIENT')
-        r, c = self._send_request(add_path, patient_details)
-        self.assertEqual(r.status, 200)
-        c = decode_dict(json.loads(c))
-        self.assertTrue(c['SUCCESS'])
-        self.assertEqual(c['RECORD']['record_id'], patient_details['patient_id'])
-        self.assertTrue(c['RECORD']['active'])
-        self.assertEqual(len(c['RECORD']['ehr_records']), 0)
-        # delete record
-        patient_details = self._build_delete_patient_request(patient_id='TEST_PATIENT')
-        r, c = self._send_request(delete_path, patient_details)
-        self.assertEqual(r.status, 200)
-        c = decode_dict(json.loads(c))
-        self.assertTrue(c['SUCCESS'])
-
-    def test_add_patient_full(self):
+    def test_add_patient(self):
         add_path = '/patient/add'
         delete_path = '/patient/delete'
         # check mandatory fields
@@ -102,41 +84,7 @@ class TestDBService(unittest.TestCase):
         c = decode_dict(json.loads(c))
         self.assertTrue(c['SUCCESS'])
 
-    def test_add_ehr_record_simple(self):
-        add_patient_path = '/patient/add'
-        add_ehr_path = '/ehr/add'
-        delete_patient_path = '/patient/delete'
-        delete_ehr_path = '/ehr/delete'
-        # create a patient
-        patient_details = self._build_add_patient_request(patient_id='TEST_PATIENT')
-        r, c = self._send_request(add_patient_path, patient_details)
-        self.assertEqual(r.status, 200)
-        # create a clinical record
-        ehr_record_details = {
-            'archetype': 'openEHR.TEST-EVALUATION.v1',
-            'ehr_data': {'k1': 'v1', 'k2': 'v2'}
-        }
-        ehr_add_request = self._build_add_ehr_request(patient_details['patient_id'],
-                                                      ehr_record_details)
-        r, c = self._send_request(add_ehr_path, ehr_add_request)
-        self.assertEqual(r.status, 200)
-        c = decode_dict(json.loads(c))
-        self.assertTrue(c['SUCCESS'])
-        self.assertTrue(c['RECORD']['active'])
-        self.assertEqual(ehr_record_details['archetype'],
-                         c['RECORD']['archetype'])
-        self.assertEqual(ehr_record_details['ehr_data'],
-                         c['RECORD']['ehr_data'])
-        delete_ehr_details = self._build_delete_ehr_request(patient_id=patient_details['patient_id'],
-                                                            ehr_record_id=c['RECORD']['record_id'])
-        r, c = self._send_request(delete_ehr_path, delete_ehr_details)
-        self.assertEqual(r.status, 200)
-        # delete patient record
-        patient_details = self._build_delete_patient_request(patient_id='TEST_PATIENT')
-        r, c = self._send_request(delete_patient_path, patient_details)
-        self.assertEqual(r.status, 200)
-
-    def test_add_ehr_record_full(self):
+    def test_add_ehr_record(self):
         add_patient_path = '/patient/add'
         add_ehr_path = '/ehr/add'
         delete_patient_path = '/patient/delete'
@@ -196,10 +144,8 @@ class TestDBService(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(TestDBService('test_add_patient_simple'))
-    suite.addTest(TestDBService('test_add_patient_full'))
-    suite.addTest(TestDBService('test_add_ehr_record_simple'))
-    suite.addTest(TestDBService('test_add_ehr_record_full'))
+    suite.addTest(TestDBService('test_add_patient'))
+    suite.addTest(TestDBService('test_add_ehr_record'))
     return suite
 
 if __name__ == '__main__':
