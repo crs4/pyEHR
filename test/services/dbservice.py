@@ -48,6 +48,70 @@ class TestDBService(unittest.TestCase):
             request['ehr_record_id'] = ehr_record_id
         return request
 
+    def _build_patient_batch_request(self, patient_batch):
+        return {
+            'patient_data': json.dumps(patient_batch)
+        }
+
+    def _build_patients_batch_request(self, patients_batch):
+        return {
+            'patients_data': json.dumps(patients_batch)
+        }
+
+    def _build_patient_batch(self, patient_id='JOHN_DOE', bad_patient_json=False,
+                             ehr_records_count=2, bad_ehr_json=False,
+                             duplicated_ehr_id=False):
+        """
+        If bad_patient_json is True, build a patient record without the ehr_records field
+        If bad_ehr_json is True, build a list with len = (ehr_records_count + 1) of EHR records
+        where the last record has an invalid JSON format (missing ehr_data field)
+        If duplicated_ehr_id is True, build an EHR record with the same ID of one of the other
+        EHR records
+        """
+        from bson import ObjectId
+
+        patient_record = {
+            'record_id': patient_id,
+            'creation_time': time.time(),
+            'active': True
+        }
+        if bad_patient_json:
+            return patient_record
+        patient_record['ehr_records'] = []
+        for x in xrange(ehr_records_count):
+            patient_record['ehr_records'].append(
+                {
+                    'archetype': 'openEHR.TEST-EVALUATION.v1',
+                    'ehr_data': {'rec%d.k1' % x: 'v1', 'rec%d.k2' % x: 'v2'},
+                    'creation_time': time.time(),
+                    'active': True,
+                    'record_id': str(ObjectId())
+                }
+            )
+        if bad_ehr_json:
+            patient_record['ehr_records'].append(
+                {
+                    'archetype': 'openEHR.TEST-EVALUATION-BAD.v1',
+                    'creation_time': time.time(),
+                    'active': True,
+                    'record_id': str(ObjectId())
+                }
+            )
+        if duplicated_ehr_id and len(patient_record['ehr_records']) > 0:
+            patient_record['ehr_records'].append(
+                {
+                    'archetype': 'openEHR.TEST-EVALUATION-DUPLICATED.v1',
+                    'creation_time': time.time(),
+                    'active': True,
+                    'record_id': patient_record['ehr_records'][0]['record_id'],
+                    'ehr_data': {
+                        'rec%d.k1' % len(patient_record['ehr_records']): 'v1',
+                        'rec%d.k2' % len(patient_record['ehr_records']): 'v2'
+                    }
+                }
+            )
+        return patient_record
+
     def setUp(self):
         target = urlparse(self.uri)
         try:
@@ -241,6 +305,83 @@ class TestDBService(unittest.TestCase):
         r, c = self._send_request(delete_patient_path, patient_delete_request)
         self.assertTrue(r.status, 200)
 
+    def test_patient_batch(self):
+        add_patient_batch_path = '/batch/save/patient'
+        delete_patient_path = '/patient/delete'
+        # check for mandatory fields
+        r, c = self._send_request(add_patient_batch_path, {})
+        self.assertEqual(r.status, 400)
+        # build a batch with a bad PATIENT RECORD JSON structure and try to save it
+        patient_batch = self._build_patient_batch(patient_id='TEST_PATIENT',
+                                                  bad_patient_json=True)
+        batch_request = self._build_patient_batch_request(patient_batch)
+        r, c = self._send_request(add_patient_batch_path, batch_request)
+        self.assertEqual(r.status, 500)
+        # build a batch with a bad EHR RECORD JSON structure and try to save it
+        patient_batch = self._build_patient_batch(patient_id='TEST_PATIENT',
+                                                  bad_ehr_json=True)
+        batch_request = self._build_patient_batch_request(patient_batch)
+        r, c = self._send_request(add_patient_batch_path, batch_request)
+        self.assertEqual(r.status, 500)
+        # build a batch with an EHR RECORD with duplicated ID and try to save it
+        patient_batch = self._build_patient_batch(patient_id='TEST_PATIENT',
+                                                  duplicated_ehr_id=True)
+        batch_request = self._build_patient_batch_request(patient_batch)
+        r, c = self._send_request(add_patient_batch_path, batch_request)
+        self.assertEqual(r.status, 500)
+        # build a good batch and save it
+        patient_batch = self._build_patient_batch(patient_id='TEST_PATIENT',
+                                                  ehr_records_count=4)
+        batch_request = self._build_patient_batch_request(patient_batch)
+        r, c = self._send_request(add_patient_batch_path, batch_request)
+        self.assertEqual(r.status, 200)
+        c = decode_dict(json.loads(c))
+        self.assertTrue(c['SUCCESS'])
+        # try to save the same batch again (expected duplicated ID error)
+        r, c = self._send_request(add_patient_batch_path, batch_request)
+        self.assertEqual(r.status, 500)
+        # cleanup
+        patient_delete_request = self._build_delete_patient_request(patient_id='TEST_PATIENT',
+                                                                    cascade_delete=True)
+        r, c = self._send_request(delete_patient_path, patient_delete_request)
+        self.assertEqual(r.status, 200)
+
+    def test_patients_batch(self):
+        add_patients_batch_path = '/batch/save/patients'
+        delete_patient_path = '/patient/delete'
+        # check for mandatory fields
+        r, c = self._send_request(add_patients_batch_path, {})
+        self.assertEqual(r.status, 400)
+        # build a set with mixed bad and good records
+        patients_batch = list()
+        # first record contains an EHR record with bad JSON structure
+        patients_batch.append(self._build_patient_batch(patient_id='TEST_PATIENT_1',
+                                                        bad_ehr_json=True))
+        # second record is a good one
+        patients_batch.append(self._build_patient_batch(patient_id='TEST_PATIENT_1',
+                                                        ehr_records_count=6))
+        #third record contains two EHR records with the same ID
+        patients_batch.append(self._build_patient_batch(patient_id='TEST_PATIENT_2',
+                                                        ehr_records_count=3,
+                                                        duplicated_ehr_id=True))
+        # fourth record has the same PATIENT_ID sa record 2
+        patients_batch.append(self._build_patient_batch(patient_id='TEST_PATIENT_1'))
+        # fifth record is the last one and is a good one, it has no EHR records
+        patients_batch.append(self._build_patient_batch(patient_id='TEST_PATIENT_2',
+                                                        ehr_records_count=0))
+        batch_request = self._build_patients_batch_request(patients_batch)
+        r, c = self._send_request(add_patients_batch_path, batch_request)
+        self.assertEqual(r.status, 200)
+        c = decode_dict(json.loads(c))
+        self.assertEqual(len(c['ERRORS']), 3)
+        self.assertEqual(len(c['SAVED']), 2)
+        # cleanup
+        for saved in c['SAVED']:
+            patient_delete_request = self._build_delete_patient_request(saved['record_id'],
+                                                                        cascade_delete=True)
+            r, c = self._send_request(delete_patient_path, patient_delete_request)
+            self.assertEqual(r.status, 200)
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -248,6 +389,8 @@ def suite():
     suite.addTest(TestDBService('test_add_ehr_record'))
     suite.addTest(TestDBService('test_delete_patient'))
     suite.addTest(TestDBService('test_delete_ehr_record'))
+    suite.addTest(TestDBService('test_patient_batch'))
+    suite.addTest(TestDBService('test_patients_batch'))
     return suite
 
 if __name__ == '__main__':
