@@ -1,9 +1,6 @@
 from openehr.utils import get_logger
 from mongo import MongoDriver
-
-
-class UnknownDriverError(Exception):
-    pass
+from openehr.ehr.services.dbmanager.errors import UnknownDriverError
 
 
 class DriversFactory(object):
@@ -24,4 +21,4 @@ class DriversFactory(object):
             return MongoDriver(self.host, self.database, self.repository,
                                self.port, self.user, self.passwd, self.logger)
         else:
-            raise UnknownDriverError('Unknown driver "%s"', self.driver)
+            raise UnknownDriverError('Unknown driver: %s' % self.driver)

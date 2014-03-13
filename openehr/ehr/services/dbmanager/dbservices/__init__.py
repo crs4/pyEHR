@@ -35,8 +35,16 @@ class DBServices(object):
         self.logger = logger or get_logger('db_services')
 
     def _get_drivers_factory(self, repository):
-        return DriversFactory(self.driver, self.host, self.database, repository,
-                              self.user, self.passwd, self.logger)
+        return DriversFactory(
+            driver=self.driver,
+            host=self.host,
+            database=self.database,
+            repository=repository,
+            port=self.port,
+            user=self.user,
+            passwd=self.passwd,
+            logger=self.logger
+        )
 
     def save_patient(self, patient_record):
         """
@@ -162,8 +170,8 @@ class DBServices(object):
         with drf.get_driver() as driver:
             patient_record = driver.decode_record(patient_doc)
             ehr_records = []
-            for ehr_id in patient_record.ehr_records:
-                ehr_doc = driver.get_record_by_id(ehr_id)
+            for ehr in patient_record.ehr_records:
+                ehr_doc = driver.get_record_by_id(ehr.record_id)
                 if fetch_hidden_ehr or (not fetch_hidden_ehr and ehr_doc['active']):
                     self.logger.debug('fetch_hidden_ehr: %s --- ehr_doc[\'active\']: %s',
                                       fetch_hidden_ehr, ehr_doc['active'])
@@ -193,10 +201,11 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.patients_repository)
         with drf.get_driver() as driver:
             if not active_records_only:
-                return [self._fetch_patient_data_full(r, fetch_ehr_records,
-                                                      fetch_hidden_ehr) for r in driver.get_all_records()]
+                patient_records = driver.get_all_records()
             else:
-                return [self._fetch_patient_data_full(r) for r in self._get_active_records()]
+                patient_records = self._get_active_records(driver)
+        return [self._fetch_patient_data_full(r, fetch_ehr_records,
+                                              fetch_hidden_ehr) for r in patient_records]
 
     def get_patient(self, patient_id, fetch_ehr_records=True, fetch_hidden_ehr=False):
         """
@@ -213,8 +222,11 @@ class DBServices(object):
         """
         drf = self._get_drivers_factory(self.patients_repository)
         with drf.get_driver() as driver:
-            return self._fetch_patient_data_full(driver.get_record_by_id(patient_id),
-                                                 fetch_ehr_records, fetch_hidden_ehr)
+            patient_record = driver.get_record_by_id(patient_id)
+            if not patient_record:
+                return None
+            return self._fetch_patient_data_full(patient_record, fetch_ehr_records,
+                                                 fetch_hidden_ehr)
 
     def load_ehr_records(self, patient):
         """
@@ -232,7 +244,7 @@ class DBServices(object):
         ...                                                         {'ehr_field': 'ehr_value%02d' % x}), pat_rec)
         >>> pat_rec = dbs.get_patient('PATIENT_01', fetch_ehr_records=False)
         >>> for ehr in pat_rec.ehr_records:
-        ...   print ehr.ehr_data is None
+        ...   len(ehr.ehr_data) == 0
         True
         True
         True
@@ -259,7 +271,7 @@ class DBServices(object):
         Hide a ;class:`PatientRecord` object
 
         :param patient: the patient record that is going to be hidden
-        :type param: :class:`PatientRecord`
+        :type patient: :class:`PatientRecord`
         :return: the patient record
         :rtype: :class:`PatientRecord`
 

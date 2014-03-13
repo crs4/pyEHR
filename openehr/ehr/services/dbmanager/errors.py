@@ -14,6 +14,14 @@ class InvalidRecordTypeError(Exception):
     pass
 
 
+class InvalidJsonStructureError(Exception):
+    pass
+
+
+class UnknownDriverError(Exception):
+    pass
+
+
 class PredicateException(Exception):
     def __init__(self, value):
         self.value = value

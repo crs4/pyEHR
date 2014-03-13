@@ -9,6 +9,7 @@ before_install:
   - pip install pymongo
   - pip install bottle
   - pip install httplib2
+  - pip install voluptuous
 
 script:
   - nosetests -v
