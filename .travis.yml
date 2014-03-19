@@ -11,5 +11,10 @@ before_install:
   - pip install httplib2
   - pip install voluptuous
 
+install:
+  - python setup.py install
+  - .travis-data/run_dbservice_daemon.sh
+
 script:
   - nosetests -v
+  - nosetests -v -w test/services
