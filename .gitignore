@@ -3,5 +3,6 @@
 *~
 examples
 build
+nohup.out
 
 docs/_build
