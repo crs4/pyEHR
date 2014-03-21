@@ -60,16 +60,6 @@ class PatientRecord(Record):
         :return: the :class:`ClinicalRecord` if the ID was matched or None
         :rtype: :class:`ClinicalRecord` or None
 
-        >>> crec = ClinicalRecord(ehr_data={'field1': 'value1', 'field2': 'value2'},
-        ...                       archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-        ...                       record_id = ObjectId('5314b3a55c98931a8a3d1a2c'))
-        >>> prec = PatientRecord(ehr_records=[crec], record_id='V01245AC14CE2412412340')
-        >>> type(prec.get_clinical_record_by_id('5314b3a55c98931a8a3d1a2c'))
-        <class 'openehr.ehr.services.dbmanager.dbservices.wrappers.ClinicalRecord'>
-        >>> type(prec.get_clinical_record_by_id(ObjectId('5314b3a55c98931a8a3d1a2c')))
-        <class 'openehr.ehr.services.dbmanager.dbservices.wrappers.ClinicalRecord'>
-        >>> prec.get_clinical_record_by_id('FAKE_EHR_ID') is None
-        True
         """
         for e in self.ehr_records:
             if str(e.record_id) == str(clinical_record_id):
@@ -82,18 +72,6 @@ class PatientRecord(Record):
 
         :return: a JSON dictionary
         :rtype: dictionary
-
-        >>> crec = ClinicalRecord(ehr_data={'field1': 'value1', 'field2': 'value2'},
-        ...                       archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-        ...                       creation_time=1393863996.14704,
-        ...                       record_id = ObjectId('5314b3a55c98900a8a3d1a2c'))
-        >>> prec = PatientRecord(ehr_records=[crec], creation_time=1393863996.14704,
-        ...                      record_id='V01245AC14CE2412412340')
-        >>> prec.to_json()
-        {'record_id': 'V01245AC14CE2412412340', 'active': True, 'ehr_records': [{'ehr_data': {'field2': 'value2', \
-'field1': 'value1'}, 'creation_time': 1393863996.14704, 'last_update': 1393863996.14704, 'record_id': \
-'5314b3a55c98900a8a3d1a2c', 'active': True, 'archetype': 'openEHR-EHR-EVALUATION.dummy-evaluation.v1'}], \
-'creation_time': 1393863996.14704, 'last_update': 1393863996.14704}
         """
         attrs = ['record_id', 'creation_time', 'last_update', 'active']
         json = dict()
@@ -114,26 +92,6 @@ class PatientRecord(Record):
         :type json_data: dictionary
         :return: a :class:`PatientRecord` object
         :rtype: :class:`PatientRecord`
-
-        >>> crec_json = {
-        ...     'creation_time': 1393863996.14704,
-        ...     'archetype': 'openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-        ...     'ehr_data': {'field1': 'value1', 'field2': 'value2'},
-        ...     'record_id': '5314b3a55c98900a8a3d1a2c',
-        ... }
-        >>> prec_json = {
-        ...     'creation_time': 1393863996.14704,
-        ...     'record_id': 'V01245AC14CE2412412340',
-        ...     'ehr_records': [crec_json]
-        ... }
-        >>> prec = PatientRecord.from_json(prec_json)
-        >>> print type(prec)
-        <class 'openehr.ehr.services.dbmanager.dbservices.wrappers.PatientRecord'>
-        >>> for e in prec.ehr_records:
-        ...     print type(e)
-        ...     e.record_id
-        <class 'openehr.ehr.services.dbmanager.dbservices.wrappers.ClinicalRecord'>
-        ObjectId('5314b3a55c98900a8a3d1a2c')
         """
         schema = Schema({
             'creation_time': float,
