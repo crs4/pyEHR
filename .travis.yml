@@ -17,4 +17,3 @@ install:
 
 script:
   - nosetests -v
-  - nosetests -v -w test/services
