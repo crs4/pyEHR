@@ -85,12 +85,30 @@ class TestWrapper(unittest.TestCase):
         self.assertIsInstance(prec.get_clinical_record_by_id(ObjectId('5314b3a55c98931a8a3d1a2c')),
                               ClinicalRecord)
 
+    def test_equal_records(self):
+        def build_clinical_record(record_id=None):
+            return ClinicalRecord(record_id=record_id,
+                                  archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+                                  ehr_data={'field1': 'value1', 'field2': 'value2'})
+        prec1 = PatientRecord(record_id='PATIENT_1')
+        prec2 = PatientRecord(record_id='PATIENT_2')
+        self.assertNotEqual(prec1, prec2)
+        self.assertEqual(prec1, PatientRecord(record_id='PATIENT_1'))
+        # records with record_id=None can't be considered equal
+        self.assertNotEqual(PatientRecord(), PatientRecord())
+        crec1 = build_clinical_record()
+        crec2 = build_clinical_record()
+        self.assertNotEqual(crec1, crec2)
+        # same ID but different type
+        self.assertNotEqual(prec1, build_clinical_record('PATIENT_1'))
+
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestWrapper.test_to_json())
     suite.addTest(TestWrapper.test_from_json())
     suite.addTest(TestWrapper.test_get_clinical_record())
+    suite.addTest(TestWrapper.test_equal_records())
     return suite
 
 if __name__ == '__main__':

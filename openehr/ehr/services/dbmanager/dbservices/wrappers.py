@@ -19,6 +19,16 @@ class Record(object):
 
     __metaclass__ = ABCMeta
 
+    def __eq__(self, other):
+        if type(self) == type(other):
+            return (self.record_id == other.record_id) and \
+                   (not self.record_id is None and not other.record_id is None)
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     @abstractmethod
     def __init__(self, creation_time, last_update=None, active=True, record_id=None):
         self.creation_time = creation_time
