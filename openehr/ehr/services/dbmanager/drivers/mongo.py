@@ -46,22 +46,6 @@ class MongoDriver(DriverInterface):
     def connect(self):
         """
         Open a connection to a MongoDB server.
-
-        The connection can be explicity managed using this method and the disconnect one
-
-        >>> driver = MongoDriver('localhost', 'test_database',
-        ...                       'test_collection')
-        >>> driver.connect()
-        >>> driver.is_connected
-        True
-        >>> driver.disconnect()
-
-        or can be handled using the context manager
-
-        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
-        ...   driver.is_connected
-        True
-
         """
         if not self.client:
             self.logger.debug('connecting to host %s', self.host)
@@ -84,21 +68,6 @@ class MongoDriver(DriverInterface):
     def disconnect(self):
         """
         Close a connection to a MongoDB server.
-
-        >>> driver = MongoDriver('localhost', 'test_database',
-        ...                      'test_collection')
-        >>> driver.connect()
-        >>> driver.disconnect()
-        >>> driver.is_connected
-        False
-
-        Connection and disconnection can be handled using the context manager
-
-        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
-        ...   pass
-        >>> driver.is_connected
-        False
-
         """
         self.logger.debug('disconnecting from host %s', self.client.host)
         self.client.disconnect()
@@ -130,13 +99,6 @@ class MongoDriver(DriverInterface):
 
         :param collection_label: the label of the collection that must be selected
         :type collection_label: string
-
-        >>> with MongoDriver('localhost', 'test_database', 'test_collection_1') as driver:
-        ...   print driver.collection
-        ...   driver.select_collection('test_collection_2')
-        ...   print driver.collection
-        Collection(Database(MongoClient('localhost', 27017), u'test_database'), u'test_collection_1')
-        Collection(Database(MongoClient('localhost', 27017), u'test_database'), u'test_collection_2')
         """
         self.__check_connection()
         self.logger.debug('Changing collection for database %s, old collection: %s - new collection %s',
@@ -275,15 +237,6 @@ class MongoDriver(DriverInterface):
         :param record: the record that is going to be saved
         :type record: dictionary
         :return: the ID of the record
-
-        >>> record = {'_id': ObjectId('%023d%d' % (0, 1)), 'field1': 'value1', 'field2': 'value2'}
-        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
-        ...   record_id = driver.add_record(record)
-        ...   print repr(record_id)
-        ...   driver.documents_count == 1
-        ...   driver.delete_record(record_id) # cleanup
-        ObjectId('000000000000000000000001')
-        True
         """
         self.__check_connection()
         try:
@@ -296,26 +249,9 @@ class MongoDriver(DriverInterface):
         Save a list of records within MongoDB and return records' IDs
 
         :param records: the list of records that is going to be saved
-        :type record: list
+        :type records: list
         :return: a list of records' IDs
         :rtype: list
-
-        >>> records = [
-        ...   {'_id': ObjectId('%024d' % 1), 'field1': 'value1', 'field2': 'value2'},
-        ...   {'_id': ObjectId('%024d' % 2), 'field1': 'value1', 'field2': 'value2'},
-        ...   {'_id': ObjectId('%024d' % 3), 'field1': 'value1', 'field2': 'value2'},
-        ... ]
-        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
-        ...   records_id = driver.add_records(records)
-        ...   for rid in records_id:
-        ...     print repr(rid)
-        ...   driver.documents_count == 3
-        ...   for r in driver.get_all_records():
-        ...     driver.delete_record(r['_id']) # cleanup
-        ObjectId('000000000000000000000001')
-        ObjectId('000000000000000000000002')
-        ObjectId('000000000000000000000003')
-        True
         """
         self.__check_connection()
         return super(MongoDriver, self).add_records(records)
@@ -327,13 +263,6 @@ class MongoDriver(DriverInterface):
         :param record_id: the ID of the record
         :return: the record of None if no match was found for the given record
         :rtype: dictionary or None
-
-        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
-        ...   record_id = driver.add_record({'field1': 'value1', 'field2': 'value2'})
-        ...   rec = driver.get_record_by_id(record_id)
-        ...   print rec['field1'], rec['field2']
-        ...   driver.delete_record(record_id)
-        value1 value2
         """
         self.__check_connection()
         res = self.collection.find_one({'_id': record_id})
@@ -372,21 +301,6 @@ class MongoDriver(DriverInterface):
         :type selector: dictionary
         :return: a list with the matching records
         :rtype: list
-
-        >>> records = []
-        >>> for x in xrange(10):
-        ...   records.append({'value': x, 'even': True if x%2 == 0 else False, '_id': ObjectId('%024d' % x)})
-        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
-        ...   records_id = driver.add_records(records)
-        ...   for r in driver.get_records_by_query({'even': True}):
-        ...     print r
-        ...   for rec_id in records_id:
-        ...     driver.delete_record(rec_id)
-        {'even': True, '_id': ObjectId('000000000000000000000000'), 'value': 0}
-        {'even': True, '_id': ObjectId('000000000000000000000002'), 'value': 2}
-        {'even': True, '_id': ObjectId('000000000000000000000004'), 'value': 4}
-        {'even': True, '_id': ObjectId('000000000000000000000006'), 'value': 6}
-        {'even': True, '_id': ObjectId('000000000000000000000008'), 'value': 8}
         """
         self.__check_connection()
         return (decode_dict(rec) for rec in self.collection.find(selector))
@@ -409,15 +323,6 @@ class MongoDriver(DriverInterface):
         :param_record_id: record's ID
         :param update_condition: the update condition (in MongoDB syntax)
         :type update_condition: dictionary
-
-        >>> with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
-        ...   rec_id = driver.add_record({'label': 'label', 'field1': 'value1', 'field2': 'value2'})
-        ...   print driver.get_record_by_id(rec_id)['label']
-        ...   driver.update_record(rec_id, {'$set': {'label': 'new_label'}})
-        ...   print driver.get_record_by_id(rec_id)['label']
-        ...   driver.delete_record(rec_id)
-        label
-        new_label
         """
         self.__check_connection()
         self.logger.debug('Updading record with ID %r, with condition %r', record_id,
