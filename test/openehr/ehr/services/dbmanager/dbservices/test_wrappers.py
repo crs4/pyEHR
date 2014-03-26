@@ -1,4 +1,4 @@
-import os, unittest, sys, json, time
+import unittest, time
 from bson import ObjectId
 from openehr.ehr.services.dbmanager.dbservices.wrappers \
     import ClinicalRecord, PatientRecord
