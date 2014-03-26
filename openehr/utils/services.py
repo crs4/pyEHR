@@ -1,4 +1,5 @@
 from ConfigParser import SafeConfigParser, NoOptionError
+from openehr.utils import get_logger
 
 
 class ServiceConfig(object):
@@ -37,7 +38,9 @@ class ServiceConfig(object):
         }
 
 
-def get_service_configuration(configuration_file, logger):
+def get_service_configuration(configuration_file, logger=None):
+    if not logger:
+        logger = get_logger('service_configuration')
     parser = SafeConfigParser(allow_no_value=True)
     parser.read(configuration_file)
     try:
