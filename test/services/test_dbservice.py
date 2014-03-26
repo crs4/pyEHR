@@ -3,16 +3,15 @@ from urllib import urlencode
 from urlparse import urlparse
 from socket import error as serror
 from openehr.utils import decode_dict
+from openehr.utils.services import get_service_configuration
 
-SERVICE_HOST = os.getenv('DBSERVICE_HOST', 'localhost')
-SERVICE_PORT = os.getenv('DBSERVICE_PORT', '8080')
+CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
 
 
 class TestDBService(unittest.TestCase):
 
     def __init__(self, label):
         super(TestDBService, self).__init__(label)
-        self.uri = 'http://%s:%s' % (SERVICE_HOST, SERVICE_PORT)
         self.method = 'POST'
         self.http = httplib2.Http()
 
@@ -113,6 +112,12 @@ class TestDBService(unittest.TestCase):
         return patient_record
 
     def setUp(self):
+        if CONF_FILE is None:
+            sys.exit('ERROR: no configuration file provided')
+        conf = get_service_configuration(CONF_FILE)
+        self.uri = 'http://%s:%s' % (conf.get_service_configuration()['host'],
+                                     conf.get_service_configuration()['port'])
+
         target = urlparse(self.uri)
         try:
             r, c = self.http.request(target.geturl(), method=self.method)
