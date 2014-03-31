@@ -53,17 +53,6 @@ class DBServices(object):
         :param patient_record: patient record that is going to be saved
         :type patient_record: :class:`PatientRecord`
         :return: a :class:`PatientRecord` object
-
-        >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
-        >>> pat_rec = PatientRecord()
-        >>> pat_rec = dbs.save_patient(pat_rec)
-        >>> len(pat_rec.ehr_records) == 0
-        True
-        >>> pat_rec.record_id is None
-        False
-        >>> pat_rec.active
-        True
-        >>> dbs.delete_patient(pat_rec) #cleanup
         """
         drf = self._get_drivers_factory(self.patients_repository)
         with drf.get_driver() as driver:
@@ -80,20 +69,6 @@ class DBServices(object):
           is going to be saved
         :type patient_record: :class:`PatientRecord`
         :return: the :class:`ClinicalRecord` and the :class:`PatientRecord`
-
-        >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
-        >>> pat_rec = PatientRecord()
-        >>> pat_rec = dbs.save_patient(pat_rec)
-        >>> ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-        ...                          {'field1': 'value1', 'field2': 'value2'})
-        >>> ehr_rec, pat_rec = dbs.save_ehr_record(ehr_rec, pat_rec)
-        >>> ehr_rec.record_id is None
-        False
-        >>> len(pat_rec.ehr_records)
-        1
-        >>> pat_rec.ehr_records[0].record_id == ehr_rec.record_id
-        True
-        >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
         """
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
@@ -127,31 +102,6 @@ class DBServices(object):
         :type patient_record: :class:`PatientRecord`
         :return: the EHR record without an ID and the updated patient record
         :rtype: :class:`ClinicalRecord`, :class:`PatientRecord`
-
-        >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
-        >>> pat_rec_1 = dbs.save_patient(PatientRecord())
-        >>> ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-        ...                          {'field1': 'value1', 'field2': 'value2'})
-        >>> ehr_rec.record_id is None
-        True
-        >>> ehr_rec, pat_rec_1 = dbs.save_ehr_record(ehr_rec, pat_rec_1)
-        >>> ehr_rec.record_id is None
-        False
-        >>> len(pat_rec_1.ehr_records)
-        1
-        >>> ehr_rec, pat_rec_1 = dbs.remove_ehr_record(ehr_rec, pat_rec_1)
-        >>> ehr_rec.record_id is None
-        True
-        >>> len(pat_rec_1.ehr_records)
-        0
-        >>> pat_rec_2 = dbs.save_patient(PatientRecord())
-        >>> ehr_rec, pat_rec_2 = dbs.save_ehr_record(ehr_rec, pat_rec_2)
-        >>> ehr_rec.record_id is None
-        False
-        >>> len(pat_rec_2.ehr_records)
-        1
-        >>> dbs.delete_patient(pat_rec_1) # cleanup
-        >>> dbs.delete_patient(pat_rec_2, cascade_delete=True) #cleanup
         """
         self._remove_from_list(patient_record, 'ehr_records', ehr_record.record_id,
                                self.patients_repository)
@@ -236,29 +186,6 @@ class DBServices(object):
         :type patient: :class:`PatientRecord`
         :return: the :class:`PatientRecord` object with loaded :class:`ClinicalRecord`
         :type: :class;`PatientRecord`
-
-        >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
-        >>> pat_rec = dbs.save_patient(PatientRecord(record_id='PATIENT_01'))
-        >>> for x in xrange(5):
-        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-        ...                                                         {'ehr_field': 'ehr_value%02d' % x}), pat_rec)
-        >>> pat_rec = dbs.get_patient('PATIENT_01', fetch_ehr_records=False)
-        >>> for ehr in pat_rec.ehr_records:
-        ...   len(ehr.ehr_data) == 0
-        True
-        True
-        True
-        True
-        True
-        >>> pat_rec = dbs.load_ehr_records(pat_rec)
-        >>> for ehr in pat_rec.ehr_records:
-        ...   print ehr.ehr_data is None
-        False
-        False
-        False
-        False
-        False
-        >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
         """
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
@@ -274,29 +201,6 @@ class DBServices(object):
         :type patient: :class:`PatientRecord`
         :return: the patient record
         :rtype: :class:`PatientRecord`
-
-        >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
-        >>> pat_rec = dbs.save_patient(PatientRecord())
-        >>> for x in xrange(5):
-        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-        ...                                                         {'ehr_field': 'ehr_value_%02d' % x}), pat_rec)
-        >>> pat_rec.active
-        True
-        >>> from collections import Counter
-        >>> ct = Counter()
-        >>> for ehr in pat_rec.ehr_records:
-        ...   ct[ehr.active] += 1
-        >>> print ct
-        Counter({True: 5})
-        >>> pat_rec = dbs.hide_patient(pat_rec)
-        >>> pat_rec.active
-        False
-        >>> ct = Counter()
-        >>> for ehr in pat_rec.ehr_records:
-        ...   ct[ehr.active] += 1
-        >>> print ct
-        Counter({False: 5})
-        >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
         """
         if patient.active:
             for ehr_rec in patient.ehr_records:
@@ -314,34 +218,6 @@ class DBServices(object):
         :type ehr_record: ;class:`ClinicalRecord`
         :return: the clinical record
         :rtype: :class:`ClinicalRecord`
-
-        >>> dbs = DBServices('mongodb', 'localhost', 'test_database', 'test_patients_coll', 'test_ehr_coll')
-        >>> pat_rec = dbs.save_patient(PatientRecord())
-        >>> for x in xrange(5):
-        ...   ehr_rec, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-        ...                                                         {'ehr_field': 'ehr_value_%02d' % x}), pat_rec)
-        >>> len(pat_rec.ehr_records)
-        5
-        >>> from collections import Counter
-        >>> ct = Counter()
-        >>> for ehr in pat_rec.ehr_records:
-        ...   ct[ehr.active] += 1
-        >>> print ct
-        Counter({True: 5})
-        >>> for ehr in pat_rec.ehr_records[2:]:
-        ...   rec = dbs.hide_ehr_record(ehr)
-        >>> pat_rec = dbs.get_patient(pat_rec.record_id)
-        >>> print len(pat_rec.ehr_records)
-        2
-        >>> pat_rec = dbs.get_patient(pat_rec.record_id, fetch_hidden_ehr=True)
-        >>> print len(pat_rec.ehr_records)
-        5
-        >>> ct = Counter()
-        >>> for ehr in pat_rec.ehr_records:
-        ...   ct[ehr.active] += 1
-        >>> print ct
-        Counter({False: 3, True: 2})
-        >>> dbs.delete_patient(pat_rec, cascade_delete=True) #cleanup
         """
         if ehr_record.active:
             rec = self._hide_record(ehr_record, self.ehr_repository)
