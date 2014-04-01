@@ -7,7 +7,7 @@ services:
 
 env:
   matrix:
-    - SERVICE_CONFIG_FILE=./config/services.conf
+    - SERVICE_CONFIG_FILE=./config/services.mongodb.conf
 
 before_install:
   - pip install pymongo
