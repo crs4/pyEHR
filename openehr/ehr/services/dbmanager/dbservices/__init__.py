@@ -89,9 +89,27 @@ class DBServices(object):
         """
         self._add_to_list(patient_record, 'ehr_records', ehr_record.record_id,
                           self.patients_repository)
-        return self.get_patient(patient_record.record_id)
+        patient_record.ehr_records.append(ehr_record)
+        return patient_record
 
-    def remove_ehr_record(self, ehr_record, patient_record):
+    def move_ehr_record(self, src_patient, dest_patient, ehr_record):
+        """
+        Move a saved :class:`ClinicalRecord` from a saved :class:`PatientRecord` to another one
+
+        :param src_patient: the :class:`PatientRecord` related to the EHR record that is going to be
+          moved
+        :type src_patient: :class:`PatientRecord`
+        :param dest_patient: the :class:`PatientRecord` to whome the EHR record will be associated
+        :type dest_patient: :class:`PatientRecord`
+        :param ehr_record: the :class:`ClinicalRecord` that is going to be moved
+        :type ehr_record: :class:`ClinicalRecord`
+        :return: the two :class:`PatientRecord` mapping the proper association to the EHR record
+        """
+        ehr_record, src_patient = self.remove_ehr_record(ehr_record, src_patient, clear_ehr_record_id=False)
+        ehr_record, dest_patient = self.save_ehr_record(ehr_record, dest_patient)
+        return src_patient, dest_patient
+
+    def remove_ehr_record(self, ehr_record, patient_record, clear_ehr_record_id=True):
         """
         Remove a :class:`ClinicalRecord` from a patient's records and delete
         it from the database.
@@ -100,6 +118,9 @@ class DBServices(object):
         :type ehr_record: :class:`ClinicalRecord`
         :param patient_record: the reference :class:`PatientRecord`
         :type patient_record: :class:`PatientRecord`
+        :param clear_ehr_record_id: if False, keep the :class:`ClinicalRecord` ID, else clear
+          it
+        :type clear_ehr_record_id: bool
         :return: the EHR record without an ID and the updated patient record
         :rtype: :class:`ClinicalRecord`, :class:`PatientRecord`
         """
@@ -108,8 +129,10 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_record(ehr_record.record_id)
-        ehr_record.record_id = None
-        return ehr_record, self.get_patient(patient_record.record_id)
+        patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
+        if clear_ehr_record_id:
+            ehr_record.record_id = None
+        return ehr_record, patient_record
 
     def _get_active_records(self, driver):
         return driver.get_records_by_value('active', True)

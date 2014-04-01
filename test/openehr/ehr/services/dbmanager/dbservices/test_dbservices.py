@@ -131,6 +131,23 @@ class TestDBServices(unittest.TestCase):
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
 
+    def test_move_ehr_record(self):
+        dbs = DBServices(**self.conf)
+        pat_rec_1 = dbs.save_patient(PatientRecord())
+        pat_rec_2 = dbs.save_patient(PatientRecord())
+        ehr_rec = ClinicalRecord(record_id=ObjectId(),
+                                 archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+                                 ehr_data={'k1': 'v1', 'k2': 'v2'})
+        ehr_rec, pat_rec_1 = dbs.save_ehr_record(ehr_rec, pat_rec_1)
+        self.assertIn(ehr_rec, pat_rec_1.ehr_records)
+        self.assertNotIn(ehr_rec, pat_rec_2.ehr_records)
+        pat_rec_1, pat_rec_2 = dbs.move_ehr_record(pat_rec_1, pat_rec_2, ehr_rec)
+        self.assertNotIn(ehr_rec, pat_rec_1.ehr_records)
+        self.assertIn(ehr_rec, pat_rec_2.ehr_records)
+        # cleanup
+        dbs.delete_patient(pat_rec_1)
+        dbs.delete_patient(pat_rec_2, cascade_delete=True)
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -139,6 +156,7 @@ def suite():
     suite.addTest(TestDBServices.test_remove_ehr_record())
     suite.addTest(TestDBServices.test_load_ehr_records())
     suite.addTest(TestDBServices.test_hide_ehr_record())
+    suite.addTest(TestDBServices.test_move_ehr_record())
     return suite
 
 if __name__ == '__main__':
