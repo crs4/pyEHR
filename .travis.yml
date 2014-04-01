@@ -5,6 +5,10 @@ python:
 services:
   - mongodb
 
+env:
+  matrix:
+    - SERVICE_CONFIG_FILE=./config/services.conf
+
 before_install:
   - pip install pymongo
   - pip install bottle
