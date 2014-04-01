@@ -73,10 +73,10 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             ehr_record.record_id = driver.add_record(driver.encode_record(ehr_record))
-        patient_record = self.add_ehr_record(patient_record, ehr_record)
+        patient_record = self._add_ehr_record(patient_record, ehr_record)
         return ehr_record, patient_record
 
-    def add_ehr_record(self, patient_record, ehr_record):
+    def _add_ehr_record(self, patient_record, ehr_record):
         """
         Add an already saved :class:`ClinicalRecord` to the given :class:`PatientRecord`
 
