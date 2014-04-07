@@ -92,7 +92,7 @@ class TestMongoDBDriver(unittest.TestCase):
         with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
             rec_id = driver.add_record(record)
             self.assertEqual(driver.get_record_by_id(rec_id)['label'], record['label'])
-            driver.update_record(rec_id, {'$set': {'label': 'new_label'}})
+            driver._update_record(rec_id, {'$set': {'label': 'new_label'}})
             self.assertEqual(driver.get_record_by_id(rec_id)['label'], 'new_label')
             # cleanup
             driver.delete_record(rec_id)

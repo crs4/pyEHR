@@ -308,7 +308,7 @@ class MongoDriver(DriverInterface):
         res = self.collection.remove(record_id)
         self.logger.debug('deleted %d documents', res[u'n'])
 
-    def update_record(self, record_id, update_condition):
+    def _update_record(self, record_id, update_condition):
         """
         Update an existing record
 
@@ -358,7 +358,7 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
-        self.update_record(record_id, update_statement)
+        self._update_record(record_id, update_statement)
         return last_update
 
     def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None):
@@ -380,7 +380,7 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
-        self.update_record(record_id, update_statement)
+        self._update_record(record_id, update_statement)
         return last_update
 
     def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
@@ -402,7 +402,7 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
-        self.update_record(record_id, update_statement)
+        self._update_record(record_id, update_statement)
         return last_update
 
     def parseExpression(self, expression):
