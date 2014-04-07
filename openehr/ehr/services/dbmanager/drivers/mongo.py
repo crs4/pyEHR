@@ -35,14 +35,6 @@ class MongoDriver(DriverInterface):
         self.passwd = passwd
         self.logger = logger or get_logger('mongo-db-driver')
 
-    def __enter__(self):
-        self.connect()
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.disconnect()
-        return None
-
     def connect(self):
         """
         Open a connection to a MongoDB server.

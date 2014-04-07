@@ -8,6 +8,14 @@ class DriverInterface(object):
     """
     __metaclass__ = ABCMeta
 
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.disconnect()
+        return None
+
     @abstractmethod
     def connect(self):
         pass
