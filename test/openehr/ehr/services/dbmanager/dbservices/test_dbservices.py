@@ -151,12 +151,12 @@ class TestDBServices(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(TestDBServices.test_save_patient())
-    suite.addTest(TestDBServices.test_save_ehr_record())
-    suite.addTest(TestDBServices.test_remove_ehr_record())
-    suite.addTest(TestDBServices.test_load_ehr_records())
-    suite.addTest(TestDBServices.test_hide_ehr_record())
-    suite.addTest(TestDBServices.test_move_ehr_record())
+    suite.addTest(TestDBServices('test_save_patient'))
+    suite.addTest(TestDBServices('test_save_ehr_record'))
+    suite.addTest(TestDBServices('test_remove_ehr_record'))
+    suite.addTest(TestDBServices('test_load_ehr_records'))
+    suite.addTest(TestDBServices('test_hide_ehr_record'))
+    suite.addTest(TestDBServices('test_move_ehr_record'))
     return suite
 
 if __name__ == '__main__':

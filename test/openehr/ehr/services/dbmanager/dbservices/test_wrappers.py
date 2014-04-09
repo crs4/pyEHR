@@ -105,10 +105,10 @@ class TestWrapper(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(TestWrapper.test_to_json())
-    suite.addTest(TestWrapper.test_from_json())
-    suite.addTest(TestWrapper.test_get_clinical_record())
-    suite.addTest(TestWrapper.test_equal_records())
+    suite.addTest(TestWrapper('test_to_json'))
+    suite.addTest(TestWrapper('test_from_json'))
+    suite.addTest(TestWrapper('test_get_clinical_record'))
+    suite.addTest(TestWrapper('test_equal_records'))
     return suite
 
 if __name__ == '__main__':

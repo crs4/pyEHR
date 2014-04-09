@@ -100,13 +100,13 @@ class TestMongoDBDriver(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(TestMongoDBDriver.test_connection())
-    suite.addTest(TestMongoDBDriver.test_select_collection())
-    suite.addTest(TestMongoDBDriver.test_add_record())
-    suite.addTest(TestMongoDBDriver.test_add_records())
-    suite.addTest(TestMongoDBDriver.test_get_record_by_id())
-    suite.addTest(TestMongoDBDriver.test_get_records_by_query())
-    suite.addTest(TestMongoDBDriver.test_update_record())
+    suite.addTest(TestMongoDBDriver('test_connection'))
+    suite.addTest(TestMongoDBDriver('test_select_collection'))
+    suite.addTest(TestMongoDBDriver('test_add_record'))
+    suite.addTest(TestMongoDBDriver('test_add_records'))
+    suite.addTest(TestMongoDBDriver('test_get_record_by_id'))
+    suite.addTest(TestMongoDBDriver('test_get_records_by_query'))
+    suite.addTest(TestMongoDBDriver('test_update_record'))
     return suite
 
 if __name__ == '__main__':
