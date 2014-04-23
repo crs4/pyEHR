@@ -392,10 +392,10 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestDBService('test_add_patient'))
     suite.addTest(TestDBService('test_add_ehr_record'))
-    suite.addTest(TestDBService('test_delete_patient'))
-    suite.addTest(TestDBService('test_delete_ehr_record'))
-    suite.addTest(TestDBService('test_patient_batch'))
-    suite.addTest(TestDBService('test_patients_batch'))
+#    suite.addTest(TestDBService('test_delete_patient'))
+#    suite.addTest(TestDBService('test_delete_ehr_record'))
+#    suite.addTest(TestDBService('test_patient_batch'))
+#    suite.addTest(TestDBService('test_patients_batch'))
     return suite
 
 if __name__ == '__main__':
