@@ -421,7 +421,7 @@ class ElasticSearchDriver(DriverInterface):
         :type update_timestamp_label: field label or None
         :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
         """
-        record_to_update = self.get_record_by_id(self, record_id)
+        record_to_update = self.get_record_by_id(record_id)
         if(record_to_update == None):
             self.logger.debug('No record found with ID %r', record_id)
             return None
@@ -449,7 +449,7 @@ class ElasticSearchDriver(DriverInterface):
         :type update_timestamp_label: field label or None
         :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
         """
-        record_to_update = self.get_record_by_id(self, record_id)
+        record_to_update = self.get_record_by_id(record_id)
         list_to_update = record_to_update[list_label]
         list_to_update.append(item_value)
         if update_timestamp_label:
@@ -474,7 +474,7 @@ class ElasticSearchDriver(DriverInterface):
         :type update_timestamp_label: field label or None
         :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
         """
-        record_to_update = self.get_record_by_id(self, record_id)
+        record_to_update = self.get_record_by_id(record_id)
         list_to_update=record_to_update[list_label]
         list_to_update.remove(item_value)
         if update_timestamp_label:
