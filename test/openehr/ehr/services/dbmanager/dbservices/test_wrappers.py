@@ -97,8 +97,6 @@ class TestWrapper(unittest.TestCase):
         crec1 = build_clinical_record()
         crec2 = build_clinical_record()
         self.assertNotEqual(crec1, crec2)
-        # same ID but different type
-        self.assertNotEqual(prec1, build_clinical_record('PATIENT_1'))
 
 
 def suite():
