@@ -6,6 +6,7 @@ from openehr.utils import *
 import elasticsearch
 import time
 import sys
+from bson import ObjectId
 
 class ElasticSearchDriver(DriverInterface):
     """
@@ -134,9 +135,9 @@ class ElasticSearchDriver(DriverInterface):
             'creation_time': patient_record.creation_time,
             'last_update': patient_record.last_update,
             'active': patient_record.active,
-            'ehr_records': [ehr.record_id for ehr in patient_record.ehr_records]
+            'ehr_records': [str(ehr.record_id) for ehr in patient_record.ehr_records]
         }
-        if patient_record.record_id:
+        if patient_record.record_id:   #it's always true
             encoded_record['_id'] = patient_record.record_id
         return encoded_record
 
@@ -159,20 +160,21 @@ class ElasticSearchDriver(DriverInterface):
             'last_update': clinical_record.last_update,
             'active': clinical_record.active,
             'archetype': clinical_record.archetype,
-            'ehr_data': ehr_data
+            'ehr_data': ehr_data,
+            '_id' : self.encode_clinical_id(clinical_record.record_id)
         }
-        if clinical_record.record_id:
-            encoded_record['_id'] = clinical_record.record_id
+#        if clinical_record.record_id: #always true
+#            encoded_record['_id'] = clinical_record.record_id
         return encoded_record
 
     def encode_record(self, record):
         """
         Encode a :class:`Record` object into a data structure that can be saved within
-        MongoDB
+        ElasticSearch
 
         :param record: the record that must be encoded
         :type record: a :class:`Record` subclass
-        :return: the record encoded as a MongoDB document
+        :return: the record encoded as a ElasticSearch document
         """
         from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 
@@ -192,11 +194,11 @@ class ElasticSearchDriver(DriverInterface):
             ehr_records = [self._decode_clinical_record({'_id': ehr}, loaded=False)
                            for ehr in record['ehr_records']]
             return PatientRecord(
-                ehr_records,
-                record['creation_time'],
-                record['last_update'],
-                record['active'],
-                record.get('_id'),
+                ehr_records=ehr_records,
+                creation_time=record['creation_time'],
+                last_update=record['last_update'],
+                active=record['active'],
+                record_id=record.get('_id'),
             )
         else:
             return PatientRecord(
@@ -223,31 +225,31 @@ class ElasticSearchDriver(DriverInterface):
             for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
                 ehr_data = decode_keys(ehr_data, encoded_value, original_value)
             return ClinicalRecord(
-                record['archetype'],
-                ehr_data,
-                record['creation_time'],
-                record['last_update'],
-                record['active'],
-                record.get('_id')
+                archetype=record['archetype'],
+                ehr_data=ehr_data,
+                creation_time=record['creation_time'],
+                last_update=record['last_update'],
+                active=record['active'],
+                record_id=self.decode_clinical_id(record.get('_id'))
             )
         else:
             return ClinicalRecord(
                 creation_time=record.get('creation_time'),
-                record_id=record.get('_id'),
+                record_id=self.decode_clinical_id(record.get('_id')),
                 archetype=record.get('archetype'),
                 ehr_data={}
             )
 
     def decode_record(self, record, loaded=True):
         """
-        Create a :class:`Record` object from data retrieved from MongoDB
+        Create a :class:`Record` object from data retrieved from ElasticSearch
 
-        :param record: the MongoDB record that must be decoded
-        :type record: a MongoDB dictionary
+        :param record: the ElasticSearch record that must be decoded
+        :type record: a ElasticSearch dictionary
         :param loaded: if True, return a :class:`Record` with all values, if False all fields with
           the exception of the record_id one will have a None value
         :type loaded: boolean
-        :return: the MongoDB document encoded as a :class:`Record` object
+        :return: the ElasticSearch document encoded as a :class:`Record` object
         """
         if 'archetype' in record:
             return self._decode_clinical_record(record, loaded)
@@ -263,10 +265,21 @@ class ElasticSearchDriver(DriverInterface):
     def count3(self):
         return self.client.search(index=self.database)['hits']['total']
 
+    def decode_clinical_id(self,id):
+        """
+        Transform a string back to its ObjectId representation
+        """
+        return ObjectId(id)
+
+    def encode_clinical_id(self,id):
+        """
+        Transform from the native ObjectId representation to a string for ElasticSearch use
+        """
+        return str(id)
+
 
     def add_record(self, record):
         """
-        Save a record within ElasticSearch and return the record's ID
         Save a record within ElasticSearch and return the record's ID
 
         :param record: the record that is going to be saved
@@ -277,6 +290,9 @@ class ElasticSearchDriver(DriverInterface):
         try:
             if(record.has_key('_id')):
                 return self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],body=record,op_type='create',refresh='true')['_id']
+#                print pippo
+#                return ObjectId(str(pippo))
+#                return ObjectId(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],body=record,op_type='create',refresh='true')['_id'])
             else:
                 return self.client.index(index=self.database,doc_type=self.collection,body=record,op_type='create',refresh='true')['_id']
         except elasticsearch.ConflictError:
@@ -352,7 +368,7 @@ class ElasticSearchDriver(DriverInterface):
         self.__check_connection()
         #res = self.client.get(index=self.database,id=record_id,_source='true')
         try:
-            res = self.client.get_source(index=self.database,id=record_id)
+            res = self.client.get_source(index=self.database,id=str(record_id))
             return decode_dict(res)
         except elasticsearch.NotFoundError:
             return None

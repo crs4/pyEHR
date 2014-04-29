@@ -52,7 +52,7 @@ class TestDBServices(unittest.TestCase):
         pat_rec_1 = dbs.save_patient(self.create_random_patient())
         ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
                                  {'field1': 'value1', 'field2': 'value2'})
-        self.assertIsNone(ehr_rec.record_id)
+        self.assertIsNotNone(ehr_rec.record_id)
         ehr_rec, pat_rec_1 = dbs.save_ehr_record(ehr_rec, pat_rec_1)
         self.assertIsNotNone(ehr_rec.record_id)
         self.assertEqual(len(pat_rec_1.ehr_records), 1)
@@ -60,6 +60,7 @@ class TestDBServices(unittest.TestCase):
         self.assertIsNone(ehr_rec.record_id)
         self.assertEqual(len(pat_rec_1.ehr_records), 0)
         pat_rec_2 = dbs.save_patient(self.create_random_patient())
+        ehr_rec.record_id= ObjectId()
         ehr_rec, pat_rec_2 = dbs.save_ehr_record(ehr_rec, pat_rec_2)
         self.assertIsNotNone(ehr_rec.record_id)
         self.assertEqual(len(pat_rec_2.ehr_records), 1)
