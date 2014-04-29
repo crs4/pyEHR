@@ -1,4 +1,4 @@
-import unittest, sys, os
+import unittest, sys, os, uuid
 from bson import ObjectId
 from collections import Counter
 from openehr.ehr.services.dbmanager.dbservices import DBServices
@@ -13,6 +13,9 @@ class TestDBServices(unittest.TestCase):
 
     def __init__(self, label):
         super(TestDBServices, self).__init__(label)
+
+    def create_random_patient(self):
+        return PatientRecord(record_id=uuid.uuid4().hex)
 
     def setUp(self):
         if CONF_FILE is None:
@@ -31,7 +34,7 @@ class TestDBServices(unittest.TestCase):
 
     def test_save_ehr_record(self):
         dbs = DBServices(**self.conf)
-        pat_rec = dbs.save_patient(PatientRecord())
+        pat_rec = dbs.save_patient(self.create_random_patient())
         ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
                                  {'field1': 'value1', 'field2': 'value2'})
         ehr_rec, pat_rec = dbs.save_ehr_record(ehr_rec, pat_rec)
@@ -46,7 +49,7 @@ class TestDBServices(unittest.TestCase):
 
     def test_remove_ehr_record(self):
         dbs = DBServices(**self.conf)
-        pat_rec_1 = dbs.save_patient(PatientRecord())
+        pat_rec_1 = dbs.save_patient(self.create_random_patient())
         ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
                                  {'field1': 'value1', 'field2': 'value2'})
         self.assertIsNone(ehr_rec.record_id)
@@ -56,7 +59,7 @@ class TestDBServices(unittest.TestCase):
         ehr_rec, pat_rec_1 = dbs.remove_ehr_record(ehr_rec, pat_rec_1)
         self.assertIsNone(ehr_rec.record_id)
         self.assertEqual(len(pat_rec_1.ehr_records), 0)
-        pat_rec_2 = dbs.save_patient(PatientRecord())
+        pat_rec_2 = dbs.save_patient(self.create_random_patient())
         ehr_rec, pat_rec_2 = dbs.save_ehr_record(ehr_rec, pat_rec_2)
         self.assertIsNotNone(ehr_rec.record_id)
         self.assertEqual(len(pat_rec_2.ehr_records), 1)
@@ -91,7 +94,7 @@ class TestDBServices(unittest.TestCase):
 
     def test_hide_patient(self):
         dbs = DBServices(**self.conf)
-        pat_rec = dbs.save_patient(PatientRecord())
+        pat_rec = dbs.save_patient(self.create_random_patient())
         for x in xrange(10):
             _, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
                                                             {'ehr_field': 'ehr_value%02d' % x}), pat_rec)
@@ -133,10 +136,9 @@ class TestDBServices(unittest.TestCase):
 
     def test_move_ehr_record(self):
         dbs = DBServices(**self.conf)
-        pat_rec_1 = dbs.save_patient(PatientRecord())
-        pat_rec_2 = dbs.save_patient(PatientRecord())
-        ehr_rec = ClinicalRecord(record_id=ObjectId(),
-                                 archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+        pat_rec_1 = dbs.save_patient(self.create_random_patient())
+        pat_rec_2 = dbs.save_patient(self.create_random_patient())
+        ehr_rec = ClinicalRecord(archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
                                  ehr_data={'k1': 'v1', 'k2': 'v2'})
         ehr_rec, pat_rec_1 = dbs.save_ehr_record(ehr_rec, pat_rec_1)
         self.assertIn(ehr_rec, pat_rec_1.ehr_records)

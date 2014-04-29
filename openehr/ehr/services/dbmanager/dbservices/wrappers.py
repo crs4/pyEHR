@@ -53,8 +53,8 @@ class PatientRecord(Record):
     :ivar ehr_records: the list of clinical records related to this patient
     """
 
-    def __init__(self, ehr_records=None, creation_time=None,
-                 last_update=None, active=True, record_id=None):
+    def __init__(self, record_id, ehr_records=None, creation_time=None,
+                 last_update=None, active=True):
         super(PatientRecord, self).__init__(creation_time or time.time(),
                                             last_update, active, record_id)
         self.ehr_records = ehr_records or []
@@ -130,6 +130,10 @@ class ClinicalRecord(Record):
 
     def __init__(self, archetype, ehr_data, creation_time=None, last_update=None,
                  active=True, record_id=None):
+        if not record_id:
+            record_id = ObjectId()
+        else:
+            record_id = ObjectId(record_id)
         super(ClinicalRecord, self).__init__(creation_time or time.time(),
                                              last_update, active, record_id)
         self.archetype = archetype

@@ -94,8 +94,6 @@ class TestWrapper(unittest.TestCase):
         prec2 = PatientRecord(record_id='PATIENT_2')
         self.assertNotEqual(prec1, prec2)
         self.assertEqual(prec1, PatientRecord(record_id='PATIENT_1'))
-        # records with record_id=None can't be considered equal
-        self.assertNotEqual(PatientRecord(), PatientRecord())
         crec1 = build_clinical_record()
         crec2 = build_clinical_record()
         self.assertNotEqual(crec1, crec2)
