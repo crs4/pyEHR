@@ -58,16 +58,16 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def encode_clinical_id(self,idn):
+    def encode_clinical_id(self, idn):
         """
-        id transformations between the wrapper and the driver layer
+        ID transformations between the wrapper and the driver layer
         """
         return idn
 
     @abstractmethod
-    def decode_clinical_id(self,idn):
+    def decode_clinical_id(self, idn):
         """
-        id transformation between the driver layer and the wrapper layer
+        ID transformation between the driver layer and the wrapper layer
         """
         return idn
 
