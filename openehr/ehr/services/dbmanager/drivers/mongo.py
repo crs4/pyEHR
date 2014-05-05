@@ -160,11 +160,11 @@ class MongoDriver(DriverInterface):
             ehr_records = [self._decode_clinical_record({'_id': ehr}, loaded=False)
                            for ehr in record['ehr_records']]
             return PatientRecord(
-                ehr_records,
-                record['creation_time'],
-                record['last_update'],
-                record['active'],
-                record.get('_id'),
+                ehr_records=ehr_records,
+                creation_time=record['creation_time'],
+                last_update=record['last_update'],
+                active=record['active'],
+                record_id=record.get('_id'),
             )
         else:
             return PatientRecord(
@@ -191,12 +191,12 @@ class MongoDriver(DriverInterface):
             for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
                 ehr_data = decode_keys(ehr_data, encoded_value, original_value)
             return ClinicalRecord(
-                record['archetype'],
-                ehr_data,
-                record['creation_time'],
-                record['last_update'],
-                record['active'],
-                record.get('_id')
+                archetype=record['archetype'],
+                ehr_data=ehr_data,
+                creation_time=record['creation_time'],
+                last_update=record['last_update'],
+                active=record['active'],
+                record_id=record.get('_id')
             )
         else:
             return ClinicalRecord(
@@ -221,6 +221,12 @@ class MongoDriver(DriverInterface):
             return self._decode_clinical_record(record, loaded)
         else:
             return self._decode_patient_record(record, loaded)
+
+    def encode_clinical_id(self, idn):
+        return idn
+
+    def decode_clinical_id(self, idn):
+        return idn
 
     def add_record(self, record):
         """
