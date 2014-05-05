@@ -29,9 +29,6 @@ setup(
     packages=[
         'openehr',
         'openehr.utils',
-        'openehr.archetypes',
-        'openehr.archetypes.archive',
-        'openehr.archetypes.archive.drivers',
         'openehr.aql',
         'openehr.ehr',
         'openehr.ehr.services',
