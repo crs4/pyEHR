@@ -2,22 +2,33 @@ language: python
 python:
   - 2.7
 
-services:
-  - mongodb
-
 env:
   matrix:
-    - SERVICE_CONFIG_FILE=./config/services.mongodb.conf
+    - DB_ENGINE=mongodb
+    - DB_ENGINE=elasticsearch
 
 before_install:
-  - pip install pymongo
+  # start proper service
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then sudo service mongodb start; fi
+  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then sudo service elasticsearch start; fi
+  # install Python dependencies
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo; fi
+  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then pip install elasticsearch; fi
   - pip install bottle
   - pip install httplib2
   - pip install voluptuous
+  # export proper configuration file
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then export SERVICE_CONFIG_FILE=./config/services.mongodb.conf; fi
+  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export SERVICE_CONFIG_FILE=./config/services.elasticsearch.conf; fi
+  - pip install nose-exclude
 
 install:
   - python setup.py install
   - .travis-data/run_dbservice_daemon.sh
 
+before-script:
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then export EXCLUDE_TEST_MODULE=test.openehr.ehr.services.dbmanager.drivers.test_elasticsearch.TestElasticSearchDriver; fi
+  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE=test.openehr.ehr.services.dbmanager.drivers.test_mongo.TestMongoDBDriver; fi
+  
 script:
-  - nosetests -v
+  - nosetests -v -w test --exclude-test=$EXCLUDE_TEST_MODULE
