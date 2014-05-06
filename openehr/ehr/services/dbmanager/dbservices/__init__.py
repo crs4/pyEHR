@@ -72,7 +72,7 @@ class DBServices(object):
         """
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
-            ehr_record.record_id = driver.decode_clinical_id(driver.add_record(driver.encode_record(ehr_record)))
+            ehr_record.record_id = driver.add_record(driver.encode_record(ehr_record))
         patient_record = self._add_ehr_record(patient_record, ehr_record)
         return ehr_record, patient_record
 
@@ -128,7 +128,7 @@ class DBServices(object):
                                self.patients_repository)
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
-            driver.delete_record(driver.encode_clinical_id(ehr_record.record_id))
+            driver.delete_record(ehr_record.record_id)
         patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
         if clear_ehr_record_id:
             ehr_record.record_id = None
@@ -299,9 +299,9 @@ class DBServices(object):
     def _add_to_list(self, record, list_label, element, repository):
         drf = self._get_drivers_factory(repository)
         with drf.get_driver() as driver:
-            driver.add_to_list(record.record_id, list_label, driver.encode_clinical_id(element), 'last_update')
+            driver.add_to_list(record.record_id, list_label, element, 'last_update')
 
     def _remove_from_list(self, record, list_label, element, repository):
         drf = self._get_drivers_factory(repository)
         with drf.get_driver() as driver:
-            driver.remove_from_list(record.record_id, list_label, driver.encode_clinical_id(element), 'last_update')
+            driver.remove_from_list(record.record_id, list_label, element, 'last_update')

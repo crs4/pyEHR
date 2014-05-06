@@ -58,20 +58,6 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def encode_clinical_id(self, idn):
-        """
-        ID transformations between the wrapper and the driver layer
-        """
-        return idn
-
-    @abstractmethod
-    def decode_clinical_id(self, idn):
-        """
-        ID transformation between the driver layer and the wrapper layer
-        """
-        return idn
-
-    @abstractmethod
     def add_record(self, record):
         """
         Add a record in the backend server

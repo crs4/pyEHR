@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from voluptuous import Schema, Required, MultipleInvalid, Coerce
 import time
-from bson import ObjectId
+from uuid import uuid4
 
 from openehr.ehr.services.dbmanager.errors import InvalidJsonStructureError
 from openehr.utils import cleanup_json, decode_dict
@@ -34,7 +34,14 @@ class Record(object):
         self.creation_time = creation_time
         self.last_update = last_update or creation_time
         self.active = active
-        self.record_id = record_id
+        if record_id:
+            self.record_id = str(record_id)
+        else:
+            self.record_id = uuid4().hex
+            
+    @abstractmethod
+    def new_record_id(self):
+        self.record_id = uuid4().hex
 
     @abstractmethod
     def to_json(self):
@@ -58,6 +65,9 @@ class PatientRecord(Record):
         super(PatientRecord, self).__init__(creation_time or time.time(),
                                             last_update, active, record_id)
         self.ehr_records = ehr_records or []
+        
+    def new_record_id(self):
+        pass
 
     def get_clinical_record_by_id(self, clinical_record_id):
         """
@@ -66,7 +76,7 @@ class PatientRecord(Record):
 
         :param clinical_record_id: the ID of the :class:`ClinicalRecord` that is going
         to be retrieved
-        :type clinical_record_id: the ID as a String or as an ObjectId
+        :type clinical_record_id: the ID as a String
         :return: the :class:`ClinicalRecord` if the ID was matched or None
         :rtype: :class:`ClinicalRecord` or None
 
@@ -130,14 +140,13 @@ class ClinicalRecord(Record):
 
     def __init__(self, archetype, ehr_data, creation_time=None, last_update=None,
                  active=True, record_id=None):
-        if not record_id:
-            record_id = ObjectId()
-        else:
-            record_id = ObjectId(record_id)
         super(ClinicalRecord, self).__init__(creation_time or time.time(),
                                              last_update, active, record_id)
         self.archetype = archetype
         self.ehr_data = ehr_data
+        
+    def new_record_id(self):
+        super(ClinicalRecord, self).new_record_id()
 
     def to_json(self):
         """
@@ -171,13 +180,11 @@ class ClinicalRecord(Record):
             'creation_time': float,
             'last_update': float,
             'active': bool,
-            'record_id': Coerce(ObjectId),
+            'record_id': str,
         })
         try:
             json_data = cleanup_json(decode_dict(json_data))
             schema(json_data)
-            if 'record_id' in json_data:
-                json_data['record_id'] = ObjectId(json_data['record_id'])
             return ClinicalRecord(**json_data)
         except MultipleInvalid:
             raise InvalidJsonStructureError('JSON record\'s structure is not compatible with ClinicalRecord object')

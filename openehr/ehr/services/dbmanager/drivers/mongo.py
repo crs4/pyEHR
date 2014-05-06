@@ -222,12 +222,6 @@ class MongoDriver(DriverInterface):
         else:
             return self._decode_patient_record(record, loaded)
 
-    def encode_clinical_id(self, idn):
-        return idn
-
-    def decode_clinical_id(self, idn):
-        return idn
-
     def add_record(self, record):
         """
         Save a record within MongoDB and return the record's ID

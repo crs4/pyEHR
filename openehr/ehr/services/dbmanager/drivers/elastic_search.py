@@ -265,19 +265,6 @@ class ElasticSearchDriver(DriverInterface):
     def count3(self):
         return self.client.search(index=self.database)['hits']['total']
 
-    def decode_clinical_id(self,idn):
-        """
-        Transform a string back to its ObjectId representation
-        """
-        return ObjectId(idn)
-
-    def encode_clinical_id(self,idn):
-        """
-        Transform from the native ObjectId representation to a string for ElasticSearch use
-        """
-        return str(idn)
-
-
     def add_record(self, record):
         """
         Save a record within ElasticSearch and return the record's ID
