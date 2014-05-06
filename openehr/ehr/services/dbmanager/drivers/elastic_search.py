@@ -6,7 +6,6 @@ from openehr.utils import *
 import elasticsearch
 import time
 import sys
-from bson import ObjectId
 
 class ElasticSearchDriver(DriverInterface):
     """
