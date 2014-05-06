@@ -7,6 +7,7 @@ import elasticsearch
 import time
 import sys
 
+
 class ElasticSearchDriver(DriverInterface):
     """
     Creates a driver to handle I\O with a ElasticSearch server.
@@ -160,7 +161,7 @@ class ElasticSearchDriver(DriverInterface):
             'active': clinical_record.active,
             'archetype': clinical_record.archetype,
             'ehr_data': ehr_data,
-            '_id' : self.encode_clinical_id(clinical_record.record_id)
+            '_id' : clinical_record.record_id
         }
 #        if clinical_record.record_id: #always true
 #            encoded_record['_id'] = clinical_record.record_id
@@ -197,12 +198,12 @@ class ElasticSearchDriver(DriverInterface):
                 creation_time=record['creation_time'],
                 last_update=record['last_update'],
                 active=record['active'],
-                record_id=record.get('_id'),
+                record_id=str(record.get('_id')),
             )
         else:
             return PatientRecord(
                 creation_time=record['creation_time'],
-                record_id=record.get('_id')
+                record_id=str(record.get('_id'))
             )
 
     def _decode_clinical_record(self, record, loaded):
@@ -229,12 +230,12 @@ class ElasticSearchDriver(DriverInterface):
                 creation_time=record['creation_time'],
                 last_update=record['last_update'],
                 active=record['active'],
-                record_id=self.decode_clinical_id(record.get('_id'))
+                record_id=str(record.get('_id'))
             )
         else:
             return ClinicalRecord(
                 creation_time=record.get('creation_time'),
-                record_id=self.decode_clinical_id(record.get('_id')),
+                record_id=str(record.get('_id')),
                 archetype=record.get('archetype'),
                 ehr_data={}
             )
@@ -275,12 +276,12 @@ class ElasticSearchDriver(DriverInterface):
         self.__check_connection()
         try:
             if(record.has_key('_id')):
-                return self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],body=record,op_type='create',refresh='true')['_id']
+                return str(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],body=record,op_type='create',refresh='true')['_id'])
 #                print pippo
 #                return ObjectId(str(pippo))
 #                return ObjectId(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],body=record,op_type='create',refresh='true')['_id'])
             else:
-                return self.client.index(index=self.database,doc_type=self.collection,body=record,op_type='create',refresh='true')['_id']
+                return str(self.client.index(index=self.database,doc_type=self.collection,body=record,op_type='create',refresh='true')['_id'])
         except elasticsearch.ConflictError:
             raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
 
@@ -328,7 +329,7 @@ class ElasticSearchDriver(DriverInterface):
                 print 'bad programmer'
                 sys.exit(1)
         else:
-            return [g['create']['_id'] for g in bulkanswer['items']]
+            return [str(g['create']['_id']) for g in bulkanswer['items']]
 
     def add_records2(self, records):
         """
@@ -435,7 +436,7 @@ class ElasticSearchDriver(DriverInterface):
             else:
                 last_update=None
             res = self.client.index(index=self.database,doc_type=self.collection,body=record_to_update,id=record_id)
-            self.logger.debug('updated %d document', res[u'_id'])
+            self.logger.debug('updated %s document', res[u'_id'])
             return last_update
 
     def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None):
@@ -460,7 +461,7 @@ class ElasticSearchDriver(DriverInterface):
         else:
             last_update = None
         res = self.client.index(index=self.database,doc_type=self.collection,body=record_to_update,id=record_id)
-        self.logger.debug('updated %d document', res[u'_id'])
+        self.logger.debug('updated %s document', res[u'_id'])
         return last_update
 
     def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
@@ -485,7 +486,7 @@ class ElasticSearchDriver(DriverInterface):
         else:
             last_update = None
         res = self.client.index(index=self.database,doc_type=self.collection,body=record_to_update,id=record_id)
-        self.logger.debug('updated %d document', res[u'_id'])
+        self.logger.debug('updated %s document', res[u'_id'])
         return last_update
 
     def parseExpression(self, expression):
