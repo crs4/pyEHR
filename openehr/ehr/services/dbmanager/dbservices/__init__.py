@@ -105,11 +105,11 @@ class DBServices(object):
         :type ehr_record: :class:`ClinicalRecord`
         :return: the two :class:`PatientRecord` mapping the proper association to the EHR record
         """
-        ehr_record, src_patient = self.remove_ehr_record(ehr_record, src_patient, clear_ehr_record_id=False)
+        ehr_record, src_patient = self.remove_ehr_record(ehr_record, src_patient, new_record_id=False)
         ehr_record, dest_patient = self.save_ehr_record(ehr_record, dest_patient)
         return src_patient, dest_patient
 
-    def remove_ehr_record(self, ehr_record, patient_record, clear_ehr_record_id=True):
+    def remove_ehr_record(self, ehr_record, patient_record, new_record_id=True):
         """
         Remove a :class:`ClinicalRecord` from a patient's records and delete
         it from the database.
@@ -118,9 +118,8 @@ class DBServices(object):
         :type ehr_record: :class:`ClinicalRecord`
         :param patient_record: the reference :class:`PatientRecord`
         :type patient_record: :class:`PatientRecord`
-        :param clear_ehr_record_id: if False, keep the :class:`ClinicalRecord` ID, else clear
-          it
-        :type clear_ehr_record_id: bool
+        :param new_record_id: if True, get a new random record ID for the ehr_record
+        :type new_record_id: bool
         :return: the EHR record without an ID and the updated patient record
         :rtype: :class:`ClinicalRecord`, :class:`PatientRecord`
         """
@@ -130,8 +129,8 @@ class DBServices(object):
         with drf.get_driver() as driver:
             driver.delete_record(ehr_record.record_id)
         patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
-        if clear_ehr_record_id:
-            ehr_record.record_id = None
+        if new_record_id:
+            ehr_record.new_record_id()
         return ehr_record, patient_record
 
     def _get_active_records(self, driver):
