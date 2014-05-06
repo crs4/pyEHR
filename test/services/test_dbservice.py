@@ -2,8 +2,8 @@ import os, unittest, httplib2, sys, json, time
 from urllib import urlencode
 from urlparse import urlparse
 from socket import error as serror
-from openehr.utils import decode_dict
-from openehr.utils.services import get_service_configuration
+from pyehr.utils import decode_dict
+from pyehr.utils.services import get_service_configuration
 
 CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
 
@@ -67,7 +67,7 @@ class TestDBService(unittest.TestCase):
         If duplicated_ehr_id is True, build an EHR record with the same ID of one of the other
         EHR records
         """
-        from bson import ObjectId
+        from uuid import uuid4
 
         patient_record = {
             'record_id': patient_id,
@@ -84,7 +84,7 @@ class TestDBService(unittest.TestCase):
                     'ehr_data': {'rec%d.k1' % x: 'v1', 'rec%d.k2' % x: 'v2'},
                     'creation_time': time.time(),
                     'active': True,
-                    'record_id': str(ObjectId())
+                    'record_id': uuid4().hex
                 }
             )
         if bad_ehr_json:
@@ -93,7 +93,7 @@ class TestDBService(unittest.TestCase):
                     'archetype': 'openEHR.TEST-EVALUATION-BAD.v1',
                     'creation_time': time.time(),
                     'active': True,
-                    'record_id': str(ObjectId())
+                    'record_id': uuid4().hex
                 }
             )
         if duplicated_ehr_id and len(patient_record['ehr_records']) > 0:
