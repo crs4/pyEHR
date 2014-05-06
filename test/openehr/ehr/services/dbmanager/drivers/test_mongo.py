@@ -1,6 +1,6 @@
 import unittest
 from openehr.ehr.services.dbmanager.drivers.mongo import MongoDriver
-from bson import ObjectId
+from uuid import uuid4
 
 
 class TestMongoDBDriver(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestMongoDBDriver(unittest.TestCase):
             self.assertEqual(driver.collection.name, u'test_collection_2')
 
     def test_add_record(self):
-        record_id = ObjectId('%023d%d' % (0, 1))
+        record_id = uuid4().hex
         record = {
             '_id': record_id,
             'field1': 'value1',
@@ -40,7 +40,7 @@ class TestMongoDBDriver(unittest.TestCase):
             driver.delete_record(r_id)
 
     def test_add_records(self):
-        record_ids = [ObjectId('%024d' % x) for x in xrange(0, 10)]
+        record_ids = [uuid4().hex for x in xrange(0, 10)]
         records = [{
             '_id': rid,
             'field1': 'value1',
@@ -57,7 +57,7 @@ class TestMongoDBDriver(unittest.TestCase):
 
     def test_get_record_by_id(self):
         record = {
-            '_id': ObjectId('%024d' % 1),
+            '_id': uuid4().hex,
             'field1': 'value1',
             'field2': 'value2'
         }
@@ -71,7 +71,7 @@ class TestMongoDBDriver(unittest.TestCase):
 
     def test_get_records_by_query(self):
         records = [
-            {'value': x, 'even': x % 2 == 0, '_id': ObjectId('%024d' % x)}
+            {'value': x, 'even': x % 2 == 0, '_id': uuid4().hex}
             for x in xrange(0, 20)
         ]
         with MongoDriver('localhost', 'test_database', 'test_collection') as driver:

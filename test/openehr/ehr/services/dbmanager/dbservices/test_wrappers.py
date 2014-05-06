@@ -1,5 +1,4 @@
 import unittest, time
-from bson import ObjectId
 from openehr.ehr.services.dbmanager.dbservices.wrappers \
     import ClinicalRecord, PatientRecord
 from openehr.ehr.services.dbmanager.errors import InvalidJsonStructureError
@@ -34,7 +33,7 @@ class TestWrapper(unittest.TestCase):
         crec = ClinicalRecord(
             ehr_data={'field1': 'value1', 'field2': 'value2'},
             archetype='openEHR.EHR-TEST-EVALUATION.v1',
-            record_id=ObjectId('5314b3a55c98900a8a3d1a2c'),
+            record_id='5314b3a55c98900a8a3d1a2c',
             creation_time=creation_time
         )
         prec = PatientRecord(
@@ -67,13 +66,13 @@ class TestWrapper(unittest.TestCase):
         self.assertIsInstance(p, PatientRecord)
         for c in p.ehr_records:
             self.assertIsInstance(c, ClinicalRecord)
-            self.assertIsInstance(c.record_id, ObjectId)
+            self.assertIsInstance(c.record_id, str)
 
     def test_get_clinical_record(self):
         crec = ClinicalRecord(
             archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
             ehr_data={'field1': 'value1', 'field2': 'value2'},
-            record_id=ObjectId('5314b3a55c98931a8a3d1a2c')
+            record_id='5314b3a55c98931a8a3d1a2c'
         )
         prec = PatientRecord(
             ehr_records=[crec],
@@ -82,7 +81,7 @@ class TestWrapper(unittest.TestCase):
         self.assertIsNone(prec.get_clinical_record_by_id('FOOBAR'))
         self.assertIsInstance(prec.get_clinical_record_by_id('5314b3a55c98931a8a3d1a2c'),
                               ClinicalRecord)
-        self.assertIsInstance(prec.get_clinical_record_by_id(ObjectId('5314b3a55c98931a8a3d1a2c')),
+        self.assertIsInstance(prec.get_clinical_record_by_id('5314b3a55c98931a8a3d1a2c'),
                               ClinicalRecord)
 
     def test_equal_records(self):

@@ -1,5 +1,4 @@
 import unittest, sys, os, uuid
-from bson import ObjectId
 from collections import Counter
 from openehr.ehr.services.dbmanager.dbservices import DBServices
 from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
@@ -38,7 +37,7 @@ class TestDBServices(unittest.TestCase):
         ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
                                  {'field1': 'value1', 'field2': 'value2'})
         ehr_rec, pat_rec = dbs.save_ehr_record(ehr_rec, pat_rec)
-        self.assertIsInstance(ehr_rec.record_id, ObjectId)
+        self.assertIsInstance(ehr_rec.record_id, str)
         self.assertTrue(ehr_rec.active)
         self.assertEqual(ehr_rec.archetype, 'openEHR-EHR-EVALUATION.dummy-evaluation.v1')
         self.assertEqual(ehr_rec.ehr_data, {'field1': 'value1', 'field2': 'value2'})
@@ -56,13 +55,12 @@ class TestDBServices(unittest.TestCase):
         ehr_rec, pat_rec_1 = dbs.save_ehr_record(ehr_rec, pat_rec_1)
         self.assertIsNotNone(ehr_rec.record_id)
         self.assertEqual(len(pat_rec_1.ehr_records), 1)
+        old_ehr_id = ehr_rec.record_id
         ehr_rec, pat_rec_1 = dbs.remove_ehr_record(ehr_rec, pat_rec_1)
-        self.assertIsNone(ehr_rec.record_id)
+        self.assertNotEqual(old_ehr_id, ehr_rec.record_id)
         self.assertEqual(len(pat_rec_1.ehr_records), 0)
         pat_rec_2 = dbs.save_patient(self.create_random_patient())
-        ehr_rec.record_id= ObjectId()
         ehr_rec, pat_rec_2 = dbs.save_ehr_record(ehr_rec, pat_rec_2)
-        self.assertIsNotNone(ehr_rec.record_id)
         self.assertEqual(len(pat_rec_2.ehr_records), 1)
         # clenup
         dbs.delete_patient(pat_rec_1)
