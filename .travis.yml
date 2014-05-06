@@ -26,9 +26,9 @@ install:
   - python setup.py install
   - .travis-data/run_dbservice_daemon.sh
 
-before-script:
-  - if [[ "$DB_ENGINE" == "mongodb" ]]; then export EXCLUDE_TEST_MODULE=test.openehr.ehr.services.dbmanager.drivers.test_elasticsearch.TestElasticSearchDriver; fi
-  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE=test.openehr.ehr.services.dbmanager.drivers.test_mongo.TestMongoDBDriver; fi
-  
+before_script:
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then export EXCLUDE_TEST_MODULE=elasticsearch; fi
+  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE=mongo; fi
+
 script:
-  - nosetests -v -w test --exclude-test=$EXCLUDE_TEST_MODULE
+  - nosetests -v -w test --ignore-file=$EXCLUDE_TEST_MODULE
