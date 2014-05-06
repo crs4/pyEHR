@@ -5,7 +5,6 @@ from openehr.ehr.services.dbmanager.errors import *
 from openehr.utils import *
 import pymongo
 import pymongo.errors
-from bson.objectid import ObjectId
 import re
 import time
 

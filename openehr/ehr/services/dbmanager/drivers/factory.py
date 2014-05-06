@@ -1,6 +1,4 @@
 from openehr.utils import get_logger
-from mongo import MongoDriver
-from elastic_search import ElasticSearchDriver
 from openehr.ehr.services.dbmanager.errors import UnknownDriverError
 
 
@@ -19,9 +17,11 @@ class DriversFactory(object):
 
     def get_driver(self):
         if self.driver == 'mongodb':
+            from mongo import MongoDriver
             return MongoDriver(self.host, self.database, self.repository,
                                self.port, self.user, self.passwd, self.logger)
         elif self.driver == 'elasticsearch':
+            from elastic_search import ElasticSearchDriver
             return ElasticSearchDriver([{"host":self.host,"port":self.port}],self.database,self.repository,
                                        user=self.user,passwd=self.passwd,logger=self.logger)
         else:
