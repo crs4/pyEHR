@@ -3,11 +3,11 @@ from functools import wraps
 
 from bottle import post, run, response, request, abort, HTTPError
 
-from openehr.utils import get_logger
-from openehr.utils.services import get_service_configuration
-from openehr.ehr.services.dbmanager.dbservices import DBServices
-from openehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
-import openehr.ehr.services.dbmanager.errors as pyehr_errors
+from pyehr.utils import get_logger
+from pyehr.utils.services import get_service_configuration
+from pyehr.ehr.services.dbmanager.dbservices import DBServices
+from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
+import pyehr.ehr.services.dbmanager.errors as pyehr_errors
 
 
 class DBService(object):

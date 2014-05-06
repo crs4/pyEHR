@@ -2,8 +2,8 @@ import os, unittest, httplib2, sys, json, time
 from urllib import urlencode
 from urlparse import urlparse
 from socket import error as serror
-from openehr.utils import decode_dict
-from openehr.utils.services import get_service_configuration
+from pyehr.utils import decode_dict
+from pyehr.utils.services import get_service_configuration
 
 CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
 
