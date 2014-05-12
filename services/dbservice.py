@@ -1,7 +1,7 @@
 import sys, argparse, json
 from functools import wraps
 
-from bottle import post, run, response, request, abort, HTTPError, route
+from bottle import post, get, run, response, request, abort, HTTPError
 
 from pyehr.utils import get_logger
 from pyehr.utils.services import get_service_configuration
@@ -30,6 +30,9 @@ class DBService(object):
         post('/ehr/delete')(self.delete_ehr_record)
         post('/batch/save/patient')(self.batch_save_patient)
         post('/batch/save/patients')(self.batch_save_patients)
+        # Utilities
+        post('/check/status')(self.test_server)
+        get('/check/status')(self.test_server)
 
     def exceptions_handler(f):
         @wraps(f)
@@ -76,8 +79,7 @@ class DBService(object):
         else:
             raise ValueError('Can\'t convert to boolean value %s' % str_val)
 
-    @route('/check/status')
-    def test_server():
+    def test_server(self):
         return "Server running"
 
     @exceptions_handler
