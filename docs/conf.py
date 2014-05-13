@@ -35,6 +35,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.todo',
     'sphinx.ext.intersphinx',
+    'sphinxcontrib.httpdomain',
 ]
 todo_include_todos = True
 
