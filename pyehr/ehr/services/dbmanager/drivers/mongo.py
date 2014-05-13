@@ -404,11 +404,11 @@ class MongoDriver(DriverInterface):
         self._update_record(record_id, update_statement)
         return last_update
 
-    def parseExpression(self, expression):
-        q = expression.replace('/','.')
+    def parse_expression(self, expression):
+        q = expression.replace('/', '.')
         return q
 
-    def parseSimpleExpression(self, expression):
+    def parse_simple_expression(self, expression):
         expr = {}
         operator = re.search('>|>=|=|<|<=|!=', expression)
         if operator:
@@ -434,7 +434,7 @@ class MongoDriver(DriverInterface):
             expr[q] = {'$exists' : True}
         return expr
 
-    def parseMatchExpression(self, expr):
+    def parse_match_expression(self, expr):
         range = expr.expression.lstrip('{')
         range = range.rstrip('}')
         values = range.split(',')
@@ -444,14 +444,14 @@ class MongoDriver(DriverInterface):
             final.append(v)
         return final
 
-    def calculateConditionExpression(self, query, condition):
+    def calculate_condition_expression(self, query, condition):
         i = 0
         or_expressions = []
         while i < len(condition.conditionSequence):
             expression = condition.conditionSequence[i]
             if isinstance(expression, ConditionExpression):
                 print "Expression: " + expression.expression
-                op1 = self.parseExpression(expression.expression)
+                op1 = self.parse_expression(expression.expression)
                 if not i+1==len(condition.conditionSequence):
                     operator = condition.conditionSequence[i+1]
                     if isinstance(operator, ConditionOperator):
@@ -467,7 +467,7 @@ class MongoDriver(DriverInterface):
                             or_expressions.append(op1)
                             i = i+2
                         elif operator.op == "MATCHES":
-                            match = self.parseMatchExpression(condition.conditionSequence[i+2])
+                            match = self.parse_match_expression(condition.conditionSequence[i+2])
                             expr = {op1 : {"$in" : match}}
                             or_expressions.append(expr)
                             i = i+3
@@ -497,7 +497,7 @@ class MongoDriver(DriverInterface):
                     else:
                         pass
                 else:
-                    or_expressions.append(self.parseSimpleExpression(op1))
+                    or_expressions.append(self.parse_simple_expression(op1))
                     i += 1
         if len(or_expressions) == 1:
             print "or_expression single: " + str(or_expressions[0])
@@ -506,13 +506,13 @@ class MongoDriver(DriverInterface):
             print "or_expression: " + str(or_expressions)
             query["$or"] = or_expressions
 
-    def computePredicate(self, query, predicate):
+    def compute_predicate(self, query, predicate):
         if isinstance(predicate, PredicateExpression):
             predEx = predicate.predicateExpression
             if predEx:
                 lo = predEx.leftOperand
                 if not lo:
-                    raise PredicateException("MongoDriver.computePredicate: No left operand found")
+                    raise PredicateException("MongoDriver.compute_predicate: No left operand found")
                 op = predEx.operand
                 ro = predEx.rightOperand
                 if op and ro:
@@ -520,14 +520,14 @@ class MongoDriver(DriverInterface):
                     if op == "=":
                         query[lo] = ro
             else:
-                raise PredicateException("MongoDriver.computePredicate: No predicate expression found")
+                raise PredicateException("MongoDriver.compute_predicate: No predicate expression found")
         elif isinstance(predicate, ArchetypePredicate):
             predicateString = predicate.archetypeId
             query[predicateString] = {'$exists' : True}
         else:
-            raise PredicateException("MongoDriver.computePredicate: No predicate expression found")
+            raise PredicateException("MongoDriver.compute_predicate: No predicate expression found")
 
-    def calculateLocationExpression(self, query, location):
+    def calculate_location_expression(self, query, location):
         # Here is where the collection has been chosen according to the selection
         print "LOCATION: %s" % str(location)
         if location.classExpression:
@@ -536,7 +536,7 @@ class MongoDriver(DriverInterface):
             variableName = ce.variableName
             predicate = ce.predicate
             if predicate:
-                self.computePredicate(query, predicate)
+                self.compute_predicate(query, predicate)
         else:
             raise Exception("MongoDriver Exception: Query must have a location expression")
 
@@ -547,13 +547,13 @@ class MongoDriver(DriverInterface):
                 variableName = ce.variableName
                 predicate = ce.predicate
                 if predicate:
-                    self.computePredicate(query, predicate)
+                    self.compute_predicate(query, predicate)
         print "QUERY: %s" % query
         print (self.collection)
         resp = self.collection.find(query)
         print resp.count()
 
-    def createResponse(self, dbQuery, selection):
+    def create_response(self, dbQuery, selection):
         # execute the query
         print "QUERY PRE: %s" % str(dbQuery)
         # Prepare the response
@@ -578,7 +578,7 @@ class MongoDriver(DriverInterface):
             rs.rows.append(rr)
         return rs
 
-    def executeQuery(self, query):
+    def execute_query(self, query):
         self.__check_connection()
         try:
             selection = query.selection
@@ -588,12 +588,12 @@ class MongoDriver(DriverInterface):
             timeConstraints = query.timeConstraints
             dbQuery = {}
             # select the collection
-            self.calculateLocationExpression(dbQuery,location)
+            self.calculate_location_expression(dbQuery,location)
             # prepare the query to the db
             if condition:
-                self.calculateConditionExpression(dbQuery,condition)
+                self.calculate_condition_expression(dbQuery,condition)
             # create the response
-            return self.createResponse(dbQuery, selection)
+            return self.create_response(dbQuery, selection)
         except Exception, e:
             print "Mongo Driver Error: " + str(e)
             return None

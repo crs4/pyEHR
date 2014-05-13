@@ -39,7 +39,7 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def executeQuery(self, query):
+    def execute_query(self, query):
         pass
 
     @abstractmethod

@@ -62,9 +62,9 @@ class QueryService():
         return obj
 
     def queryDB(self, query):
-        rs = self.dbdriver.executeQuery(query)
+        rs = self.dbdriver.execute_query(query)
         if rs:
-            return rs.getJSON()
+            return rs.get_json()
         else:
             return None
 

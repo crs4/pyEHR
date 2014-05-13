@@ -16,7 +16,7 @@ class ResultSet():
         self.columns = []
         self.rows = []
 
-    def getJSON(self):
+    def get_json(self):
         columns = []
         for col in self.columns:
             columns.append({'name' : col.name, 'path' : col.path})
@@ -34,4 +34,4 @@ class ResultSet():
         return json
 
     def __str__(self):
-        return str(self.getJSON())
+        return str(self.get_json())
