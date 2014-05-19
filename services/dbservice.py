@@ -265,7 +265,7 @@ class DBService(object):
         if not ehr_record:
             response_body = {
                 'SUCCESS': False,
-                'MESSAGE': 'EHR record with ID %s is not connected to patient record or it alredy an hidden record' % ehr_record_id
+                'MESSAGE': 'EHR record with ID %s is not connected to patient record or is alredy an hidden record' % ehr_record_id
             }
         else:
             self.dbs.hide_ehr_record(ehr_record)
