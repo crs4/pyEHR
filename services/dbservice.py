@@ -1,4 +1,4 @@
-import sys, argparse, json
+import sys, argparse, json, os
 from functools import wraps
 
 from bottle import post, get, run, response, request, abort, HTTPError
@@ -423,18 +423,36 @@ def get_parser():
                         help='service configuration file')
     parser.add_argument('--debug', action='store_true',
                         help='Enable web server DEBUG mode')
+    parser.add_argument('--pid-file', type=str, help='PID file for the dbservice daemon',
+                        default='/tmp/pyehr_dbservice.pid')
     return parser
 
+def check_pid_file(pid_file, logger):
+    if os.path.isfile(pid_file):
+        logger.info('Another dbservice daemon is running, exit')
+        sys.exit(0)
+
+def create_pid(pid_file):
+    pid = str(os.getpid())
+    with open(pid_file, 'w') as ofile:
+        ofile.write(pid)
+
+def destroy_pid(pid_file):
+    os.remove(pid_file)
 
 def main(argv):
     parser = get_parser()
     args = parser.parse_args(argv)
-    conf = get_service_configuration(args.config, get_logger('db_service_daemon_main'))
+    logger = get_logger('db_service_daemon_main')
+    conf = get_service_configuration(args.config, logger)
     if not conf:
         msg = 'It was impossible to load configuration, exit'
         sys.exit(msg)
     dbs = DBService(**conf.get_db_configuration())
+    check_pid_file(args.pid_file, logger)
+    create_pid(args.pid_file)
     dbs.start_service(debug=args.debug, **conf.get_service_configuration())
+    destroy_pid(args.pid_file)
 
 
 if __name__ == '__main__':
