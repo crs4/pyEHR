@@ -573,7 +573,6 @@ class MongoDriver(DriverInterface):
         rs.totalResults = queryResult.count()
         for q in queryResult:
             rr = ResultRow()
-            rr = ResultRow()
             rr.items = q.values()
             rs.rows.append(rr)
         return rs
