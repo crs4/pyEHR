@@ -66,7 +66,10 @@ class IndexService(object):
         record_hash = self._get_record_hash(xml_doc)
         res = self._execute_query('collection("%s")/archetype/structure_id[@str_hash="%s"]' %
                                   (self.db, record_hash))
-        return res.find('structure_id').get('uid')
+        try:
+            return res.find('structure_id').get('uid')
+        except AttributeError:
+            return None
 
     def get_structure_id(self, ehr_record):
         """
