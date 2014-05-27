@@ -35,7 +35,8 @@ class IndexService(object):
             return 'archetype' in doc
         # TODO: sort records structure?
         root = etree.Element('archetype', {'class': ehr_record['archetype']})
-        for x in ehr_record['ehr_data'].values():
+        # TODO: handle lists and dictionaries
+        for x in ehr_record['data'].values():
             if type(x) == dict and is_archetype(x):
                 root.append(IndexService.get_structure(x))
         return root
