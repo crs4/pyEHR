@@ -32,7 +32,7 @@ class ElasticSearchDriver(DriverInterface):
 
     def __init__(self, host, database,collection,
                  port=elasticsearch.Urllib3HttpConnection, user=None, passwd=None,
-                 logger=None):
+                 index_service=None, logger=None):
         self.client = None
         self.host = host
         #usare port per transportclass ?   self.transportclass
@@ -52,6 +52,7 @@ class ElasticSearchDriver(DriverInterface):
         # self.port = port
         # self.user = user
         # self.passwd = passwd
+        self.index_service = index_service
         self.logger = logger or get_logger('elasticsearch-db-driver')
 
     def __enter__(self):

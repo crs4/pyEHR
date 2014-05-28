@@ -2,7 +2,7 @@ import unittest, sys, os, uuid
 from collections import Counter
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
-    ClinicalRecord
+    ClinicalRecord, ArchetypeInstance
 from pyehr.utils.services import get_service_configuration
 
 CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
@@ -19,10 +19,19 @@ class TestDBServices(unittest.TestCase):
     def setUp(self):
         if CONF_FILE is None:
             sys.exit('ERROR: no configuration file provided')
-        self.conf = get_service_configuration(CONF_FILE).get_db_configuration()
+        sconf = get_service_configuration(CONF_FILE)
+        self.conf = sconf.get_db_configuration()
+        self.index_conf = sconf.get_index_configuration()
+
+    def _delete_index_db(self, dbs):
+        dbs.index_service.connect()
+        dbs.index_service.session.execute('drop database %s' %
+                                          dbs.index_service.db)
+        dbs.index_service.disconnect()
 
     def test_save_patient(self):
         dbs = DBServices(**self.conf)
+        dbs.set_index_service(**self.index_conf)
         pat_rec = PatientRecord(record_id='TEST_PATIENT')
         pat_rec = dbs.save_patient(pat_rec)
         self.assertEqual(len(pat_rec.ehr_records), 0)
@@ -30,28 +39,35 @@ class TestDBServices(unittest.TestCase):
         self.assertTrue(pat_rec.active)
         # cleanup
         dbs.delete_patient(pat_rec)
+        self._delete_index_db(dbs)
 
     def test_save_ehr_record(self):
         dbs = DBServices(**self.conf)
+        dbs.set_index_service(**self.index_conf)
         pat_rec = dbs.save_patient(self.create_random_patient())
-        ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-                                 {'field1': 'value1', 'field2': 'value2'})
+        arch_rec = ArchetypeInstance('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+                                     {'field1': 'value1', 'field2': 'value2'})
+        ehr_rec = ClinicalRecord(arch_rec)
         ehr_rec, pat_rec = dbs.save_ehr_record(ehr_rec, pat_rec)
         self.assertIsInstance(ehr_rec.record_id, str)
         self.assertTrue(ehr_rec.active)
-        self.assertEqual(ehr_rec.archetype, 'openEHR-EHR-EVALUATION.dummy-evaluation.v1')
-        self.assertEqual(ehr_rec.ehr_data, {'field1': 'value1', 'field2': 'value2'})
+        self.assertEqual(ehr_rec.ehr_data.archetype_class,
+                         'openEHR-EHR-EVALUATION.dummy-evaluation.v1')
+        self.assertEqual(ehr_rec.ehr_data.data,
+                         {'field1': 'value1', 'field2': 'value2'})
         self.assertEqual(len(pat_rec.ehr_records), 1)
         self.assertEqual(pat_rec.ehr_records[0], ehr_rec)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
+        self._delete_index_db(dbs)
 
     def test_remove_ehr_record(self):
         dbs = DBServices(**self.conf)
+        dbs.set_index_service(**self.index_conf)
         pat_rec_1 = dbs.save_patient(self.create_random_patient())
-        ehr_rec = ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+        arch_rec = ArchetypeInstance('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
                                  {'field1': 'value1', 'field2': 'value2'})
-        self.assertIsNotNone(ehr_rec.record_id)
+        ehr_rec = ClinicalRecord(arch_rec)
         ehr_rec, pat_rec_1 = dbs.save_ehr_record(ehr_rec, pat_rec_1)
         self.assertIsNotNone(ehr_rec.record_id)
         self.assertEqual(len(pat_rec_1.ehr_records), 1)
@@ -65,23 +81,29 @@ class TestDBServices(unittest.TestCase):
         # clenup
         dbs.delete_patient(pat_rec_1)
         dbs.delete_patient(pat_rec_2, cascade_delete=True)
+        self._delete_index_db(dbs)
 
     def test_load_ehr_records(self):
         dbs = DBServices(**self.conf)
+        dbs.set_index_service(**self.index_conf)
         pat_rec = dbs.save_patient(PatientRecord(record_id='PATIENT_01'))
         for x in xrange(10):
-            _, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-                                                            {'ehr_field': 'ehr_value%02d' % x}), pat_rec)
+            arch = ArchetypeInstance('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+                                     {'ehr_field': 'ehr_value%02d' % x})
+            _, pat_rec = dbs.save_ehr_record(ClinicalRecord(arch), pat_rec)
         pat_rec = dbs.get_patient('PATIENT_01', fetch_ehr_records=False)
         self.assertEqual(len(pat_rec.ehr_records), 10)
         for ehr in pat_rec.ehr_records:
-            self.assertEqual(len(ehr.ehr_data), 0)
+            self.assertIsInstance(ehr.ehr_data, ArchetypeInstance)
+            self.assertEqual(len(ehr.ehr_data.data), 0)
         pat_rec = dbs.load_ehr_records(pat_rec)
         self.assertEqual(len(pat_rec.ehr_records), 10)
         for ehr in pat_rec.ehr_records:
-            self.assertNotEqual(len(ehr.ehr_data), 0)
+            self.assertIsInstance(ehr.ehr_data, ArchetypeInstance)
+            self.assertNotEqual(len(ehr.ehr_data.data), 0)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
+        self._delete_index_db(dbs)
 
     def _get_active_records_count(self, patient_record, counter):
         for ehr in patient_record.ehr_records:
@@ -93,10 +115,12 @@ class TestDBServices(unittest.TestCase):
 
     def test_hide_patient(self):
         dbs = DBServices(**self.conf)
+        dbs.set_index_service(**self.index_conf)
         pat_rec = dbs.save_patient(self.create_random_patient())
         for x in xrange(10):
-            _, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-                                                            {'ehr_field': 'ehr_value%02d' % x}), pat_rec)
+            arch = ArchetypeInstance('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+                                     {'ehr_field': 'ehr_value%02d' % x})
+            _, pat_rec = dbs.save_ehr_record(ClinicalRecord(arch), pat_rec)
         active_records = self._get_active_records_count(pat_rec, Counter())
         self.assertEqual(active_records['active'], 10)
         self.assertNotIn('hidden', active_records)
@@ -107,13 +131,16 @@ class TestDBServices(unittest.TestCase):
         self.assertNotIn('active', active_records)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
+        self._delete_index_db(dbs)
 
     def test_hide_ehr_record(self):
         dbs = DBServices(**self.conf)
+        dbs.set_index_service(**self.index_conf)
         pat_rec = dbs.save_patient(PatientRecord(record_id='PATIENT_01'))
         for x in xrange(20):
-            _, pat_rec = dbs.save_ehr_record(ClinicalRecord('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-                                                            {'ehr_field': 'ehr_value%02d' % x}), pat_rec)
+            arch = ArchetypeInstance('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+                                     {'ehr_field': 'ehr_value%02d' % x})
+            _, pat_rec = dbs.save_ehr_record(ClinicalRecord(arch), pat_rec)
         self.assertEqual(len(pat_rec.ehr_records), 20)
         active_records = self._get_active_records_count(pat_rec, Counter())
         self.assertEqual(active_records['active'], 20)
@@ -132,13 +159,16 @@ class TestDBServices(unittest.TestCase):
         self.assertEqual(active_records['hidden'], 10)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
+        self._delete_index_db(dbs)
 
     def test_move_ehr_record(self):
         dbs = DBServices(**self.conf)
+        dbs.set_index_service(**self.index_conf)
         pat_rec_1 = dbs.save_patient(self.create_random_patient())
         pat_rec_2 = dbs.save_patient(self.create_random_patient())
-        ehr_rec = ClinicalRecord(archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-                                 ehr_data={'k1': 'v1', 'k2': 'v2'})
+        arch = ArchetypeInstance('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+                                 {'k1': 'v1', 'k2': 'v2'})
+        ehr_rec = ClinicalRecord(arch)
         ehr_rec, pat_rec_1 = dbs.save_ehr_record(ehr_rec, pat_rec_1)
         self.assertIn(ehr_rec, pat_rec_1.ehr_records)
         self.assertNotIn(ehr_rec, pat_rec_2.ehr_records)
@@ -148,6 +178,7 @@ class TestDBServices(unittest.TestCase):
         # cleanup
         dbs.delete_patient(pat_rec_1)
         dbs.delete_patient(pat_rec_2, cascade_delete=True)
+        self._delete_index_db(dbs)
 
 
 def suite():
