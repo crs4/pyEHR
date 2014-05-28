@@ -34,6 +34,9 @@ class DBService(object):
         post('/check/status')(self.test_server)
         get('/check/status')(self.test_server)
 
+    def add_index_service(self, host, port, database, user, passwd):
+        self.dbs.set_index_service(host, port, database, user, passwd)
+
     def exceptions_handler(f):
         @wraps(f)
         def wrapper(inst, *args, **kwargs):
@@ -417,6 +420,7 @@ class DBService(object):
         except Exception, e:
             self.logger.critical('An error has occurred: %s', e)
 
+
 def get_parser():
     parser = argparse.ArgumentParser('Run the DBService daemon')
     parser.add_argument('--config', type=str, required=True,
@@ -427,18 +431,22 @@ def get_parser():
                         default='/tmp/pyehr_dbservice.pid')
     return parser
 
+
 def check_pid_file(pid_file, logger):
     if os.path.isfile(pid_file):
         logger.info('Another dbservice daemon is running, exit')
         sys.exit(0)
+
 
 def create_pid(pid_file):
     pid = str(os.getpid())
     with open(pid_file, 'w') as ofile:
         ofile.write(pid)
 
+
 def destroy_pid(pid_file):
     os.remove(pid_file)
+
 
 def main(argv):
     parser = get_parser()
@@ -449,6 +457,7 @@ def main(argv):
         msg = 'It was impossible to load configuration, exit'
         sys.exit(msg)
     dbs = DBService(**conf.get_db_configuration())
+    dbs.add_index_service(**conf.get_index_configuration())
     check_pid_file(args.pid_file, logger)
     create_pid(args.pid_file)
     dbs.start_service(debug=args.debug, **conf.get_service_configuration())
