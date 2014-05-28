@@ -141,25 +141,29 @@ API Methods
             "ehr_records": [
                 {
                     "ehr_data": {
-                        "k2": "v2",
-                        "k1": "v1"
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data" {
+                            "k2": "v2",
+                            "k1": "v1"
+                        }
                     },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 },
                 {
                     "ehr_data": {
-                        "k2": "v2",
-                        "k1": "v1"
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {
+                            "k2": "v2",
+                            "k1": "v1"
+                        }
                     },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -178,20 +182,24 @@ API Methods
             "active": true,
             "ehr_records": [
                 {
-                    "ehr_data": {},
+                    "ehr_data": {
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {}
+                    },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 },
                 {
-                    "ehr_data": {},
+                    "ehr_data": {
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {}
+                    },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -226,20 +234,24 @@ API Methods
             "active": true,
             "ehr_records": [
                 {
-                    "ehr_data": {},
+                    "ehr_data": {
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {}
+                    },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 },
                 {
-                    "ehr_data": {},
+                    "ehr_data": {
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {}
+                    },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -265,25 +277,29 @@ API Methods
             "ehr_records": [
                 {
                     "ehr_data": {
-                        "k2": "v2",
-                        "k1": "v1"
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {
+                            "k2": "v2",
+                            "k1": "v1"
+                        }
                     },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 },
                 {
                     "ehr_data": {
-                        "k2": "v2",
-                        "k1": "v1"
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {
+                            "k2": "v2",
+                            "k1": "v1"
+                        }
                     },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -313,10 +329,12 @@ API Methods
    .. sourcecode:: json
 
       {
-        "archetype": "openEHR.TEST-EVALUATION.v1",
         "ehr_data": {
-          "at0001": "val1",
-          "at0002": "val2"
+          "archetype": "openEHR.TEST-EVALUATION.v1",
+          "data": {
+            "at0001": "val1",
+            "at0002": "val2"
+          }
         },
         "active": true,
         "creation_time": 1399902042.311941,
@@ -330,14 +348,16 @@ API Methods
       {
         "RECORD": {
           "ehr_data": {
-            "at0001": "val1",
-            "at0002": "val2"
+            "archetype": "openEHR.TEST-EVALUATION.v1",
+            "data": {
+              "at0001": "val1",
+              "at0002": "val2"
+            }
           },
           "creation_time": 1399905956.765149,
           "last_update": 1399905956.765149,
           "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
           "active": true,
-          "archetype": "openEHR.TEST-EVALUATION.v1"
         },
         "SUCCESS": true
       }
