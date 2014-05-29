@@ -33,12 +33,51 @@ class IndexService(object):
     def get_structure(ehr_record):
         def is_archetype(doc):
             return 'archetype' in doc
+
+        def get_structure_from_dict(doc):
+            archetypes = []
+            for k, v in doc.iteritems():
+                if isinstance(v, dict):
+                    if is_archetype(v):
+                        archetypes.append(IndexService.get_structure(v))
+                    else:
+                        a_from_dict = get_structure_from_dict(v)
+                        if len(a_from_dict) > 0:
+                            archetypes.extend(a_from_dict)
+                if isinstance(v, list):
+                    a_from_list = get_structure_from_list(v)
+                    if len(a_from_list) > 0:
+                        archetypes.extend(a_from_list)
+            return archetypes
+
+        def get_structure_from_list(dlist):
+            archetypes = []
+            for x in dlist:
+                if isinstance(x, dict):
+                    if is_archetype(x):
+                        archetypes.append(IndexService.get_structure(x))
+                    else:
+                        a_from_dict = get_structure_from_dict(x)
+                        if len(a_from_dict) > 0:
+                            archetypes.extend(a_from_dict)
+                if isinstance(x, list):
+                    a_from_list = get_structure_from_list(x)
+                    if len(a_from_list) > 0:
+                        archetypes.extend(a_from_list)
+            return archetypes
+
         # TODO: sort records structure?
         root = etree.Element('archetype', {'class': ehr_record['archetype']})
-        # TODO: handle lists and dictionaries
         for x in ehr_record['data'].values():
-            if type(x) == dict and is_archetype(x):
-                root.append(IndexService.get_structure(x))
+            if isinstance(x, dict):
+                if is_archetype(x):
+                    root.append(IndexService.get_structure(x))
+                else:
+                    for a in get_structure_from_dict(x):
+                        root.append(a)
+            if isinstance(x, list):
+                for a in get_structure_from_list(x):
+                    root.append(a)
         return root
 
     def _get_record_hash(self, record):
