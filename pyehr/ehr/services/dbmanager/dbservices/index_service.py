@@ -147,7 +147,10 @@ class IndexService(object):
         query = 'collection("%s")' % self.db
         for xpq in xpath_queries:
             query += '/%s' % xpq
-        query += '/ancestor::archetype/structure_id'
+        if len(xpath_queries) > 1:
+            query += '/ancestor::archetype/structure_id'
+        else:
+            query += '/structure_id'
         return query
 
     def get_matching_ids(self, aql_containers):
