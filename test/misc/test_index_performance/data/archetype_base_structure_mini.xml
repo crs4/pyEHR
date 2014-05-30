@@ -1,0 +1,14 @@
+<archetype class="openehr-test-OBSERVATION.test01.v1">
+    <archetype class="openehr-test-OBSERVATION.test01_1.v1">
+        <archetype class="openehr-test-OBSERVATION.test01_1_1.v1"/>
+        <archetype class="openehr-test-OBSERVATION.test01_1_2.v1"/>
+    </archetype>
+    <archetype class="openehr-test-OBSERVATION.test01_2.v1">
+        <archetype class="openehr-test-OBSERVATION.test01_2_1.v1"/>
+        <archetype class="openehr-test-OBSERVATION.test01_2_2.v1"/>
+    </archetype>
+    <archetype class="openehr-test-OBSERVATION.test01_3.v1">
+        <archetype class="openehr-test-OBSERVATION.test01_3_1.v1"/>
+        <archetype class="openehr-test-OBSERVATION.test01_3_2.v1"/>
+    </archetype>
+</archetype>
