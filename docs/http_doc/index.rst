@@ -2,16 +2,7 @@ REST API reference
 ==================
 
 
-DB Service
-----------
-
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    dbservice
-
-
-Query Service
--------------
-
-  TBD

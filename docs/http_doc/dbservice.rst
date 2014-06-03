@@ -1,3 +1,6 @@
+DB Service
+==========
+
 Common Responses
 ----------------
 Error reponses are the same for all the methods exposed by the REST API,
