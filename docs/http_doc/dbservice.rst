@@ -226,6 +226,7 @@ API Methods
 
    :query patient_record: a patient record in JSON format with unloaded EHRs (clinical records
                           withouth clinical data details). An example is the following
+
    .. sourcecode:: json
 
     {
