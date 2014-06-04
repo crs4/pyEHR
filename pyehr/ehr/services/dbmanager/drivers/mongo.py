@@ -208,14 +208,13 @@ class MongoDriver(DriverInterface):
                 arch = ArchetypeInstance(record['ehr_data']['archetype'], {})
             else:
                 arch = None
-            crec = ClinicalRecord(
+            return ClinicalRecord(
                 creation_time=record.get('creation_time'),
                 record_id=record.get('_id'),
                 last_update=record.get('last_update'),
                 active=record.get('active'),
                 ehr_data=arch
             )
-            return crec
 
     def decode_record(self, record, loaded=True):
         """
