@@ -28,6 +28,8 @@ setup(
     maintainer_email=MAINTAINER_EMAIL,
     packages=[
         'pyehr',
+        'pyehr.libs',
+        'pyehr.libs.python',
         'pyehr.utils',
         'pyehr.aql',
         'pyehr.ehr',
