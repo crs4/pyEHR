@@ -14,6 +14,7 @@ Contents:
    :maxdepth: 2
 
    api_doc/index
+   http_doc/index
 
 
 Indices and tables

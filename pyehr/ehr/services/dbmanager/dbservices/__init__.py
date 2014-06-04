@@ -1,5 +1,6 @@
 from pyehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from pyehr.utils import get_logger
+from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError
 import time
@@ -32,6 +33,7 @@ class DBServices(object):
         self.port = port
         self.user = user
         self.passwd = passwd
+        self.index_service = None
         self.logger = logger or get_logger('db_services')
 
     def _get_drivers_factory(self, repository):
@@ -43,8 +45,27 @@ class DBServices(object):
             port=self.port,
             user=self.user,
             passwd=self.passwd,
+            index_service=self.index_service,
             logger=self.logger
         )
+
+    def set_index_service(self, host, port, database, user, passwd):
+        """
+        Add a :class:`IndexService` to the current :class:`DBService` that will be used
+        to index clinical records
+        :param host: the host of the :class:`IndexService`
+        :type host: str
+        :param port: the port of the :class:`IndexService`
+        :type port: str
+        :param database: the database used to store the indices
+        :type database: str
+        :param user: the user to access the :class:`IndexService`
+        :type user: str
+        :param passwd: the password to access the :class:`IndexService`
+        :type passwd: str
+        """
+        self.index_service = IndexService(database, host, port, user, passwd,
+                                          self.logger)
 
     def save_patient(self, patient_record):
         """

@@ -138,11 +138,10 @@ class ClinicalRecord(Record):
     :ivar ehr_data: clinical data in OpenEHR syntax
     """
 
-    def __init__(self, archetype, ehr_data, creation_time=None, last_update=None,
+    def __init__(self, ehr_data, creation_time=None, last_update=None,
                  active=True, record_id=None):
         super(ClinicalRecord, self).__init__(creation_time or time.time(),
                                              last_update, active, record_id)
-        self.archetype = archetype
         self.ehr_data = ehr_data
         
     def new_record_id(self):
@@ -155,13 +154,13 @@ class ClinicalRecord(Record):
         :return: a JSON dictionary
         :rtype: dictionary
         """
-        attrs = ['creation_time', 'last_update', 'active',
-                 'archetype', 'ehr_data']
+        attrs = ['creation_time', 'last_update', 'active']
         json = dict()
         for a in attrs:
             json[a] = getattr(self, a)
         if self.record_id:
             json['record_id'] = str(self.record_id)
+        json['ehr_data'] = self.ehr_data.to_json()
         return json
 
     @staticmethod
@@ -175,7 +174,6 @@ class ClinicalRecord(Record):
         :rtype: :class:`ClinicalRecord`
         """
         schema = Schema({
-            Required('archetype'): str,
             Required('ehr_data'): dict,
             'creation_time': float,
             'last_update': float,
@@ -185,6 +183,132 @@ class ClinicalRecord(Record):
         try:
             json_data = cleanup_json(decode_dict(json_data))
             schema(json_data)
+            json_data['ehr_data'] = ArchetypeInstance.from_json(json_data['ehr_data'])
             return ClinicalRecord(**json_data)
         except MultipleInvalid:
             raise InvalidJsonStructureError('JSON record\'s structure is not compatible with ClinicalRecord object')
+
+
+class ArchetypeInstance(object):
+    """
+    Class representing an openEHR Archetype instance
+
+    :ivar archetype: the openEHR Archetype class related to this instance
+    :ivar data: clinical data related to this instance represented as a dictionary.
+                Values of the dictionary can be :class:`ArchetypeInstance` objects.
+    """
+
+    def __init__(self, archetype_class, data):
+        self.archetype_class = archetype_class
+        self.data = data
+
+    def to_json(self):
+        """
+        Encode current record into a JSON dictionary
+
+        :return: a JSON dictionary
+        :rtype: dictionary
+        """
+        def encode_dict_data(record_data):
+            data = dict()
+            for k, v in record_data.iteritems():
+                if isinstance(v, ArchetypeInstance):
+                    data[k] = v.to_json()
+                elif isinstance(v, dict):
+                    data[k] = encode_dict_data(v)
+                elif isinstance(v, list):
+                    data[k] = encode_list_data(v)
+                else:
+                    data[k] = v
+            return data
+
+        def encode_list_data(record_data):
+            data = list()
+            for x in record_data:
+                if isinstance(x, ArchetypeInstance):
+                    data.append(v.to_json)
+                elif isinstance(x, dict):
+                    data.append(encode_dict_data(x))
+                elif isinstance(x, list):
+                    data.append(encode_list_data(x))
+                else:
+                    data.append(x)
+            return data
+
+        json = {
+            'archetype': self.archetype_class,
+            'data': dict()
+        }
+        for k, v in self.data.iteritems():
+            if isinstance(v, ArchetypeInstance):
+                json['data'][k] = v.to_json()
+            elif isinstance(v, dict):
+                json['data'][k] = encode_dict_data(v)
+            elif isinstance(v, list):
+                json['data'][k] = encode_list_data(v)
+            else:
+                json['data'][k] = v
+        return json
+
+    @staticmethod
+    def from_json(json_data):
+        """
+        Create an :class;`ArchetypeInstance` object from a given JSON dictionary
+
+        :param json_data: the JSON corresponding to the :class:`ArchetypeInstance` object
+        :type json_data: dictionary
+        :return: an :class:`ArchetypeInstance` object
+        :rtype: :class:`ArchetypeInstance`
+        """
+        def is_archetype(dict):
+            return ('archetype' in dict) and ('data' in dict)
+
+        def decode_dict_data(dict_data):
+            data = dict()
+            for k, v in dict_data.iteritems():
+                if isinstance(v, dict):
+                    if is_archetype(v):
+                        data[k] = ArchetypeInstance.from_json(v)
+                    else:
+                        data[k] = decode_dict_data(v)
+                elif isinstance(v, list):
+                    data[k] = decode_list_data(v)
+                else:
+                    data[k] = v
+            return data
+
+        def decode_list_data(dict_data):
+            data = list()
+            for x in dict_data:
+                if isinstance(x, dict):
+                    if is_archetype(x):
+                        data.append(ArchetypeInstance.from_json(x))
+                    else:
+                        data.append(decode_dict_data(x))
+                elif isinstance(x, list):
+                    data.append(decode_list_data(x))
+                else:
+                    data.append(x)
+            return data
+
+        schema = Schema({
+            Required('archetype'): str,
+            Required('data'): dict,
+        })
+        try:
+            json_data = cleanup_json(decode_dict(json_data))
+            schema(json_data)
+            archetype_data = dict()
+            for k, v in json_data['data'].iteritems():
+                if isinstance(v, dict):
+                    if is_archetype(v):
+                        archetype_data[k] = ArchetypeInstance.from_json(v)
+                    else:
+                        archetype_data[k] = decode_dict_data(v)
+                elif isinstance(v, list):
+                    archetype_data[k] = decode_list_data(v)
+                else:
+                    archetype_data[k] = v
+            return ArchetypeInstance(json_data['archetype'], archetype_data)
+        except MultipleInvalid:
+            raise InvalidJsonStructureError('JSON record\'s structure is not compatible with ArchetypeInstance object')

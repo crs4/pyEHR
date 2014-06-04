@@ -32,7 +32,7 @@ class ElasticSearchDriver(DriverInterface):
 
     def __init__(self, host, database,collection,
                  port=elasticsearch.Urllib3HttpConnection, user=None, passwd=None,
-                 logger=None):
+                 index_service=None, logger=None):
         self.client = None
         self.host = host
         #usare port per transportclass ?   self.transportclass
@@ -52,6 +52,7 @@ class ElasticSearchDriver(DriverInterface):
         # self.port = port
         # self.user = user
         # self.passwd = passwd
+        self.index_service = index_service
         self.logger = logger or get_logger('elasticsearch-db-driver')
 
     def __enter__(self):
@@ -152,19 +153,22 @@ class ElasticSearchDriver(DriverInterface):
                     normalized_doc[k] = normalize_keys(v, original, encoded)
             return normalized_doc
 
-        ehr_data = clinical_record.ehr_data
+        ehr_data = clinical_record.ehr_data.to_json()
+        if self.index_service:
+            structure_id = self.index_service.get_structure_id(ehr_data)
+        else:
+            structure_id = None
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = normalize_keys(ehr_data, original_value, encoded_value)
         encoded_record = {
             'creation_time': clinical_record.creation_time,
             'last_update': clinical_record.last_update,
             'active': clinical_record.active,
-            'archetype': clinical_record.archetype,
             'ehr_data': ehr_data,
             '_id' : clinical_record.record_id
         }
-#        if clinical_record.record_id: #always true
-#            encoded_record['_id'] = clinical_record.record_id
+        if structure_id:
+            encoded_record['ehr_structure_id'] = structure_id
         return encoded_record
 
     def encode_record(self, record):
@@ -207,7 +211,8 @@ class ElasticSearchDriver(DriverInterface):
             )
 
     def _decode_clinical_record(self, record, loaded):
-        from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord
+        from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord,\
+            ArchetypeInstance
 
         def decode_keys(document, encoded, original):
             normalized_doc = {}
@@ -225,19 +230,23 @@ class ElasticSearchDriver(DriverInterface):
             for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
                 ehr_data = decode_keys(ehr_data, encoded_value, original_value)
             return ClinicalRecord(
-                archetype=record['archetype'],
-                ehr_data=ehr_data,
+                ehr_data=ArchetypeInstance.from_json(ehr_data),
                 creation_time=record['creation_time'],
                 last_update=record['last_update'],
                 active=record['active'],
                 record_id=str(record.get('_id'))
             )
         else:
+            if record.get('ehr_data'):
+                arch = ArchetypeInstance(record['ehr_data']['archetype'], {})
+            else:
+                arch = None
             return ClinicalRecord(
                 creation_time=record.get('creation_time'),
                 record_id=str(record.get('_id')),
-                archetype=record.get('archetype'),
-                ehr_data={}
+                last_update=record.get('last_update'),
+                active=record.get('active'),
+                ehr_data=arch
             )
 
     def decode_record(self, record, loaded=True):
@@ -251,7 +260,7 @@ class ElasticSearchDriver(DriverInterface):
         :type loaded: boolean
         :return: the ElasticSearch document encoded as a :class:`Record` object
         """
-        if 'archetype' in record:
+        if 'ehr_data' in record:
             return self._decode_clinical_record(record, loaded)
         else:
             return self._decode_patient_record(record, loaded)

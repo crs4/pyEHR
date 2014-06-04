@@ -1,3 +1,6 @@
+DB Service
+==========
+
 Common Responses
 ----------------
 Error reponses are the same for all the methods exposed by the REST API,
@@ -141,25 +144,29 @@ API Methods
             "ehr_records": [
                 {
                     "ehr_data": {
-                        "k2": "v2",
-                        "k1": "v1"
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data" {
+                            "k2": "v2",
+                            "k1": "v1"
+                        }
                     },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 },
                 {
                     "ehr_data": {
-                        "k2": "v2",
-                        "k1": "v1"
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {
+                            "k2": "v2",
+                            "k1": "v1"
+                        }
                     },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -178,20 +185,24 @@ API Methods
             "active": true,
             "ehr_records": [
                 {
-                    "ehr_data": {},
+                    "ehr_data": {
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {}
+                    },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 },
                 {
-                    "ehr_data": {},
+                    "ehr_data": {
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {}
+                    },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -218,6 +229,7 @@ API Methods
 
    :query patient_record: a patient record in JSON format with unloaded EHRs (clinical records
                           withouth clinical data details). An example is the following
+
    .. sourcecode:: json
 
     {
@@ -226,20 +238,24 @@ API Methods
             "active": true,
             "ehr_records": [
                 {
-                    "ehr_data": {},
+                    "ehr_data": {
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {}
+                    },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 },
                 {
-                    "ehr_data": {},
+                    "ehr_data": {
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {}
+                    },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -265,25 +281,29 @@ API Methods
             "ehr_records": [
                 {
                     "ehr_data": {
-                        "k2": "v2",
-                        "k1": "v1"
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {
+                            "k2": "v2",
+                            "k1": "v1"
+                        }
                     },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 },
                 {
                     "ehr_data": {
-                        "k2": "v2",
-                        "k1": "v1"
+                        "archetype": "openEHR.TEST-EVALUATION.v1",
+                        "data": {
+                            "k2": "v2",
+                            "k1": "v1"
+                        }
                     },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
-                    "archetype": "openEHR.TEST-EVALUATION.v1"
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -313,10 +333,12 @@ API Methods
    .. sourcecode:: json
 
       {
-        "archetype": "openEHR.TEST-EVALUATION.v1",
         "ehr_data": {
-          "at0001": "val1",
-          "at0002": "val2"
+          "archetype": "openEHR.TEST-EVALUATION.v1",
+          "data": {
+            "at0001": "val1",
+            "at0002": "val2"
+          }
         },
         "active": true,
         "creation_time": 1399902042.311941,
@@ -330,14 +352,16 @@ API Methods
       {
         "RECORD": {
           "ehr_data": {
-            "at0001": "val1",
-            "at0002": "val2"
+            "archetype": "openEHR.TEST-EVALUATION.v1",
+            "data": {
+              "at0001": "val1",
+              "at0002": "val2"
+            }
           },
           "creation_time": 1399905956.765149,
           "last_update": 1399905956.765149,
           "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
           "active": true,
-          "archetype": "openEHR.TEST-EVALUATION.v1"
         },
         "SUCCESS": true
       }
@@ -429,8 +453,120 @@ API Methods
 
 .. http:post:: /batch/save/patient/
 
-   TBD
+   Save a patient and one or more related EHRs passed as a JSON document. If EHRs have a
+   given ID and a duplicated key error is raisen, all EHRs of this batch previously saved
+   and patient data will be automatically deleted. If a patient already exists, a
+   duplicated key error will be raised and no data will be saved.
+
+   :query patient_data: a JSON document with patient and EHRs data. Example provided below.
+   :resheader Content-Type: application/json
+   :statuscode 200: records succesfully saved
+   :statuscode 400: missing mandatory field `patient_data`
+   :statuscode 500: a patient with given ID already exists or one of the given EHRs has the
+                    same ID of an existing record; data passed as `patient_data` can't be
+                    mapped to pyEHR objects; generic server error, error's details are specified
+                    in the return response
+
+   **Patient Data JSON structure**
+
+   .. sourcecode:: json
+
+       {
+         "record_id": "JOHN_DOE",
+         "active": true,
+         "ehr_records": [
+           {
+             "active": true,
+             "creation_time": 1399905956.765149,
+             "ehr_data" : {
+               "archetype": "openEHR.TEST-EVALUATION.v1",
+               "data": {
+                 "at0001": "val1",
+                 "at0002": "val2"
+               }
+             }
+           },
+           {
+             "active": true,
+             "creation_time": 1399905956.895149,
+             "ehr_data": {
+               "archetype": "openEHR.TEST-EVALUATION-BIS.v1",
+               "data": {
+                 "at0001": "val1",
+                 "at0002": "val2",
+                 "at0003": {
+                   "archetype": "openEHR.TEST-EVALUATION-BIS_SUBMODULE.v1",
+                   "data": {
+                     "at0001": "val1",
+                     "at0002": "val2"
+                   }
+                 }
+               }
+             }
+           }
+         ]
+       }
 
 .. http:post:: /batch/save/patients/
 
-   TBD
+   Save a list of patients with related EHRs passed as a JSON document. For each patient
+   in the set, if EHRs have a given ID and a duplicated key error is raisen, all EHRs of
+   the batch previously saved and patient data will be automatically deleted. If one of
+   the patients already exists, a duplicated key error will be raised and that patient's
+   batch won't be saved.
+
+   :query patients_data: a JSON document with patients and EHRs data. For each patient, the
+                         method will accept the same structure of the `batch/save/patient/`
+                         method, patients must be enclosed within a list.
+   :statuscode 200: operation completed, saved records and the one that raised and error will
+                    be specified in the return response
+   :statuscode 400: missing mandatory field `patients_data`
+
+   **Success response**
+
+   .. sourcecode:: json
+
+    {
+      "SUCCESS": true,
+      "SAVED": [
+        {
+          "record_id": "GOOD_PATIENT",
+          "active": true,
+          "creation_time": 1399905956.765149,
+          "last_update": 1399905956.765149,
+          "ehr_records": [
+            {
+              "active": true,
+              "creation_time": 1399905956.765149,
+              "last_update": 1399905956.765149,
+              "ehr_data": {
+                "archetype": "openEHR.TEST-EVALUATION.v1",
+                "data": {
+                  "at0001": "val1",
+                  "at0002": "val2"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "ERRORS": [
+        {
+          "MESSAGE": "Duplicated key error for patient with ID BAD_PATIENT",
+          "RECORD": {
+            "record_id": "BAD_PATIENT",
+            "ehr_records": [
+              {
+                "ehr_data": {
+                  "archetype": "openEHR.TEST-EVALUATION.v1",
+                  "data": {
+                    "at0001": "val1",
+                    "at0002": "val2"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }

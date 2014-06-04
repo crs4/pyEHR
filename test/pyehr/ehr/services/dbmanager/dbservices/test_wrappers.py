@@ -1,6 +1,6 @@
 import unittest, time
 from pyehr.ehr.services.dbmanager.dbservices.wrappers \
-    import ClinicalRecord, PatientRecord
+    import ClinicalRecord, PatientRecord, ArchetypeInstance
 from pyehr.ehr.services.dbmanager.errors import InvalidJsonStructureError
 
 
@@ -22,17 +22,22 @@ class TestWrapper(unittest.TestCase):
                 'active': True,
                 'creation_time': creation_time,
                 'last_update': creation_time,
-                'archetype': 'openEHR.EHR-TEST-EVALUATION.v1',
                 'ehr_data': {
-                    'field1': 'value1',
-                    'field2': 'value2'
+                    'archetype': 'openEHR.EHR-TEST-EVALUATION.v1',
+                    'data': {
+                        'field1': 'value1',
+                        'field2': 'value2'
+                    }
                 }
             }]
         }
 
+        arch = ArchetypeInstance(
+            archetype_class='openEHR.EHR-TEST-EVALUATION.v1',
+            data={'field1': 'value1', 'field2': 'value2'}
+        )
         crec = ClinicalRecord(
-            ehr_data={'field1': 'value1', 'field2': 'value2'},
-            archetype='openEHR.EHR-TEST-EVALUATION.v1',
+            ehr_data=arch,
             record_id='5314b3a55c98900a8a3d1a2c',
             creation_time=creation_time
         )
@@ -47,10 +52,12 @@ class TestWrapper(unittest.TestCase):
 
     def test_from_json(self):
         creation_time = time.time()
-
+        arch_json = {
+            'archetype': 'openEHR.EHR-TEST-EVALUATION.v1',
+            'data': {'field1': 'value1', 'field2': 'value2'}
+        }
         crec_json = {
             'creation_time': creation_time,
-            'archetype': 'openEHR.EHR-TEST-EVALUATION.v1',
             'record_id': '5314b3a55c98900a8a3d1a2c'
         }
         prec_json = {
@@ -58,20 +65,25 @@ class TestWrapper(unittest.TestCase):
             'record_id': 'V01245AC14CE2412412340'
         }
         with self.assertRaises(InvalidJsonStructureError) as context:
+            ArchetypeInstance.from_json(arch_json)
             ClinicalRecord.from_json(crec_json)
             PatientRecord.from_json(prec_json)
-        crec_json['ehr_data'] = {'field1': 'value1', 'field2': 'value2'}
+        crec_json['ehr_data'] = arch_json
         prec_json['ehr_records'] = [crec_json]
         p = PatientRecord.from_json(prec_json)
         self.assertIsInstance(p, PatientRecord)
         for c in p.ehr_records:
             self.assertIsInstance(c, ClinicalRecord)
             self.assertIsInstance(c.record_id, str)
+            self.assertIsInstance(c.ehr_data, ArchetypeInstance)
 
     def test_get_clinical_record(self):
+        arch = ArchetypeInstance(
+            archetype_class='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+            data={'field1': 'value1', 'field2': 'value2'},
+        )
         crec = ClinicalRecord(
-            archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-            ehr_data={'field1': 'value1', 'field2': 'value2'},
+            ehr_data=arch,
             record_id='5314b3a55c98931a8a3d1a2c'
         )
         prec = PatientRecord(
@@ -86,9 +98,12 @@ class TestWrapper(unittest.TestCase):
 
     def test_equal_records(self):
         def build_clinical_record(record_id=None):
+            arch = ArchetypeInstance(
+                archetype_class='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+                data={'field1': 'value1', 'field2': 'value2'}
+            )
             return ClinicalRecord(record_id=record_id,
-                                  archetype='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-                                  ehr_data={'field1': 'value1', 'field2': 'value2'})
+                                  ehr_data=arch)
         prec1 = PatientRecord(record_id='PATIENT_1')
         prec2 = PatientRecord(record_id='PATIENT_2')
         self.assertNotEqual(prec1, prec2)
