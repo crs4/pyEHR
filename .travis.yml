@@ -11,12 +11,17 @@ before_install:
   # start proper service
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then sudo service mongodb start; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then sudo service elasticsearch start; fi
+  # install BaseX server and start it
+  - sudo apt-get -qq update
+  - sudo apt-get install -qq basex
+  - basexserver -S
   # install Python dependencies
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then pip install elasticsearch; fi
   - pip install bottle
   - pip install httplib2
   - pip install voluptuous
+  - pip install lxml
   # export proper configuration file
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then export SERVICE_CONFIG_FILE=./config/services.mongodb.conf; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export SERVICE_CONFIG_FILE=./config/services.elasticsearch.conf; fi
