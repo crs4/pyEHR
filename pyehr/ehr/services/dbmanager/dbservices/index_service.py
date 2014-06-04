@@ -3,6 +3,8 @@ from hashlib import md5
 from uuid import uuid4
 from pyehr.utils.services import get_logger
 from pyehr.libs.python import BaseXClient
+from socket import error as serror
+from pyehr.ehr.services.dbmanager.errors import IndexServiceConnectionError
 
 
 class IndexService(object):
@@ -17,7 +19,13 @@ class IndexService(object):
         self.logger = logger or get_logger('index_service')
 
     def connect(self):
-        self.session = BaseXClient.Session(self.host, self.port, self.user, self.passwd)
+        try:
+            self.session = BaseXClient.Session(self.host, self.port, self.user, self.passwd)
+        except serror:
+            self.logger.error('Unable to connect to BaseX server at %s:%d', self.host,
+                              self.port)
+            raise IndexServiceConnectionError('Unable to connect to Index service at %s:%d' %
+                                              (self.host, self.port))
         self.session.execute('check %s' % self.db)
 
     def disconnect(self):

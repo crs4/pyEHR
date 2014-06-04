@@ -22,6 +22,10 @@ class UnknownDriverError(Exception):
     pass
 
 
+class IndexServiceConnectionError(Exception):
+    pass
+
+
 class PredicateException(Exception):
     def __init__(self, value):
         self.value = value

@@ -7,6 +7,7 @@ from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance,\
     ClinicalRecord, PatientRecord
 from pyehr.utils.services import get_service_configuration, get_logger
 from pyehr.aql.parser import Parser
+from pyehr.ehr.services.dbmanager.errors import IndexServiceConnectionError
 
 
 class TestIndexPerformance(object):
@@ -92,15 +93,16 @@ class TestIndexPerformance(object):
                                                                                                           hits_counter,
                                                                                                           p[-1])))
 
-    def cleanup(self):
+    def cleanup(self, index_cleanup=True):
         self.logger.info('*** Deleting pyEHR data ***')
         for p in self.dbs.get_patients(fetch_ehr_records=False):
             self.logger.debug('-- Deleting patient %s and EHRs' % p.record_id)
             self.dbs.delete_patient(p, cascade_delete=True)
-        self.logger.info('*** Deleting index data ***')
-        self.dbs.index_service.connect()
-        self.dbs.index_service.session.execute('drop database %s' % self.dbs.index_service.db)
-        self.dbs.index_service.disconnect()
+        if index_cleanup:
+            self.logger.info('*** Deleting index data ***')
+            self.dbs.index_service.connect()
+            self.dbs.index_service.session.execute('drop database %s' % self.dbs.index_service.db)
+            self.dbs.index_service.disconnect()
 
 
 def get_parser():
@@ -128,7 +130,11 @@ def main(argv):
     test = TestIndexPerformance(args.conf_file, args.xml_def_file, args.batch_size,
                                 args.min_ehr_for_patient, args.max_ehr_for_patient,
                                 args.loglevel)
-    test.run()
+    try:
+        test.run()
+    except IndexServiceConnectionError, isce:
+        test.cleanup(index_cleanup=False)
+        raise isce
     if args.cleanup:
         test.cleanup()
 
