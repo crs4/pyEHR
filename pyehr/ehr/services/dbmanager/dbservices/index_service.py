@@ -1,18 +1,20 @@
 from lxml import etree
 from hashlib import md5
 from uuid import uuid4
-import BaseXClient
+from pyehr.utils.services import get_logger
+from pyehr.libs.python import BaseXClient
 
 
 class IndexService(object):
 
-    def __init__(self, db, host, port, user, passwd):
+    def __init__(self, db, host, port, user, passwd, logger=None):
         self.host = host
         self.port = int(port) # just to be safe
         self.user = user
         self.passwd = passwd
         self.db = db
         self.session = None
+        self.logger = logger or get_logger('index_service')
 
     def connect(self):
         self.session = BaseXClient.Session(self.host, self.port, self.user, self.passwd)

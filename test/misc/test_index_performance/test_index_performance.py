@@ -13,14 +13,14 @@ class TestIndexPerformance(object):
 
     def __init__(self, pyehr_conf, xml_file, patients_batch_size,
                  min_ehr_for_patient, max_ehr_for_patient, log_level):
-        conf = get_service_configuration(pyehr_conf)
-        self.dbs = DBServices(**conf.get_db_configuration())
+        self.logger = get_logger('test_index_performance', log_level=log_level)
+        conf = get_service_configuration(pyehr_conf, logger=self.logger)
+        self.dbs = DBServices(logger=self.logger, **conf.get_db_configuration())
         self.dbs.set_index_service(**conf.get_index_configuration())
         self.patients_batch_size = patients_batch_size
         self.min_ehr_for_patient = min_ehr_for_patient
         self.max_ehr_for_patient = max_ehr_for_patient
         self.master_archetype = etree.parse(xml_file)
-        self.logger = get_logger('test_index_performance', log_level=log_level)
 
     def build_record(self, xml_doc):
         archetype = ArchetypeInstance(xml_doc.get('class'), {})
@@ -44,12 +44,12 @@ class TestIndexPerformance(object):
         hits_counter = deepcopy(self.master_archetype)
         for x in xrange(self.patients_batch_size):
             p = self.dbs.save_patient(PatientRecord('PATIENT_%d' % x))
-            self.logger.debug('Saved patient %s' % p.record_id)
+            self.logger.debug('Saved patient %s', p.record_id)
             for y in xrange(randint(self.min_ehr_for_patient, self.max_ehr_for_patient)):
                 a = self.build_record(self.master_archetype.getroot())
                 crec, p = self.dbs.save_ehr_record(ClinicalRecord(a), p)
                 self.update_counter(crec.ehr_data, hits_counter)
-                self.logger.debug('-- Saved EHR with ID %s' % crec.record_id)
+                self.logger.debug('-- Saved EHR with ID %s', crec.record_id)
         return hits_counter
 
     def extract_aql_contains(self, xml_node, ancestors=[]):
@@ -117,7 +117,8 @@ def get_parser():
                         help='The min amount of EHR that can be saved for each patient (default is 1)')
     parser.add_argument('--cleanup', action='store_true',
                         help='Clean data when job is completed')
-    parser.add_argument('--loglevel', default='INFO', help='logging level')
+    parser.add_argument('--loglevel', default='INFO', type=str, help='logging level',
+                        choices=['INFO', 'DEBUG', 'ERROR', 'WARNING', 'CRITICAL'])
     return parser
 
 

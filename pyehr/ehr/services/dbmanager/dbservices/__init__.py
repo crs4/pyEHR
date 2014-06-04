@@ -64,7 +64,8 @@ class DBServices(object):
         :param passwd: the password to access the :class:`IndexService`
         :type passwd: str
         """
-        self.index_service = IndexService(database, host, port, user, passwd)
+        self.index_service = IndexService(database, host, port, user, passwd,
+                                          self.logger)
 
     def save_patient(self, patient_record):
         """
