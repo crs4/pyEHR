@@ -253,7 +253,7 @@ class ArchetypeInstance(object):
     @staticmethod
     def from_json(json_data):
         """
-        Create an :class;`ArchetypeInstance` object from a given JSON dictionary
+        Create an :class:`ArchetypeInstance` object from a given JSON dictionary
 
         :param json_data: the JSON corresponding to the :class:`ArchetypeInstance` object
         :type json_data: dictionary
