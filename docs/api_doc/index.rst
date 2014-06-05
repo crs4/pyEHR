@@ -8,13 +8,13 @@ DBManager
 DB services
 ,,,,,,,,,,,
 
-.. automodule:: openehr.ehr.services.dbmanager.dbservices
+.. automodule:: pyehr.ehr.services.dbmanager.dbservices
    :show-inheritance:
    :inherited-members:
    :members:
    :undoc-members:
 
-.. automodule:: openehr.ehr.services.dbmanager.dbservices.wrappers
+.. automodule:: pyehr.ehr.services.dbmanager.dbservices.wrappers
    :show-inheritance:
    :inherited-members:
    :members:
@@ -23,19 +23,19 @@ DB services
 DB drivers
 ,,,,,,,,,,
 
-.. automodule:: openehr.ehr.services.dbmanager.drivers.interface
+.. automodule:: pyehr.ehr.services.dbmanager.drivers.interface
    :show-inheritance:
    :inherited-members:
    :members:
    :undoc-members:
 
-.. automodule:: openehr.ehr.services.dbmanager.drivers.factory
+.. automodule:: pyehr.ehr.services.dbmanager.drivers.factory
    :show-inheritance:
    :inherited-members:
    :members:
    :undoc-members:
 
-.. automodule:: openehr.ehr.services.dbmanager.drivers.mongo
+.. automodule:: pyehr.ehr.services.dbmanager.drivers.mongo
    :show-inheritance:
    :inherited-members:
    :members:
