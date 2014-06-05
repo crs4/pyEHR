@@ -13,8 +13,10 @@ from pyehr.ehr.services.dbmanager.errors import IndexServiceConnectionError
 class TestIndexPerformance(object):
 
     def __init__(self, pyehr_conf, xml_file, patients_batch_size,
-                 min_ehr_for_patient, max_ehr_for_patient, log_level):
-        self.logger = get_logger('test_index_performance', log_level=log_level)
+                 min_ehr_for_patient, max_ehr_for_patient, log_level,
+                 log_file):
+        self.logger = get_logger('test_index_performance', log_level=log_level,
+                                 log_file=log_file)
         conf = get_service_configuration(pyehr_conf, logger=self.logger)
         self.dbs = DBServices(logger=self.logger, **conf.get_db_configuration())
         self.dbs.set_index_service(**conf.get_index_configuration())
@@ -87,16 +89,18 @@ class TestIndexPerformance(object):
             drf = self.dbs._get_drivers_factory(self.dbs.ehr_repository)
             with drf.get_driver() as driver:
                 results = list(driver.get_records_by_query(q))
-                self.logger.info('-- Executed query: %s' % aql)
-                self.logger.info('---- COUNTER CHECK STATUS (found %d records): %s' % (len(results),
-                                                                                       self.check_results(len(results),
-                                                                                                          hits_counter,
-                                                                                                          p[-1])))
+                try:
+                    self.logger.debug('First result: %r', results[0])
+                except IndexError:
+                    pass
+                self.logger.info('-- Executed query: %s', aql)
+                self.logger.info('---- COUNTER CHECK STATUS (found %d records): %s', len(results),
+                                 self.check_results(len(results), hits_counter, p[-1]))
 
     def cleanup(self, index_cleanup=True):
         self.logger.info('*** Deleting pyEHR data ***')
         for p in self.dbs.get_patients(fetch_ehr_records=False):
-            self.logger.debug('-- Deleting patient %s and EHRs' % p.record_id)
+            self.logger.debug('-- Deleting patient %s and EHRs', p.record_id)
             self.dbs.delete_patient(p, cascade_delete=True)
         if index_cleanup:
             self.logger.info('*** Deleting index data ***')
@@ -121,6 +125,7 @@ def get_parser():
                         help='Clean data when job is completed')
     parser.add_argument('--loglevel', default='INFO', type=str, help='logging level',
                         choices=['INFO', 'DEBUG', 'ERROR', 'WARNING', 'CRITICAL'])
+    parser.add_argument('--logfile', type=str, help='log file (deafault=stderr)')
     return parser
 
 
@@ -129,7 +134,7 @@ def main(argv):
     args = parser.parse_args(argv)
     test = TestIndexPerformance(args.conf_file, args.xml_def_file, args.batch_size,
                                 args.min_ehr_for_patient, args.max_ehr_for_patient,
-                                args.loglevel)
+                                args.loglevel, args.logfile)
     try:
         test.run()
     except IndexServiceConnectionError, isce:
