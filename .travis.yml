@@ -14,6 +14,8 @@ before_install:
   # install BaseX server and start it
   - sudo apt-get -qq update
   - sudo apt-get install -qq basex
+  # create data directory for BaseX server (it seems that the default conf is not working)
+  - mkdir test_index
   - basexserver -S
   # install Python dependencies
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo; fi
@@ -36,4 +38,4 @@ before_script:
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE=mongo; fi
 
 script:
-  - nosetests -v -w test --ignore-file=$EXCLUDE_TEST_MODULE
+  - nosetests -v test --ignore-file=$EXCLUDE_TEST_MODULE
