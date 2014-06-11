@@ -77,3 +77,11 @@ class ParseTimeConstraintsError(Exception):
 
     def __str__(self):
         return repr(self.value)
+
+
+class OperatorNotSupported(Exception):
+    pass
+
+
+class ConditionNotSupported(Exception):
+    pass
