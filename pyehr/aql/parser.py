@@ -1,5 +1,6 @@
 import re
-from pyehr.aql.errors import *
+from errors import InvalidAQLError, ParsingError, ParsePredicateExpressionError,\
+    ParsePathError, ParseSelectionError, ParseLocationError, ParseConditionError
 from pyehr.aql.model import *
 from pyehr.utils import get_logger
 

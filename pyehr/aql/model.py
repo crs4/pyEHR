@@ -1,4 +1,4 @@
-from pyehr.aql.errors import *
+from errors import OperatorNotSupported, ConditionNotSupported
 
 
 class Primitive(object):
