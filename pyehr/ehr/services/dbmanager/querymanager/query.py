@@ -1,35 +1,41 @@
-from pyehr.aql.parser import Parser as Parser
-
-class ResultColumnDef():
+class ResultColumnDef(object):
     def __init__(self):
         self.path = None
         self.name = None
 
-class ResultRow():
+
+class ResultRow(object):
     def __init__(self):
         self.items = []
 
-class ResultSet():
+
+class ResultSet(object):
     def __init__(self):
         self.name = None
-        self.totalResults = 0
+        self.total_results = 0
         self.columns = []
         self.rows = []
 
     def get_json(self):
         columns = []
         for col in self.columns:
-            columns.append({'name' : col.name, 'path' : col.path})
+            columns.append(
+                {
+                    'name': col.name,
+                    'path': col.path
+                }
+            )
         rows = []
         for r in self.rows:
             row = []
             for i in r.items:
                 row.append(i)
             rows.append(row)
-        json = {"name" : self.name,
-            "totalResults" : self.totalResults,
-            "columns" : columns,
-            "rows" : rows
+        json = {
+            "name": self.name,
+            "totalResults": self.total_results,
+            "columns": columns,
+            "rows": rows
         }
         return json
 

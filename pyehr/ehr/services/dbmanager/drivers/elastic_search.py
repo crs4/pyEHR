@@ -664,7 +664,7 @@ class ElasticSearchDriver(DriverInterface):
             proj[projCol] = 1
         print "PROJ: %s" % str(proj)
         queryResult = self.collection.find(dbQuery, proj)
-        rs.totalResults = queryResult.count()
+        rs.total_results = queryResult.count()
         for q in queryResult:
             rr = ResultRow()
             rr = ResultRow()

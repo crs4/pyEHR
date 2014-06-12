@@ -1,6 +1,8 @@
 from pyehr.aql.parser import *
+# from pyehr.aql.model import  ConditionExpression
 from pyehr.ehr.services.dbmanager.drivers.interface import DriverInterface
-from pyehr.ehr.services.dbmanager.querymanager.query import *
+from pyehr.ehr.services.dbmanager.querymanager.query import ResultSet,\
+    ResultColumnDef, ResultRow
 from pyehr.ehr.services.dbmanager.errors import *
 from pyehr.utils import *
 import pymongo
@@ -581,7 +583,7 @@ class MongoDriver(DriverInterface):
             proj[projCol] = 1
         print "PROJ: %s" % str(proj)
         queryResult = self.collection.find(dbQuery, proj)
-        rs.totalResults = queryResult.count()
+        rs.total_results = queryResult.count()
         for q in queryResult:
             rr = ResultRow()
             rr.items = q.values()
