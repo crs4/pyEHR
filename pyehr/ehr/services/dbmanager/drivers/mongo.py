@@ -1,5 +1,5 @@
 from pyehr.aql.parser import *
-# from pyehr.aql.model import  ConditionExpression
+from pyehr.aql.model import ConditionExpression
 from pyehr.ehr.services.dbmanager.drivers.interface import DriverInterface
 from pyehr.ehr.services.dbmanager.querymanager.query import ResultSet,\
     ResultColumnDef, ResultRow
@@ -297,17 +297,20 @@ class MongoDriver(DriverInterface):
         """
         return self.get_records_by_query({field: value})
 
-    def get_records_by_query(self, selector):
+    def get_records_by_query(self, selector, fields=None):
         """
         Retrieve all records matching the given query
 
         :param selector: the selector (in MongoDB syntax) used to select data
         :type selector: dictionary
+        :param fields: a list of field names that should be returned in the result set or a dict specifying the
+                       fields to include or exclude
+        :type fields: list or dictionary
         :return: a list with the matching records
         :rtype: list
         """
         self.__check_connection()
-        return (decode_dict(rec) for rec in self.collection.find(selector))
+        return (decode_dict(rec) for rec in self.collection.find(selector, fields))
 
     def delete_record(self, record_id):
         """
@@ -417,11 +420,14 @@ class MongoDriver(DriverInterface):
         self._update_record(record_id, update_statement)
         return last_update
 
-    def parse_expression(self, expression):
+    def _parse_expression(self, expression):
+        # replace all invalid characters
+        for not_allowed_char, allowed_char in self.ENCODINGS_MAP.iteritems():
+            expression = expression.replace(not_allowed_char, allowed_char)
         q = expression.replace('/', '.')
         return q
 
-    def parse_simple_expression(self, expression):
+    def _parse_simple_expression(self, expression):
         expr = {}
         operator = re.search('>|>=|=|<|<=|!=', expression)
         if operator:
@@ -431,181 +437,178 @@ class MongoDriver(DriverInterface):
             if re.match('=', op):
                 expr[op1] = op2
             elif re.match('!=', op):
-                expr[op1] = {'$ne' : op2}
+                expr[op1] = {'$ne': op2}
             elif re.match('>', op):
-                expr[op1] = {'$gt' : op2}
+                expr[op1] = {'$gt': op2}
             elif re.match('>=', op):
-                expr[op1] = {'$gte' : op2}
+                expr[op1] = {'$gte': op2}
             elif re.match('<', op):
-                expr[op1] = {'$lt' : op2}
+                expr[op1] = {'$lt': op2}
             elif re.match('<=', op):
-                expr[op1] = {'$lte' : op2}
+                expr[op1] = {'$lte': op2}
             else:
-                raise ParseSimpleExpressionException("Invalid operator")
+                msg = 'Invalid operator in expression %s' % expression
+                self.logger.error(msg)
+                raise ParseSimpleExpressionException(msg)
         else:
-            q = expression.replace('/','.')
-            expr[q] = {'$exists' : True}
+            q = self._parse_expression(expression)
+            expr[q] = {'$exists': True}
         return expr
 
-    def parse_match_expression(self, expr):
-        range = expr.expression.lstrip('{')
-        range = range.rstrip('}')
-        values = range.split(',')
-        final = []
-        for val in values:
-            v = val.strip('\'')
-            final.append(v)
+    def _parse_match_expression(self, expr):
+        values = expr.expression.lstrip('{').rstrip('}').split(',')
+        final = [v.strip('\'') for v in values]
         return final
 
-    def calculate_condition_expression(self, query, condition):
+    def _calculate_condition_expression(self, query, condition):
         i = 0
         or_expressions = []
-        while i < len(condition.conditionSequence):
-            expression = condition.conditionSequence[i]
+        while i < len(condition.condition_sequence):
+            expression = condition.condition_sequence[i]
             if isinstance(expression, ConditionExpression):
-                print "Expression: " + expression.expression
-                op1 = self.parse_expression(expression.expression)
-                if not i+1==len(condition.conditionSequence):
-                    operator = condition.conditionSequence[i+1]
+                self.logger.debug("Expression: " + expression.expression)
+                op1 = self._parse_expression(expression.expression)
+                if not i+1 == len(condition.condition_sequence):
+                    operator = condition.condition_sequence[i+1]
                     if isinstance(operator, ConditionOperator):
                         if operator.op == "AND":
-                            if condition.conditionSequence[i+2].beginswith('('):
-                                op2 = self.mergeExpr(condition.conditionSequence[i+2:])
+                            if condition.condition_sequence[i+2].beginswith('('):
+                                op2 = self.mergeExpr(condition.condition_sequence[i+2:])
                             else:
-                                op2 = self.mergeExpr(condition.conditionSequence[i+2:])
-                            expr = {"$and" : {op1, op2}}
+                                op2 = self.mergeExpr(condition.condition_sequence[i+2:])
+                            expr = {"$and": {op1, op2}}
                             or_expressions.append(expr)
-                            i = i+3
+                            i += 3
                         elif operator.op == "OR":
                             or_expressions.append(op1)
-                            i = i+2
+                            i += 2
                         elif operator.op == "MATCHES":
-                            match = self.parse_match_expression(condition.conditionSequence[i+2])
-                            expr = {op1 : {"$in" : match}}
+                            match = self._parse_match_expression(condition.condition_sequence[i+2])
+                            expr = {op1: {"$in" : match}}
                             or_expressions.append(expr)
-                            i = i+3
+                            i += 3
                         elif operator.op == ">":
-                            expr = {op1 : {"$gt" : {condition.conditionSequence[i+2].expression}}}
+                            expr = {op1: {"$gt": {condition.condition_sequence[i+2].expression}}}
                             or_expressions.append(expr)
-                            i = i+3
+                            i += 3
                         elif operator.op == "<":
-                            expr = {op1 : {"$lt" : {condition.conditionSequence[i+2].expression}}}
+                            expr = {op1: {"$lt": {condition.condition_sequence[i+2].expression}}}
                             or_expressions.append(expr)
-                            i = i+3
+                            i += 3
                         elif operator.op == "=":
-                            expr = {op1 : {"$eq" : {condition.conditionSequence[i+2].expression}}}
+                            expr = {op1: {"$eq": {condition.condition_sequence[i+2].expression}}}
                             or_expressions.append(expr)
-                            i = i+3
+                            i += 3
                         elif operator.op == ">=":
-                            expr = {op1 : {"$gte" : {condition.conditionSequence[i+2].expression}}}
+                            expr = {op1: {"$gte": {condition.conditionSequence[i+2].expression}}}
                             or_expressions.append(expr)
-                            i = i+3
+                            i += 3
                         elif operator.op == "<=":
-                            expr = {op1 : {"$lte" : {condition.conditionSequence[i+2].expression}}}
+                            expr = {op1: {"$lte": {condition.conditionSequence[i+2].expression}}}
                             or_expressions.append(expr)
-                            i = i+3
+                            i += 3
                         else:
                             pass
                         print "Operator: " + operator.op
                     else:
                         pass
                 else:
-                    or_expressions.append(self.parse_simple_expression(op1))
+                    or_expressions.append(self._parse_simple_expression(op1))
                     i += 1
         if len(or_expressions) == 1:
-            print "or_expression single: " + str(or_expressions[0])
+            self.logger.debug("or_expression single: " + str(or_expressions[0]))
             query.update(or_expressions[0])
         else:
-            print "or_expression: " + str(or_expressions)
+            self.logger.debug("or_expression: " + str(or_expressions))
             query["$or"] = or_expressions
 
-    def compute_predicate(self, query, predicate):
-        if isinstance(predicate, PredicateExpression):
-            predEx = predicate.predicateExpression
-            if predEx:
-                lo = predEx.leftOperand
+    def _compute_predicate(self, query, predicate):
+        if isinstance(predicate, Predicate):
+            pred_ex = predicate.predicate_expression
+            if pred_ex:
+                lo = pred_ex.leftOperand
                 if not lo:
-                    raise PredicateException("MongoDriver.compute_predicate: No left operand found")
-                op = predEx.operand
-                ro = predEx.rightOperand
+                    raise PredicateException("MongoDriver._compute_predicate: No left operand found")
+                op = pred_ex.operand
+                ro = pred_ex.rightOperand
                 if op and ro:
-                    print "lo: %s - op: %s - ro: %s" % (lo, op, ro)
+                    self.logger.debug("lo: %s - op: %s - ro: %s", lo, op, ro)
                     if op == "=":
                         query[lo] = ro
             else:
-                raise PredicateException("MongoDriver.compute_predicate: No predicate expression found")
+                raise PredicateException("MongoDriver._compute_predicate: No predicate expression found")
         elif isinstance(predicate, ArchetypePredicate):
-            predicateString = predicate.archetypeId
-            query[predicateString] = {'$exists' : True}
+            predicate_string = predicate.archetype_id
+            query[predicate_string] = {'$exists': True}
         else:
-            raise PredicateException("MongoDriver.compute_predicate: No predicate expression found")
+            raise PredicateException("MongoDriver._compute_predicate: No predicate expression found")
 
-    def calculate_location_expression(self, query, location):
+    def _calculate_location_expression(self, query, location):
         # Here is where the collection has been chosen according to the selection
-        print "LOCATION: %s" % str(location)
-        if location.classExpression:
-            ce = location.classExpression
-            className = ce.className
-            variableName = ce.variableName
+        self.logger.debug("LOCATION: %s", str(location))
+        if location.class_expression:
+            ce = location.class_expression
+            class_name = ce.class_name
+            variable_name = ce.variable_name
             predicate = ce.predicate
             if predicate:
-                self.compute_predicate(query, predicate)
+                self._compute_predicate(query, predicate)
         else:
             raise Exception("MongoDriver Exception: Query must have a location expression")
 
         for cont in location.containers:
-            if cont.classExpr:
-                ce = cont.classExpr
-                className = ce.className
-                variableName = ce.variableName
+            if cont.class_expression:
+                ce = cont.class_expression
+                className = ce.class_name
+                variableName = ce.variable_name
                 predicate = ce.predicate
                 if predicate:
-                    self.compute_predicate(query, predicate)
-        print "QUERY: %s" % query
-        print (self.collection)
+                    self._compute_predicate(query, predicate)
+        self.logger.debug('Running query %s on collection %s', query, self.collection)
         resp = self.collection.find(query)
-        print resp.count()
+        self.logger.debug('results count = %d', resp.count())
+        return resp
 
-    def create_response(self, dbQuery, selection):
+    def _create_response(self, db_query, selection):
         # execute the query
-        print "QUERY PRE: %s" % str(dbQuery)
+        self.logger.debug("QUERY PRE: %s", str(db_query))
         # Prepare the response
         rs = ResultSet()
         # Declaring a projection to retrieve only the selected fields
-        proj = {}
-        proj['_id'] = 0
+        proj = {'_id': False}
         for var in selection.variables:
-            columnDef = ResultColumnDef()
-            columnDef.name = var.label
-            columnDef.path = var.variable.path.value
-            rs.columns.append(columnDef)
-            projCol = columnDef.path.replace('/','.').strip('.')
-            proj[projCol] = 1
-        print "PROJ: %s" % str(proj)
-        queryResult = self.collection.find(dbQuery, proj)
-        rs.total_results = queryResult.count()
-        for q in queryResult:
+            column_def = ResultColumnDef()
+            column_def.name = var.label
+            column_def.path = var.variable.path.value
+            rs.columns.append(column_def)
+            proj_col = column_def.path.replace('/', '.').strip('.')
+            proj[proj_col] = True
+        self.logger.debug("PROJ: %s", str(proj))
+        # query_result = self.collection.find(db_query, proj)
+        query_results = self.get_records_by_query(db_query, proj)
+        rs.total_results = query_results.count()
+        for q in query_results:
             rr = ResultRow()
             rr.items = q.values()
             rs.rows.append(rr)
         return rs
 
-    def execute_query(self, query):
+    def execute_query(self, query_model):
         self.__check_connection()
         try:
-            selection = query.selection
-            location = query.location
-            condition = query.condition
-            orderRules = query.orderRules
-            timeConstraints = query.timeConstraints
-            dbQuery = {}
+            selection = query_model.selection
+            location = query_model.location
+            condition = query_model.condition
+            # order_rules = query_model.order_rules
+            # time_constraints = query_model.time_constraints
+            db_query = {}
             # select the collection
-            self.calculate_location_expression(dbQuery,location)
+            self._calculate_location_expression(db_query, location)
             # prepare the query to the db
             if condition:
-                self.calculate_condition_expression(dbQuery,condition)
+                self._calculate_condition_expression(db_query, condition)
             # create the response
-            return self.create_response(dbQuery, selection)
+            return self._create_response(db_query, selection)
         except Exception, e:
-            print "Mongo Driver Error: " + str(e)
+            self.logger.error("Mongo Driver Error: %s", str(e))
             return None

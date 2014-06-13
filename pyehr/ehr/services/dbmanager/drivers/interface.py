@@ -39,10 +39,6 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def execute_query(self, query):
-        pass
-
-    @abstractmethod
     def encode_record(self, record):
         """
         Encode a :class:`Record` into a valid structure for the backend server
@@ -116,5 +112,12 @@ class DriverInterface(object):
         """
         Remove the value provided with the *item_value* field from the list with label *list_label*
         of the record with ID *record_id* and update the timestamp in field *update_timestamp_label*
+        """
+        pass
+
+    @abstractmethod
+    def execute_query(self, query_model):
+        """
+        Execute a query expressed as a :class:pyehr.aql.model.QueryModel` object
         """
         pass

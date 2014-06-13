@@ -286,24 +286,24 @@ class Location(object):
         return s
 
 
-# class ConditionExpression(PredicateExpression):
-#     def __init__(self):
-#         self.expression = None
-#
-#     def _print_(self):
-#         print ""
-#         print "CONDITION_EXPRESSION"
-#         if self.expression:
-#             print " -> EXPRESSION: %s" % self.expression
-#
-#     def __str__(self):
-#         strList = []
-#         strList.append("")
-#         strList.append("CONDITION_EXPRESSION")
-#         if self.expression:
-#             strList.append(" -> EXPRESSION: %s" % self.expression)
-#         s = "\n".join(strList)
-#         return s
+class ConditionExpression(PredicateExpression):
+    def __init__(self):
+        self.expression = None
+
+    def _print_(self):
+        print ""
+        print "CONDITION_EXPRESSION"
+        if self.expression:
+            print " -> EXPRESSION: %s" % self.expression
+
+    def __str__(self):
+        strList = []
+        strList.append("")
+        strList.append("CONDITION_EXPRESSION")
+        if self.expression:
+            strList.append(" -> EXPRESSION: %s" % self.expression)
+        s = "\n".join(strList)
+        return s
 
 
 class ConditionOperator(object):

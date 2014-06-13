@@ -606,7 +606,7 @@ class ElasticSearchDriver(DriverInterface):
             if predEx:
                 lo = predEx.leftOperand
                 if not lo:
-                    raise PredicateException("MongoDriver.compute_predicate: No left operand found")
+                    raise PredicateException("MongoDriver._compute_predicate: No left operand found")
                 op = predEx.operand
                 ro = predEx.rightOperand
                 if op and ro:
@@ -614,12 +614,12 @@ class ElasticSearchDriver(DriverInterface):
                     if op == "=":
                         query[lo] = ro
             else:
-                raise PredicateException("MongoDriver.compute_predicate: No predicate expression found")
+                raise PredicateException("MongoDriver._compute_predicate: No predicate expression found")
         elif isinstance(predicate, ArchetypePredicate):
             predicateString = predicate.archetypeId
             query[predicateString] = {'$exists' : True}
         else:
-            raise PredicateException("MongoDriver.compute_predicate: No predicate expression found")
+            raise PredicateException("MongoDriver._compute_predicate: No predicate expression found")
 
     def calculateLocationExpression(self, query, location):
         # Here is where the collection has been chosen according to the selection

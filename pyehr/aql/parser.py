@@ -19,7 +19,7 @@ class Parser():
 
     def parse(self, statement):
         try:
-            text = statement.strip()
+            text = statement.replace('\n', ' ').strip()
             if not re.match('SELECT ', text.upper()):
                 raise InvalidAQLError('AQL statements must begin with the SELECT keyword')
             result = re.search(' FROM ', text.upper())
@@ -186,7 +186,7 @@ class Parser():
                 class_list = sel[4+top_number_lenght:]
             try:
                 classes = class_list.split(',')
-                print("CLASSLIST: %s" % class_list)
+                self.logger.debug("CLASSLIST: %s", class_list)
                 for cl in classes:
                     variable = Variable()
                     class_tokens = cl.strip().split(" ")
