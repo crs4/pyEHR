@@ -209,21 +209,21 @@ class ClassExpression(object):
 
 class Container(object):
     def __init__(self):
-        self.class_expr = None
+        self.class_expression = None
 
     def _print_(self):
         print "-------------------------------------------"
         print "CONTAINER"
-        if self.class_expr:
-            self.class_expr._print_()
+        if self.class_expression:
+            self.class_expression._print_()
         print "-------------------------------------------"
 
     def __str__(self):
         str_list = []
         str_list.append("-------------------------------------------")
         str_list.append("CONTAINER")
-        if self.class_expr:
-            str_list.append(str(self.class_expr))
+        if self.class_expression:
+            str_list.append(str(self.class_expression))
         str_list.append("-------------------------------------------")
         s = "\n".join(str_list)
         return s
