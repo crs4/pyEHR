@@ -213,28 +213,28 @@ class Parser():
     def parse_class_expression(self, text):
         matching_obj = re.match('EHR |COMPOSITION |OBSERVATION ', text.upper())
         if matching_obj:
-            class_expr = ClassExpression()
+            class_expression = ClassExpression()
             end = matching_obj.end()
-            class_expr.class_name = text[:end]
+            class_expression.class_name = text[:end]
             optional_text = text[end:]
             tokens = optional_text.split()
             # Looking for the optional parts...
             # If it starts with [ it means is a predicate expression...
             if tokens[0].startswith('['):
-                class_expr.predicate = self.parse_predicate(tokens[0].lstrip('[').rstrip(']'))
+                class_expression.predicate = self.parse_predicate(tokens[0].lstrip('[').rstrip(']'))
             else:
             #... otherwise is a variable definition...
                 pred = re.search('\[', tokens[0])
                 if pred:
                     #... followed by a predicate expression.
-                    class_expr.variable_name = tokens[0][:pred.start()]
-                    class_expr.predicate = self.parse_predicate(tokens[0][pred.start():])
+                    class_expression.variable_name = tokens[0][:pred.start()]
+                    class_expression.predicate = self.parse_predicate(tokens[0][pred.start():])
                 else:
                     #... without a predicate expression.
-                    class_expr.variable_name = tokens[0]
+                    class_expression.variable_name = tokens[0]
                 if len(tokens) > 1:
-                    class_expr.predicate = self.parse_predicate(tokens[1].lstrip('[').rstrip(']'))
-            return class_expr
+                    class_expression.predicate = self.parse_predicate(tokens[1].lstrip('[').rstrip(']'))
+            return class_expression
         else:
             msg = "parse_class_expression ERROR. Expression: %s" % text
             self.logger.error(msg)
@@ -254,7 +254,7 @@ class Parser():
                 txt = text[9+start:]
             class_expr = self.parse_class_expression(txt)
             container = Container()
-            container.class_expr = class_expr
+            container.class_expression = class_expr
             containers.append(container)
         return containers
 
