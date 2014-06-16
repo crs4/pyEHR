@@ -526,11 +526,11 @@ class MongoDriver(DriverInterface):
         if isinstance(predicate, Predicate):
             pred_ex = predicate.predicate_expression
             if pred_ex:
-                lo = pred_ex.leftOperand
+                lo = pred_ex.left_operand
                 if not lo:
                     raise PredicateException("MongoDriver._compute_predicate: No left operand found")
                 op = pred_ex.operand
-                ro = pred_ex.rightOperand
+                ro = pred_ex.right_operand
                 if op and ro:
                     self.logger.debug("lo: %s - op: %s - ro: %s", lo, op, ro)
                     if op == "=":
@@ -559,8 +559,8 @@ class MongoDriver(DriverInterface):
         for cont in location.containers:
             if cont.class_expression:
                 ce = cont.class_expression
-                className = ce.class_name
-                variableName = ce.variable_name
+                class_name = ce.class_name
+                variable_name = ce.variable_name
                 predicate = ce.predicate
                 if predicate:
                     self._compute_predicate(query, predicate)

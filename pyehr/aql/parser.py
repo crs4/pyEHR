@@ -123,11 +123,11 @@ class Parser():
                     predicate.predicate_expression_list.append(self.parse_predicate_expression(token))
             else:
                 predicate = Predicate()
-                predicate.predicateExpression = self.parse_predicate_expression(predicate_string)
+                predicate.predicate_expression = self.parse_predicate_expression(predicate_string)
         else:
             # If the expression doesn't contain an operator, it means that is an Archetype predicate
             predicate = ArchetypePredicate()
-            predicate.archetypeId = predicate_string[1:len(predicate_string)-1]
+            predicate.archetype_id = predicate_string[1:len(predicate_string)-1]
         return predicate
 
     def parse_path(self, path_string):
@@ -138,10 +138,10 @@ class Parser():
             predicate_start = re.search('\[', token)
             predicate_end = re.search('\]', token)
             if predicate_start and  predicate_end:
-                node.attributeName = token[0:predicate_start.start()]
-                node.predicateValue = self.parse_predicate(token[predicate_start.start()+1:predicate_end.start()-1])
+                node.attribute_name = token[0:predicate_start.start()]
+                node.predicate_value = self.parse_predicate(token[predicate_start.start()+1:predicate_end.start()-1])
             else:
-                node.attributeName = token
+                node.attribute_name = token
             path.node_list.append(node)
         path.value = path_string
         return path
@@ -215,7 +215,7 @@ class Parser():
         if matching_obj:
             class_expr = ClassExpression()
             end = matching_obj.end()
-            class_expr.class_name = text[0:end]
+            class_expr.class_name = text[:end]
             optional_text = text[end:]
             tokens = optional_text.split()
             # Looking for the optional parts...
@@ -227,7 +227,7 @@ class Parser():
                 pred = re.search('\[', tokens[0])
                 if pred:
                     #... followed by a predicate expression.
-                    class_expr.variable_name = tokens[0][0:pred.start()]
+                    class_expr.variable_name = tokens[0][:pred.start()]
                     class_expr.predicate = self.parse_predicate(tokens[0][pred.start():])
                 else:
                     #... without a predicate expression.
@@ -254,7 +254,7 @@ class Parser():
                 txt = text[9+start:]
             class_expr = self.parse_class_expression(txt)
             container = Container()
-            container.classExpr = class_expr
+            container.class_expr = class_expr
             containers.append(container)
         return containers
 

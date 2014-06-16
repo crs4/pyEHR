@@ -194,16 +194,16 @@ class ClassExpression(object):
             print " -> PREDICATE: %s" % self.predicate
 
     def __str__(self):
-        strList = []
-        strList.append("")
-        strList.append("CLASS_EXPRESSION")
+        str_list = []
+        str_list.append("")
+        str_list.append("CLASS_EXPRESSION")
         if self.variable_name:
-            strList.append(" -> VARIABLE_NAME: %s" % self.variable_name)
+            str_list.append(" -> VARIABLE_NAME: %s" % self.variable_name)
         if self.class_name:
-            strList.append(" -> CLASS: %s" % self.class_name)
+            str_list.append(" -> CLASS: %s" % self.class_name)
         if self.predicate:
-            strList.append(" -> PREDICATE: %s" % self.predicate)
-        s = "\n".join(strList)
+            str_list.append(" -> PREDICATE: %s" % self.predicate)
+        s = "\n".join(str_list)
         return s
 
 
@@ -219,13 +219,13 @@ class Container(object):
         print "-------------------------------------------"
 
     def __str__(self):
-        strList = []
-        strList.append("-------------------------------------------")
-        strList.append("CONTAINER")
+        str_list = []
+        str_list.append("-------------------------------------------")
+        str_list.append("CONTAINER")
         if self.class_expr:
-            strList.append(str(self.class_expr))
-        strList.append("-------------------------------------------")
-        s = "\n".join(strList)
+            str_list.append(str(self.class_expr))
+        str_list.append("-------------------------------------------")
+        s = "\n".join(str_list)
         return s
 
 
@@ -241,13 +241,13 @@ class Selection(object):
             print " -> VARIABLE: %s" % v._print_()
 
     def __str__(self):
-        strList = []
-        strList.append("")
-        strList.append("SELECTION")
-        strList.append(" -> TOP: %d" % self.top)
+        str_list = []
+        str_list.append("")
+        str_list.append("SELECTION")
+        str_list.append(" -> TOP: %d" % self.top)
         for v in self.variables:
-           strList.append(" -> VARIABLE: %s" % str(v))
-        s = "\n".join(strList)
+           str_list.append(" -> VARIABLE: %s" % str(v))
+        s = "\n".join(str_list)
         return s
 
 
@@ -257,14 +257,14 @@ class Location(object):
         self.containers = []
 
     def getVariableList(self):
-        variableList = []
+        variable_list = []
         if self.class_expression:
-            if self.class_expression.variableName:
-                variableList.append(self.class_expression.variableName)
+            if self.class_expression.variable_name:
+                variable_list.append(self.class_expression.variable_name)
         for cont in self.containers:
-            if cont.classExpr.variableName:
-                variableList.append(cont.classExpr.variableName)
-        return variableList
+            if cont.class_expr.variableName:
+                variable_list.append(cont.class_expr.variable_name)
+        return variable_list
 
     def _print_(self):
         print ""
@@ -275,19 +275,20 @@ class Location(object):
             c._print_()
 
     def __str__(self):
-        strList = []
-        strList.append("")
-        strList.append("LOCATION")
+        str_list = []
+        str_list.append("")
+        str_list.append("LOCATION")
         if self.class_expression:
-            strList.append(" -> CLASS: %s" % self.class_expression)
+            str_list.append(" -> CLASS: %s" % self.class_expression)
         for c in self.containers:
-            strList.append(str(c))
-        s = "\n".join(strList)
+            str_list.append(str(c))
+        s = "\n".join(str_list)
         return s
 
 
 class ConditionExpression(PredicateExpression):
     def __init__(self):
+        super(ConditionExpression, self).__init__()
         self.expression = None
 
     def _print_(self):
@@ -297,12 +298,12 @@ class ConditionExpression(PredicateExpression):
             print " -> EXPRESSION: %s" % self.expression
 
     def __str__(self):
-        strList = []
-        strList.append("")
-        strList.append("CONDITION_EXPRESSION")
+        str_list = []
+        str_list.append("")
+        str_list.append("CONDITION_EXPRESSION")
         if self.expression:
-            strList.append(" -> EXPRESSION: %s" % self.expression)
-        s = "\n".join(strList)
+            str_list.append(" -> EXPRESSION: %s" % self.expression)
+        s = "\n".join(str_list)
         return s
 
 
