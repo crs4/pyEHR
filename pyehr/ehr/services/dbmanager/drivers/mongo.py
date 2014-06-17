@@ -523,7 +523,7 @@ class MongoDriver(DriverInterface):
             query["$or"] = or_expressions
 
     def _compute_predicate(self, query, predicate):
-        if isinstance(predicate, Predicate):
+        if type(predicate) == Predicate:
             pred_ex = predicate.predicate_expression
             if pred_ex:
                 lo = pred_ex.left_operand
@@ -537,7 +537,7 @@ class MongoDriver(DriverInterface):
                         query[lo] = ro
             else:
                 raise PredicateException("MongoDriver._compute_predicate: No predicate expression found")
-        elif isinstance(predicate, ArchetypePredicate):
+        elif type(predicate) == ArchetypePredicate:
             predicate_string = predicate.archetype_id
             query[predicate_string] = {'$exists': True}
         else:
