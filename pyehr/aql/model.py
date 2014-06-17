@@ -179,9 +179,17 @@ class Variable(object):
 class ClassExpression(object):
     def __init__(self):
         self.CLASS_TYPES = ("EHR", "COMPOSITION", "OBSERVATION")
-        self.class_name = None
+        self._class_name = None
         self.variable_name = None
         self.predicate = None
+
+    @property
+    def class_name(self):
+        return self._class_name
+
+    @class_name.setter
+    def class_name(self, value):
+        self._class_name = value.strip()
 
     def _print_(self):
         print ""
