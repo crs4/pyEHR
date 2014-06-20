@@ -140,8 +140,8 @@ class IndexService(object):
         return str_id
 
     def _container_to_xpath(self, aql_container):
-        if aql_container.classExpr.predicate:
-            archetype_class = aql_container.classExpr.predicate.archetypeId
+        if aql_container.class_expression.predicate:
+            archetype_class = aql_container.class_expression.predicate.archetype_id
         else:
             #TODO: maybe using the ReferenceModel can help to map generic Archetypes
             archetype_class = None
