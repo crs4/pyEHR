@@ -116,7 +116,8 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def execute_query(self, query_model):
+    def execute_query(self, query_model, patients_repository, ehr_repository,
+                      query_parameters):
         """
         Execute a query expressed as a :class:pyehr.aql.model.QueryModel` object
         """

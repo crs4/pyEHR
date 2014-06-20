@@ -420,6 +420,13 @@ class MongoDriver(DriverInterface):
         self._update_record(record_id, update_statement)
         return last_update
 
+    def _map_operand(self, left, right, operand):
+        # map an AQL operand to the equivalent MongoDB one
+        if operand == '=':
+            return {left: right}
+        else:
+            raise ValueError('The operand %s is not supported' % operand)
+
     def _parse_expression(self, expression):
         # replace all invalid characters
         for not_allowed_char, allowed_char in self.ENCODINGS_MAP.iteritems():
@@ -522,7 +529,8 @@ class MongoDriver(DriverInterface):
             self.logger.debug("or_expression: " + str(or_expressions))
             query["$or"] = or_expressions
 
-    def _compute_predicate(self, query, predicate):
+    def _compute_predicate(self, predicate):
+        query = dict()
         if type(predicate) == Predicate:
             pred_ex = predicate.predicate_expression
             if pred_ex:
@@ -542,32 +550,73 @@ class MongoDriver(DriverInterface):
             query[predicate_string] = {'$exists': True}
         else:
             raise PredicateException("MongoDriver._compute_predicate: No predicate expression found")
+        return query
 
-    def _calculate_location_expression(self, query, location):
+    def _calculate_ehr_expression(self, ehr_class_expression, query_params, patients_collection,
+                                  ehr_collection):
+        def resolve_ehr_uid(driver, patient_id, patients_collection):
+            if driver.is_connected:
+                original_collection = str(driver.collection.name)
+                close_conn_after_done = False
+            else:
+                close_conn_after_done = True
+            driver.connect()
+            driver.select_collection(patients_collection)
+            res = driver.get_records_by_query(
+                {'_id': patient_id},
+                {'_id': False, 'ehr_records': True}
+            )
+            if close_conn_after_done:
+                driver.disconnect()
+            else:
+                driver.select_collection(original_collection)
+            return res.next()['ehr_records']
+
+        # Resolve predicate expressed for EHR AQL expression
+        query = dict()
+        pr = ehr_class_expression.predicate.predicate_expression
+        if pr.left_operand:
+            if pr.right_operand.startswith('$'):
+                try:
+                    right_operand = query_params[pr.right_operand]
+                except KeyError, ke:
+                    raise PredicateException('Missing value for parameter %s' % ke)
+            else:
+                right_operand = pr.right_operand
+            if pr.left_operand == 'uid':
+                ehr_ids = resolve_ehr_uid(self, right_operand, patients_collection)
+                query.update({'_id': {'$in': ehr_ids}})
+            elif pr.left_operand == 'id':
+                # use given EHR ID
+                query.update(self._map_operand(pr.left_operand,
+                                               right_operand,
+                                               pr.operand))
+            else:
+                query.update(self._compute_predicate(pr))
+        else:
+            raise PredicateException('No left operand in predicate')
+        return query
+
+    def _calculate_location_expression(self, location, query_params, patients_collection,
+                                       ehr_collection):
+        query = dict()
         # Here is where the collection has been chosen according to the selection
         self.logger.debug("LOCATION: %s", str(location))
         if location.class_expression:
             ce = location.class_expression
-            class_name = ce.class_name
-            variable_name = ce.variable_name
-            predicate = ce.predicate
-            if predicate:
-                self._compute_predicate(query, predicate)
+            if ce.class_name.upper() == 'EHR':
+                query.update(self._calculate_ehr_expression(ce, query_params,
+                                                            patients_collection,
+                                                            ehr_collection))
+            else:
+                if ce.predicate:
+                    query.update(self._compute_predicate(ce.predicate))
         else:
             raise Exception("MongoDriver Exception: Query must have a location expression")
 
-        for cont in location.containers:
-            if cont.class_expression:
-                ce = cont.class_expression
-                class_name = ce.class_name
-                variable_name = ce.variable_name
-                predicate = ce.predicate
-                if predicate:
-                    self._compute_predicate(query, predicate)
-        self.logger.debug('Running query %s on collection %s', query, self.collection)
-        resp = self.collection.find(query)
-        self.logger.debug('results count = %d', resp.count())
-        return resp
+        structure_ids = self.index_service.get_matching_ids(location.containers)
+        query.update({'ehr_structure_id': {'$in': structure_ids}})
+        return query
 
     def _create_response(self, db_query, selection):
         # execute the query
@@ -593,17 +642,31 @@ class MongoDriver(DriverInterface):
             rs.rows.append(rr)
         return rs
 
-    def execute_query(self, query_model):
-        self.__check_connection()
+    def execute_query(self, query_model, patients_repository, ehr_repository,
+                      query_params={}):
+        """
+        Execute a query parsed with the :class:`pyehr.aql.parser.Parser` object and expressed
+        as a :class:`pyehr.aql.model.QueryModel`. If the query is a parametric one, query parameters
+        must be passed using the query_params dictionary.
+
+        :param query_model: the :class:`pyehr.aql.parser.QueryModel` obtained when the query
+                            is parsed
+        :type: :class:`pyehr.aql.parser.QueryModel`
+        :param query_params: a dictionary containing query's parameters and their values
+        :type: dictionary
+        :return: a :class:`pyehr.ehr.services.dbmanager.querymanager.query.ResultSet` object
+                 containing results for the given query
+        """
+        self.connect()
         try:
             selection = query_model.selection
             location = query_model.location
             condition = query_model.condition
             # order_rules = query_model.order_rules
             # time_constraints = query_model.time_constraints
-            db_query = {}
+            db_query = dict()
             # select the collection
-            self._calculate_location_expression(db_query, location)
+            db_query.update(self._calculate_location_expression(location))
             # prepare the query to the db
             if condition:
                 self._calculate_condition_expression(db_query, condition)
