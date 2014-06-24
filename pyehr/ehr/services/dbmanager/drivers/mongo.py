@@ -422,8 +422,17 @@ class MongoDriver(DriverInterface):
 
     def _map_operand(self, left, right, operand):
         # map an AQL operand to the equivalent MongoDB one
+        operands_map = {
+            '!=': '$ne',
+            '>': '$gt',
+            '>=': '$gte',
+            '<': '$lt',
+            '<=': '$lte'
+        }
         if operand == '=':
             return {left: right}
+        elif operand in operands_map:
+            return {left: {operands_map[operand]: right}}
         else:
             raise ValueError('The operand %s is not supported' % operand)
 
@@ -440,20 +449,10 @@ class MongoDriver(DriverInterface):
         if operator:
             op1 = expression[0:operator.start()].strip('\'')
             op2 = expression[operator.end():].strip('\'')
-            op = expression[operator.start():operator.end()]
-            if re.match('=', op):
-                expr[op1] = op2
-            elif re.match('!=', op):
-                expr[op1] = {'$ne': op2}
-            elif re.match('>', op):
-                expr[op1] = {'$gt': op2}
-            elif re.match('>=', op):
-                expr[op1] = {'$gte': op2}
-            elif re.match('<', op):
-                expr[op1] = {'$lt': op2}
-            elif re.match('<=', op):
-                expr[op1] = {'$lte': op2}
-            else:
+            op = expression[operator.start():operator.end()].strip()
+            try:
+                expr.update(self._map_operand(op1, op2, op))
+            except ValueError:
                 msg = 'Invalid operator in expression %s' % expression
                 self.logger.error(msg)
                 raise ParseSimpleExpressionException(msg)
@@ -467,7 +466,8 @@ class MongoDriver(DriverInterface):
         final = [v.strip('\'') for v in values]
         return final
 
-    def _calculate_condition_expression(self, query, condition):
+    def _calculate_condition_expression(self, condition):
+        query = dict()
         i = 0
         or_expressions = []
         while i < len(condition.condition_sequence):
@@ -491,32 +491,17 @@ class MongoDriver(DriverInterface):
                             i += 2
                         elif operator.op == "MATCHES":
                             match = self._parse_match_expression(condition.condition_sequence[i+2])
-                            expr = {op1: {"$in" : match}}
+                            expr = {op1: {"$in": match}}
                             or_expressions.append(expr)
                             i += 3
-                        elif operator.op == ">":
-                            expr = {op1: {"$gt": {condition.condition_sequence[i+2].expression}}}
-                            or_expressions.append(expr)
-                            i += 3
-                        elif operator.op == "<":
-                            expr = {op1: {"$lt": {condition.condition_sequence[i+2].expression}}}
-                            or_expressions.append(expr)
-                            i += 3
-                        elif operator.op == "=":
-                            expr = {op1: {"$eq": {condition.condition_sequence[i+2].expression}}}
-                            or_expressions.append(expr)
-                            i += 3
-                        elif operator.op == ">=":
-                            expr = {op1: {"$gte": {condition.conditionSequence[i+2].expression}}}
-                            or_expressions.append(expr)
-                            i += 3
-                        elif operator.op == "<=":
-                            expr = {op1: {"$lte": {condition.conditionSequence[i+2].expression}}}
+                        elif operator.op in ('>', '<', '=', '>=', '<='):
+                            expr = self._map_operand(op1, condition.condition_sequence[i+2].expression,
+                                                     operator.op)
                             or_expressions.append(expr)
                             i += 3
                         else:
                             pass
-                        print "Operator: " + operator.op
+                        self.logger.debug("Operator: " + operator.op)
                     else:
                         pass
                 else:
@@ -528,6 +513,7 @@ class MongoDriver(DriverInterface):
         else:
             self.logger.debug("or_expression: " + str(or_expressions))
             query["$or"] = or_expressions
+        return query
 
     def _compute_predicate(self, predicate):
         query = dict()
@@ -669,7 +655,7 @@ class MongoDriver(DriverInterface):
             db_query.update(self._calculate_location_expression(location))
             # prepare the query to the db
             if condition:
-                self._calculate_condition_expression(db_query, condition)
+                db_query.update(self._calculate_condition_expression(db_query, condition))
             # create the response
             return self._create_response(db_query, selection)
         except Exception, e:
