@@ -96,12 +96,14 @@ class IndexService(object):
         return record_hash.hexdigest()
 
     def _build_new_record(self, record):
+        record_root = etree.Element('archetype_structure')
+        record_root.append(record)
         record_hash = self._get_record_hash(record)
         record_id = uuid4().hex
-        record.append(etree.Element('references_counter', {'hits': '1'}))
-        record.append(etree.Element('structure_id', {'str_hash': record_hash,
-                                                     'uid': record_id}))
-        return record, record_id
+        record_root.append(etree.Element('references_counter', {'hits': '1'}))
+        record_root.append(etree.Element('structure_id', {'str_hash': record_hash,
+                                                          'uid': record_id}))
+        return record_root, record_id
 
     def create_entry(self, record):
         record, structure_key = self._build_new_record(record)
@@ -114,7 +116,7 @@ class IndexService(object):
         if not self.session:
             self.connect()
         record_hash = self._get_record_hash(xml_doc)
-        res = self._execute_query('collection("%s")/archetype/structure_id[@str_hash="%s"]' %
+        res = self._execute_query('collection("%s")/archetype_structure/structure_id[@str_hash="%s"]' %
                                   (self.db, record_hash))
         try:
             return res.find('structure_id').get('uid')
@@ -154,10 +156,10 @@ class IndexService(object):
         # Right now, the AQLParsers maps CONTAIN statements into a list where
         # cont[n] contains cont[n+1]
         xpath_queries = [self._container_to_xpath(c) for c in aql_containers]
-        query = 'collection("%s")' % self.db
+        query = 'collection("%s")/archetype_structure' % self.db
         for xpq in xpath_queries:
-            query += '/%s' % xpq
-        query += '/ancestor-or-self::archetype/structure_id'
+            query += '//%s' % xpq
+        query += '/ancestor-or-self::archetype_structure/structure_id'
         return query
 
     def get_matching_ids(self, aql_containers):
