@@ -15,7 +15,7 @@ openEHR-EHR-ELEMENT.menstrual_cycle_day.v1. The last two archetypes will share t
 of the parent archetype but this is irrelevant from the containment statement point of view.
 Some of the structures that will be produced by this Archetype's instances are
 
-.. code:: xml
+.. code-block:: xml
 
    <archetype class="openEHR-EHR-OBSERVATION.body_temperature.v1">
      <archetype class="openEHR-EHR-CLUSTER.environmental_conditions.v1"/>
@@ -40,7 +40,7 @@ Resolving the statement means to map the CONTAINS statement to a XPATH query and
 retrieve all the structures that can satisy the statement.
 If the query is
 
-.. code::
+.. code-block:: none
 
    SELECT b/data[at0002]/events[at0003]/data[at0001]/items[at0004]/value AS Temperature
    FROM Ehr e
@@ -52,7 +52,7 @@ openEHR-EHR-OBSERVATION.body_temperature.v1 that contains an instance of the
 openEHR-EHR-CLUSTER.level_of_exertion.v1 archetype.
 The CONTAINS statement will be automatically translated to the XPATH query
 
-.. code::
+.. code-block:: none
 
    archetype[@class="openEHR-EHR-OBSERVATION.body_temperature.v1"]/archetype["openEHR-EHR-CLUSTER.level_of_exertion.v1"]/ancestor-or-self::archetype/structure_id
 
@@ -68,7 +68,7 @@ In order to resolve WHERE and SELECT statements, paths expressed as AQL identifi
 to the full path that will be used to access data starting from the root archetype.
 Using the following query as an example
 
-.. code::
+.. code-block:: none
 
    SELECT o/items[at0009]/value as Phase
    FROM Ehr e
@@ -79,7 +79,7 @@ it is necessary to properly map how the openEHR-EHR-CLUSTER.level_of_exertion.v1
 from the openEHR-EHR-OBSERVATION.body_temperature.v1 archetype. The path that leads to the contained
 archetype is
 
-.. code::
+.. code-block:: none
 
    data[at0002]/events[at0003]/state[at0029]/items[at0057]
 
@@ -91,7 +91,7 @@ in order to have a mechanism that will allow to resolve AQL queries, path resolu
 of the Index Service and can be performed by adding the full path from the root archetype to the
 contained ones. The XML strucutures shown above can become like
 
-.. code:: xml
+.. code-block:: xml
 
    <archetype class="openEHR-EHR-OBSERVATION.body_temperature.v1">
      <archetype class="openEHR-EHR-CLUSTER.environmental_conditions.v1"
@@ -121,7 +121,7 @@ to construct the full paths used in SELECT and WHERE statements and to map these
 that can be used from the back-end engine.
 If more than one path is returned, one example can be query with "generic" containment statements like
 
-.. code::
+.. code-block:: none
 
    SELECT b/data[at0002]/events[at0003]/data[at0001]/items[at0004]/value AS Temperature
    FROM Ehr e
