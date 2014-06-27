@@ -40,53 +40,62 @@ class IndexService(object):
         return etree.fromstring(res)
 
     @staticmethod
-    def get_structure(ehr_record):
+    def get_structure(ehr_record, parent_key=[]):
         def is_archetype(doc):
             return 'archetype' in doc
 
-        def get_structure_from_dict(doc):
+        def build_path(keys_list):
+            return '/'.join(keys_list)
+
+        def get_structure_from_dict(doc, parent_key):
             archetypes = []
             for k, v in doc.iteritems():
                 if isinstance(v, dict):
+                    pk = parent_key + [k]
                     if is_archetype(v):
-                        archetypes.append(IndexService.get_structure(v))
+                        archetypes.append(IndexService.get_structure(v, pk))
                     else:
-                        a_from_dict = get_structure_from_dict(v)
+                        a_from_dict = get_structure_from_dict(v, pk)
                         if len(a_from_dict) > 0:
                             archetypes.extend(a_from_dict)
                 if isinstance(v, list):
-                    a_from_list = get_structure_from_list(v)
+                    a_from_list = get_structure_from_list(v, parent_key)
                     if len(a_from_list) > 0:
                         archetypes.extend(a_from_list)
             return archetypes
 
-        def get_structure_from_list(dlist):
+        def get_structure_from_list(dlist, parent_key):
             archetypes = []
             for x in dlist:
                 if isinstance(x, dict):
                     if is_archetype(x):
-                        archetypes.append(IndexService.get_structure(x))
+                        archetypes.append(IndexService.get_structure(x, parent_key))
                     else:
-                        a_from_dict = get_structure_from_dict(x)
+                        a_from_dict = get_structure_from_dict(x, parent_key)
                         if len(a_from_dict) > 0:
                             archetypes.extend(a_from_dict)
                 if isinstance(x, list):
-                    a_from_list = get_structure_from_list(x)
+                    a_from_list = get_structure_from_list(x, parent_key)
                     if len(a_from_list) > 0:
                         archetypes.extend(a_from_list)
             return archetypes
 
         # TODO: sort records structure?
-        root = etree.Element('archetype', {'class': ehr_record['archetype']})
-        for x in ehr_record['data'].values():
+        root = etree.Element(
+            'archetype',
+            {'class': ehr_record['archetype'], 'path_from_parent': build_path(parent_key)}
+        )
+        parent_key = []
+        for k, x in ehr_record['data'].iteritems():
+            pk = parent_key + [k]
             if isinstance(x, dict):
                 if is_archetype(x):
-                    root.append(IndexService.get_structure(x))
+                    root.append(IndexService.get_structure(x, pk))
                 else:
-                    for a in get_structure_from_dict(x):
+                    for a in get_structure_from_dict(x, pk):
                         root.append(a)
             if isinstance(x, list):
-                for a in get_structure_from_list(x):
+                for a in get_structure_from_list(x, pk):
                     root.append(a)
         return root
 
