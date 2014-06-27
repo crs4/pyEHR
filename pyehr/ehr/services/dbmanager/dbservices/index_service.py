@@ -176,7 +176,7 @@ class IndexService(object):
         query = 'collection("%s")/archetype_structure' % self.db
         for xpq in xpath_queries:
             query += '//%s' % xpq
-        query += '/ancestor-or-self::archetype_structure/structure_id'
+        query += '/ancestor-or-self::archetype_structure'
         return query
 
     def get_matching_ids(self, aql_containers):
@@ -191,4 +191,5 @@ class IndexService(object):
         query = self.build_xpath_query(aql_containers)
         res = self._execute_query(query)
         self.disconnect()
-        return [x.get('uid') for x in res.findall('structure_id')]
+        # return [x.get('uid') for x in res.findall('structure_id')]
+        return [(a.find('structure_id').get('uid')) for a in res.findall('archetype_structure')]
