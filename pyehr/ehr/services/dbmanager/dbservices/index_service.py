@@ -45,7 +45,15 @@ class IndexService(object):
             return 'archetype' in doc
 
         def build_path(keys_list):
-            return '/'.join(keys_list)
+            if len(keys_list) == 0:
+                return '/'
+            path = str()
+            for k in keys_list:
+                if k.startswith('at'):
+                    path += '[%s]' % k
+                else:
+                    path += '/%s' % k
+            return path
 
         def get_structure_from_dict(doc, parent_key):
             archetypes = []
