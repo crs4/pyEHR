@@ -179,7 +179,27 @@ class IndexService(object):
         query += '/ancestor-or-self::archetype_structure'
         return query
 
-    def get_matching_ids(self, aql_containers):
+    def get_matching_ids(self, results):
+        return [(a.find('structure_id').get('uid')) for a in results.findall('archetype_structure')]
+
+    def get_matching_paths(self, results, archetype_class):
+        paths = set()
+        for structure in results.findall('archetype_structure'):
+            res = structure.xpath('//archetype[@class="%s"]' % archetype_class)
+            for node in res:
+                path = list()
+                path.append(node.get('path_from_parent'))
+                root = node.getroottree()
+                while node.getparent() != root and len(node.getparent()):
+                    node = node.getparent()
+                    if node.get('path_from_parent'):
+                        path.insert(0, node.get('path_from_parent'))
+                    else:
+                        break
+                paths.add(tuple(path))
+        return paths
+
+    def map_aql_contains(self, aql_containers):
         """
         Return the list of STRUCTURE_IDs related to all ADL structures that
         match the given AQL containment statements
@@ -191,5 +211,9 @@ class IndexService(object):
         query = self.build_xpath_query(aql_containers)
         res = self._execute_query(query)
         self.disconnect()
-        # return [x.get('uid') for x in res.findall('structure_id')]
-        return [(a.find('structure_id').get('uid')) for a in res.findall('archetype_structure')]
+        structure_ids = self.get_matching_ids(res)
+        path_mappings = dict()
+        for c in aql_containers:
+            path_mappings[c.class_expression.variable_name] = \
+                self.get_matching_paths(res, c.class_expression.predicate.archetype_id)
+        return structure_ids, path_mappings
