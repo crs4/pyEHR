@@ -17,14 +17,16 @@ class TestIndexService(unittest.TestCase):
         ehr_record = {
             'archetype': 'test-openehr-OBSERVATION.test01.v1',
             'data': {
-                'at0001': {
-                    'archetype': 'test-openehr-OBSERVATION.test02.v1',
-                    'data': {}
+                'data': {
+                    'at0001': {
+                        'archetype': 'test-openehr-OBSERVATION.test02.v1',
+                        'data': {}
+                    }
                 }
             }
         }
-        expected_structure = '<archetype class="test-openehr-OBSERVATION.test01.v1">' + \
-            '<archetype class="test-openehr-OBSERVATION.test02.v1"/>' + \
+        expected_structure = '<archetype class="test-openehr-OBSERVATION.test01.v1" path_from_parent="/">' + \
+            '<archetype class="test-openehr-OBSERVATION.test02.v1" path_from_parent="/data[at0001]"/>' + \
             '</archetype>'
         ehr_structure = etree.tostring(IndexService.get_structure(ehr_record))
         self.assertEqual(ehr_structure, expected_structure)
@@ -46,9 +48,9 @@ class TestIndexService(unittest.TestCase):
                 }
             }
         }
-        expected_structure = '<archetype class="test-openehr-OBSERVATION.test01.v1">' + \
-            '<archetype class="test-openehr-OBSERVATION.test02.v1"/>' + \
-            '<archetype class="test-openehr-OBSERVATION.test03.v1"/>' + \
+        expected_structure = '<archetype class="test-openehr-OBSERVATION.test01.v1" path_from_parent="/">' + \
+            '<archetype class="test-openehr-OBSERVATION.test02.v1" path_from_parent="/cluster[at0001]"/>' + \
+            '<archetype class="test-openehr-OBSERVATION.test03.v1" path_from_parent="/cluster[at0002]"/>' + \
             '</archetype>'
         ehr_structure = etree.tostring(IndexService.get_structure(ehr_record))
         self.assertEqual(ehr_structure, expected_structure)
@@ -57,21 +59,23 @@ class TestIndexService(unittest.TestCase):
         ehr_record = {
             'archetype': 'test-openehr-OBSERVATION.test01.v1',
             'data': {
-                'at0001': [
-                    {
-                        'archetype': 'test-openehr-OBSERVATION.test02.v1',
-                        'data': {}
-                    },
-                    {
-                        'archetype': 'test-openehr-OBSERVATION.test03.v1',
-                        'data': {}
-                    }
-                ]
+                'event': {
+                    'at0001': [
+                        {
+                            'archetype': 'test-openehr-OBSERVATION.test02.v1',
+                            'data': {}
+                        },
+                        {
+                            'archetype': 'test-openehr-OBSERVATION.test03.v1',
+                            'data': {}
+                        }
+                    ]
+                }
             }
         }
-        expected_structure = '<archetype class="test-openehr-OBSERVATION.test01.v1">' + \
-            '<archetype class="test-openehr-OBSERVATION.test02.v1"/>' + \
-            '<archetype class="test-openehr-OBSERVATION.test03.v1"/>' + \
+        expected_structure = '<archetype class="test-openehr-OBSERVATION.test01.v1" path_from_parent="/">' + \
+            '<archetype class="test-openehr-OBSERVATION.test02.v1" path_from_parent="/event[at0001]"/>' + \
+            '<archetype class="test-openehr-OBSERVATION.test03.v1" path_from_parent="/event[at0001]"/>' + \
             '</archetype>'
         ehr_structure = etree.tostring(IndexService.get_structure(ehr_record))
         self.assertEqual(ehr_structure, expected_structure)
