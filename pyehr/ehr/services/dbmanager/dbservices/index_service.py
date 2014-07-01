@@ -214,6 +214,7 @@ class IndexService(object):
         structure_ids = self._get_matching_ids(res)
         path_mappings = dict()
         for c in aql_containers:
-            path_mappings[c.class_expression.variable_name] = \
-                self._get_matching_paths(res, c.class_expression.predicate.archetype_id)
+            if c.class_expression.predicate:
+                path_mappings[c.class_expression.variable_name] = \
+                    self._get_matching_paths(res, c.class_expression.predicate.archetype_id)
         return structure_ids, path_mappings
