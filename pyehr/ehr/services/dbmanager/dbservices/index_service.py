@@ -58,8 +58,8 @@ class IndexService(object):
         def get_structure_from_dict(doc, parent_key):
             archetypes = []
             for k, v in doc.iteritems():
+                pk = parent_key + [k]
                 if isinstance(v, dict):
-                    pk = parent_key + [k]
                     if is_archetype(v):
                         archetypes.append(IndexService.get_structure(v, pk))
                     else:
@@ -67,7 +67,7 @@ class IndexService(object):
                         if len(a_from_dict) > 0:
                             archetypes.extend(a_from_dict)
                 if isinstance(v, list):
-                    a_from_list = get_structure_from_list(v, parent_key)
+                    a_from_list = get_structure_from_list(v, pk)
                     if len(a_from_list) > 0:
                         archetypes.extend(a_from_list)
             return archetypes
