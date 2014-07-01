@@ -169,7 +169,7 @@ class IndexService(object):
         else:
             return 'archetype'
 
-    def build_xpath_query(self, aql_containers):
+    def _build_xpath_query(self, aql_containers):
         # Right now, the AQLParsers maps CONTAIN statements into a list where
         # cont[n] contains cont[n+1]
         xpath_queries = [self._container_to_xpath(c) for c in aql_containers]
@@ -179,10 +179,10 @@ class IndexService(object):
         query += '/ancestor-or-self::archetype_structure'
         return query
 
-    def get_matching_ids(self, results):
+    def _get_matching_ids(self, results):
         return [(a.find('structure_id').get('uid')) for a in results.findall('archetype_structure')]
 
-    def get_matching_paths(self, results, archetype_class):
+    def _get_matching_paths(self, results, archetype_class):
         paths = set()
         for structure in results.findall('archetype_structure'):
             res = structure.xpath('//archetype[@class="%s"]' % archetype_class)
@@ -208,12 +208,12 @@ class IndexService(object):
         """
         if not self.session:
             self.connect()
-        query = self.build_xpath_query(aql_containers)
+        query = self._build_xpath_query(aql_containers)
         res = self._execute_query(query)
         self.disconnect()
-        structure_ids = self.get_matching_ids(res)
+        structure_ids = self._get_matching_ids(res)
         path_mappings = dict()
         for c in aql_containers:
             path_mappings[c.class_expression.variable_name] = \
-                self.get_matching_paths(res, c.class_expression.predicate.archetype_id)
+                self._get_matching_paths(res, c.class_expression.predicate.archetype_id)
         return structure_ids, path_mappings
