@@ -316,8 +316,13 @@ class ConditionExpression(PredicateExpression):
 
 
 class ConditionOperator(object):
+
+    BASIC_OPERATORS = (">", "<", ">=", "<=", "=", '!=')
+    LOGICAL_OPERATORS = ('AND', 'OR')
+    ADVANCED_OPERATORS = ('MATCHES', 'NOT', 'EXISTS')
+    OPERATORS = BASIC_OPERATORS + LOGICAL_OPERATORS + ADVANCED_OPERATORS
+
     def __init__(self):
-        self.type_keywords = ("OR", "AND", "MATCHES", ">", "<", ">=", "<=", "=")
         self._op = None
 
     @property
@@ -326,7 +331,7 @@ class ConditionOperator(object):
 
     @op.setter
     def op(self, value):
-        if value.upper() in self.type_keywords:
+        if value.upper() in self.OPERATORS:
             self._op = value.upper()
         else:
             raise OperatorNotSupported("Unkown operator %s", value.upper())
