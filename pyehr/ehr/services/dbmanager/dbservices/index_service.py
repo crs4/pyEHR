@@ -183,20 +183,18 @@ class IndexService(object):
         return [(a.find('structure_id').get('uid')) for a in results.findall('archetype_structure')]
 
     def _get_matching_paths(self, results, archetype_class):
-        paths = set()
-        for structure in results.findall('archetype_structure'):
-            res = structure.xpath('//archetype[@class="%s"]' % archetype_class)
-            for node in res:
-                path = list()
-                path.append(node.get('path_from_parent'))
-                root = node.getroottree()
-                while node.getparent() != root and len(node.getparent()):
-                    node = node.getparent()
-                    if node.get('path_from_parent'):
-                        path.insert(0, node.get('path_from_parent'))
-                    else:
-                        break
-                paths.add(tuple(path))
+        paths = list()
+        for node in results.xpath('//archetype[@class="{0}"]/self::*[@class="{0}"]'.format(archetype_class)):
+            path = list()
+            path.append(node.get('path_from_parent'))
+            root = node.getroottree()
+            while node.getparent() != root and len(node.getparent()):
+                node = node.getparent()
+                if node.get('path_from_parent'):
+                    path.insert(0, node.get('path_from_parent'))
+                else:
+                    break
+            paths.append(tuple(path))
         return paths
 
     def map_aql_contains(self, aql_containers):
