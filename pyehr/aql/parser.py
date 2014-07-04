@@ -100,15 +100,15 @@ class Parser():
     '''
     def parse_predicate_expression(self, expression):
         if expression:
-            predicateExpr = PredicateExpression()
+            predicate_expr = PredicateExpression()
             operator = re.search('>|>=|=|<|<=|!=', expression)
             if operator:
-                predicateExpr.left_operand = expression[:operator.start()]
-                predicateExpr.operand = expression[operator.start():operator.end()]
-                predicateExpr.right_operand = expression[operator.end():]
+                predicate_expr.left_operand = expression[:operator.start()]
+                predicate_expr.operand = expression[operator.start():operator.end()]
+                predicate_expr.right_operand = expression[operator.end():]
             else:
-                predicateExpr.leftOperand = expression
-            return predicateExpr
+                predicate_expr.leftOperand = expression
+            return predicate_expr
         else:
             raise ParsePredicateExpressionError("No valid expression found")
 
@@ -298,36 +298,28 @@ class Parser():
     # Parse the condition part of an AQL statement
     def parse_condition(self, condition):
         try:
-            type_keywords = ("OR", "AND", "MATCHES", ">", "<", ">=", "<=", "=")
             cond = Condition()
-            tokens = condition.split(" ")
+            tokens = condition.split()
             block = False
             end = True
             buf = ""
-            if len(tokens) <= 1:
+            if len(tokens) == 1:
                 pred_expr = self.parse_predicate_expression(tokens[0])
                 cond.condition = pred_expr
             else:
                 cond_seq = ConditionSequence()
-                for token in tokens:
-                    if token.upper() in type_keywords:
+                for i, token in enumerate(tokens):
+                    if token.upper() in ConditionOperator.LOGICAL_OPERATORS or \
+                            token.upper() in ConditionOperator.ADVANCED_OPERATORS:
                         op = ConditionOperator()
-                        op.op = token.upper()
+                        op.op = token.strip().upper()
                         cond_seq.condition_sequence.append(op)
-                    else:
-                        if token.startswith('{') or token.startswith('('):
-                            block = True
-                            end = False
-                        if block:
-                            buf += token
-                        else:
-                            buf = token
-                        if token.endswith('}') or token.endswith(')'):
-                            end = True
-                        if end:
-                            pred_expr = self.parse_predicate_expression(buf)
-                            cond_seq.condition_sequence.append(pred_expr)
-                            buf = ""
+                    elif token.upper() in ConditionOperator.BASIC_OPERATORS:
+                        pred_expr = self.parse_predicate_expression('%s %s %s' %
+                                                                    (tokens[i - 1].strip(),
+                                                                     token.strip(),
+                                                                    tokens[i + 1].strip()))
+                        cond_seq.condition_sequence.append(pred_expr)
                 cond.condition = cond_seq
             return cond
         except Exception, e:
