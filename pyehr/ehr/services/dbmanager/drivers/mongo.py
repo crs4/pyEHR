@@ -9,6 +9,7 @@ import pymongo
 import pymongo.errors
 import re
 import time
+from itertools import izip
 
 
 class MongoDriver(DriverInterface):
@@ -466,54 +467,71 @@ class MongoDriver(DriverInterface):
         final = [v.strip('\'') for v in values]
         return final
 
-    def _calculate_condition_expression(self, condition):
-        query = dict()
-        i = 0
-        or_expressions = []
-        while i < len(condition.condition_sequence):
-            expression = condition.condition_sequence[i]
-            if isinstance(expression, ConditionExpression):
-                self.logger.debug("Expression: " + expression.expression)
-                op1 = self._parse_expression(expression.expression)
-                if not i+1 == len(condition.condition_sequence):
-                    operator = condition.condition_sequence[i+1]
-                    if isinstance(operator, ConditionOperator):
-                        if operator.op == "AND":
-                            if condition.condition_sequence[i+2].beginswith('('):
-                                op2 = self.mergeExpr(condition.condition_sequence[i+2:])
+    def _normalize_path(self, path):
+        for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
+            path = path.replace(original_value, encoded_value)
+        if path.startswith('/'):
+            path = path[1:]
+        for x, y in [('[', '/'), (']', ''), ('/', '.')]:
+            path = path.replace(x, y)
+        return path
+
+    def _build_path(self, path):
+        p = 'ehr_data.data'
+        if len(path) > 1:
+            for x in path[1:]:
+                p = '.data.'.join([p, self._normalize_path(x)])
+        return p
+
+    def _build_paths(self, aliases):
+        encoded_paths = dict()
+        for var, paths in aliases.iteritems():
+            for path in paths:
+                p = self._build_path(path)
+                encoded_paths.setdefault(var, []).append(p)
+        return encoded_paths
+
+    def _extract_path_alias(self, path):
+        return path.split('/')[0], '/'.join(path.split('/')[1:])
+
+    def _calculate_condition_expression(self, condition, aliases):
+        queries = list()
+        paths = self._build_paths(aliases)
+        for a in izip(*paths.values()):
+            for p in [dict(izip(paths.keys(), a))]:
+                query = dict()
+                expressions = dict()
+                or_indices = list()
+                and_indices = list()
+                for i, cseq_element in enumerate(condition.condition.condition_sequence):
+                    if isinstance(cseq_element, PredicateExpression):
+                        l_op_var, l_op_path = self._extract_path_alias(cseq_element.left_operand)
+                        expressions[i] = self._map_operand('%s.%s' % (p[l_op_var],
+                                                                      self._normalize_path(l_op_path)),
+                                                           cseq_element.right_operand,
+                                                           cseq_element.operand)
+                    elif isinstance(cseq_element, ConditionOperator):
+                        if cseq_element.op == 'OR':
+                            or_indices.extend([i-1, i+1])
+                        elif cseq_element.op == 'AND':
+                            if (i-1) not in or_indices:
+                                and_indices.extend([i-1, i+1])
                             else:
-                                op2 = self.mergeExpr(condition.condition_sequence[i+2:])
-                            expr = {"$and": {op1, op2}}
-                            or_expressions.append(expr)
-                            i += 3
-                        elif operator.op == "OR":
-                            or_expressions.append(op1)
-                            i += 2
-                        elif operator.op == "MATCHES":
-                            match = self._parse_match_expression(condition.condition_sequence[i+2])
-                            expr = {op1: {"$in": match}}
-                            or_expressions.append(expr)
-                            i += 3
-                        elif operator.op in ('>', '<', '=', '>=', '<='):
-                            expr = self._map_operand(op1, condition.condition_sequence[i+2].expression,
-                                                     operator.op)
-                            or_expressions.append(expr)
-                            i += 3
-                        else:
-                            pass
-                        self.logger.debug("Operator: " + operator.op)
-                    else:
-                        pass
+                                and_indices.append(i+1)
+                if len(or_indices) > 0:
+                    or_statement = {'$or': [expressions[i] for i in or_indices]}
+                    expressions[max(expressions.keys()) + 1] = or_statement
+                    and_indices.append(max(expressions.keys()))
+                if len(and_indices) > 0:
+                    for i in and_indices:
+                        query.update(expressions[i])
                 else:
-                    or_expressions.append(self._parse_simple_expression(op1))
-                    i += 1
-        if len(or_expressions) == 1:
-            self.logger.debug("or_expression single: " + str(or_expressions[0]))
-            query.update(or_expressions[0])
-        else:
-            self.logger.debug("or_expression: " + str(or_expressions))
-            query["$or"] = or_expressions
-        return query
+                    for e in expressions.values():
+                        query.update(e)
+                # append query and used mapping
+                if not (query, p) in queries:
+                    queries.append((query,p))
+        return queries
 
     def _compute_predicate(self, predicate):
         query = dict()
@@ -600,8 +618,16 @@ class MongoDriver(DriverInterface):
         else:
             raise Exception("MongoDriver Exception: Query must have a location expression")
 
-        structure_ids = self.index_service.get_matching_ids(location.containers)
+        structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
         query.update({'ehr_structure_id': {'$in': structure_ids}})
+        return query, aliases_mapping
+
+    def _calculate_selection_expression(self, selection, aliases):
+        query = dict()
+        for v in selection.variables:
+            path = '%s.%s' % (aliases[v.variable.variable],
+                              self._normalize_path(v.variable.path.value))
+            query[path] = True
         return query
 
     def _create_response(self, db_query, selection):
@@ -628,8 +654,32 @@ class MongoDriver(DriverInterface):
             rs.rows.append(rr)
         return rs
 
-    def execute_query(self, query_model, patients_repository, ehr_repository,
-                      query_params={}):
+    def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
+        if not query_params:
+            query_params = dict()
+        selection = query_model.selection
+        location = query_model.location
+        condition = query_model.condition
+        # TODO: add ORDER RULES and TIME CONSTRAINTS
+        queries = []
+        location_query, aliases = self._calculate_location_expression(location, query_params,
+                                                                      patients_repository,
+                                                                      ehr_repository)
+        if condition:
+            condition_results = self._calculate_condition_expression(condition, aliases)
+            for condition_query, mappings in condition_results:
+                selection_filter = self._calculate_selection_expression(selection, mappings)
+                condition_query.update(location_query)
+                queries.append((condition_query, selection_filter))
+        else:
+            paths = self._build_paths(aliases)
+            for a in izip(*paths.values()):
+                for p in [dict(izip(paths.keys(), a))]:
+                    selection_filter = self._calculate_selection_expression(selection, p)
+                    queries.append((location_query, selection_filter))
+        return queries
+
+    def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
         """
         Execute a query parsed with the :class:`pyehr.aql.parser.Parser` object and expressed
         as a :class:`pyehr.aql.model.QueryModel`. If the query is a parametric one, query parameters
@@ -644,6 +694,8 @@ class MongoDriver(DriverInterface):
                  containing results for the given query
         """
         self.connect()
+        if not query_params:
+            query_params = dict()
         try:
             selection = query_model.selection
             location = query_model.location
@@ -652,11 +704,18 @@ class MongoDriver(DriverInterface):
             # time_constraints = query_model.time_constraints
             db_query = dict()
             # select the collection
-            db_query.update(self._calculate_location_expression(location))
+            q, aliases_mapping = self._calculate_location_expression(location, query_params,
+                                                                     patients_repository,
+                                                                     ehr_repository)
+            db_query.update(q)
             # prepare the query to the db
             if condition:
-                db_query.update(self._calculate_condition_expression(db_query, condition))
-            # create the response
+                # db_query.update(self._calculate_condition_expression(condition))
+                cond_expr_results = self._calculate_condition_expression(condition,
+                                                                         aliases_mapping)
+                for query, mappings in cond_expr_results:
+                    db_query.update(query)
+                # create the response
             return self._create_response(db_query, selection)
         except Exception, e:
             self.logger.error("Mongo Driver Error: %s", str(e))
