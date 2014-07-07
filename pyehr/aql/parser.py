@@ -17,7 +17,16 @@ class Parser():
         self.time_constraints = None
         self.logger = logger or get_logger('pyehr-aql-parser')
 
+    def reset(self):
+        self.selection = None
+        self.location = None
+        self.condition = None
+        self.order_rules = None
+        self.time_constraints = None
+        self.logger.debug('Parser resetted')
+
     def parse(self, statement):
+        self.reset()
         try:
             text = statement.replace('\n', ' ').strip()
             if not re.match('SELECT ', text.upper()):
