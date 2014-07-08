@@ -1,5 +1,4 @@
 from pyehr.aql.parser import *
-from pyehr.aql.model import ConditionExpression
 from pyehr.ehr.services.dbmanager.drivers.interface import DriverInterface
 from pyehr.ehr.services.dbmanager.querymanager.query import ResultSet,\
     ResultColumnDef, ResultRow
@@ -624,11 +623,13 @@ class MongoDriver(DriverInterface):
 
     def _calculate_selection_expression(self, selection, aliases):
         query = dict()
+        results_aliases = dict()
         for v in selection.variables:
             path = '%s.%s' % (aliases[v.variable.variable],
                               self._normalize_path(v.variable.path.value))
             query[path] = True
-        return query
+            results_aliases[path] = v.label
+        return query, results_aliases
 
     def _create_response(self, db_query, selection):
         # execute the query
@@ -668,15 +669,25 @@ class MongoDriver(DriverInterface):
         if condition:
             condition_results = self._calculate_condition_expression(condition, aliases)
             for condition_query, mappings in condition_results:
-                selection_filter = self._calculate_selection_expression(selection, mappings)
+                selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings)
                 condition_query.update(location_query)
-                queries.append((condition_query, selection_filter))
+                queries.append(
+                    {
+                        'query': (condition_query, selection_filter),
+                        'results_aliases': results_aliases
+                    }
+                )
         else:
             paths = self._build_paths(aliases)
             for a in izip(*paths.values()):
                 for p in [dict(izip(paths.keys(), a))]:
-                    selection_filter = self._calculate_selection_expression(selection, p)
-                    queries.append((location_query, selection_filter))
+                    selection_filter, results_aliases = self._calculate_selection_expression(selection, p)
+                    queries.append(
+                        {
+                            'query': (location_query, selection_filter),
+                            'results_aliases': results_aliases
+                        }
+                    )
         return queries
 
     def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
