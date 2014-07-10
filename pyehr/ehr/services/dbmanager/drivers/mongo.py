@@ -732,7 +732,6 @@ class MongoDriver(DriverInterface):
                                             query_params)
         total_results = ResultSet()
         for qm in query_mappings:
-            print qm
             results = self._run_aql_query(*qm['query'], aliases=qm['results_aliases'],
                                           collection=ehr_repository)
             total_results.extend(results)
