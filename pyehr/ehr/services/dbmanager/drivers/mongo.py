@@ -83,7 +83,7 @@ class MongoDriver(DriverInterface):
         """
         return not self.client is None
 
-    def __check_connection(self):
+    def _check_connection(self):
         if not self.is_connected:
             raise DBManagerNotConnectedError('Connection to host %s is closed' % self.host)
 
@@ -94,7 +94,7 @@ class MongoDriver(DriverInterface):
         :param collection_label: the label of the collection that must be selected
         :type collection_label: string
         """
-        self.__check_connection()
+        self._check_connection()
         self.logger.debug('Changing collection for database %s, old collection: %s - new collection %s',
                           self.database.name, self.collection.name, collection_label)
         self.collection = self.database[collection_label]
@@ -242,7 +242,7 @@ class MongoDriver(DriverInterface):
         :type record: dictionary
         :return: the ID of the record
         """
-        self.__check_connection()
+        self._check_connection()
         try:
             return self.collection.insert(record)
         except pymongo.errors.DuplicateKeyError:
@@ -257,7 +257,7 @@ class MongoDriver(DriverInterface):
         :return: a list of records' IDs
         :rtype: list
         """
-        self.__check_connection()
+        self._check_connection()
         return super(MongoDriver, self).add_records(records)
 
     def get_record_by_id(self, record_id):
@@ -268,7 +268,7 @@ class MongoDriver(DriverInterface):
         :return: the record of None if no match was found for the given record
         :rtype: dictionary or None
         """
-        self.__check_connection()
+        self._check_connection()
         res = self.collection.find_one({'_id': record_id})
         if res:
             return decode_dict(res)
@@ -282,7 +282,7 @@ class MongoDriver(DriverInterface):
         :return: all the records stored in the current collection
         :rtype: list
         """
-        self.__check_connection()
+        self._check_connection()
         return (decode_dict(rec) for rec in self.collection.find())
 
     def get_records_by_value(self, field, value):
@@ -309,7 +309,7 @@ class MongoDriver(DriverInterface):
         :return: a list with the matching records
         :rtype: list
         """
-        self.__check_connection()
+        self._check_connection()
         return (decode_dict(rec) for rec in self.collection.find(selector, fields))
 
     def delete_record(self, record_id):
@@ -318,7 +318,7 @@ class MongoDriver(DriverInterface):
 
         :param record_id: record's ID
         """
-        self.__check_connection()
+        self._check_connection()
         self.logger.debug('deleting document with ID %s', record_id)
         res = self.collection.remove(record_id)
         self.logger.debug('deleted %d documents', res[u'n'])
@@ -331,7 +331,7 @@ class MongoDriver(DriverInterface):
         :param update_condition: the update condition (in MongoDB syntax)
         :type update_condition: dictionary
         """
-        self.__check_connection()
+        self._check_connection()
         self.logger.debug('Updading record with ID %r, with condition %r', record_id,
                           update_condition)
         res = self.collection.update({'_id': record_id}, update_condition)
@@ -345,7 +345,7 @@ class MongoDriver(DriverInterface):
         :return: the number of current collection's documents
         :rtype: int
         """
-        self.__check_connection()
+        self._check_connection()
         return self.collection.count()
 
     def _update_record_timestamp(self, timestamp_field, update_statement):
@@ -573,31 +573,40 @@ class MongoDriver(DriverInterface):
                 driver.disconnect()
             else:
                 driver.select_collection(original_collection)
-            return res.next()['ehr_records']
+            try:
+                return res.next()['ehr_records']
+            except StopIteration:
+                return None
 
         # Resolve predicate expressed for EHR AQL expression
         query = dict()
-        pr = ehr_class_expression.predicate.predicate_expression
-        if pr.left_operand:
-            if pr.right_operand.startswith('$'):
-                try:
-                    right_operand = query_params[pr.right_operand]
-                except KeyError, ke:
-                    raise PredicateException('Missing value for parameter %s' % ke)
+        if ehr_class_expression.predicate:
+            pr = ehr_class_expression.predicate.predicate_expression
+            if pr.left_operand:
+                if pr.right_operand.startswith('$'):
+                    try:
+                        right_operand = query_params[pr.right_operand]
+                    except KeyError, ke:
+                        raise PredicateException('Missing value for parameter %s' % ke)
+                else:
+                    right_operand = pr.right_operand
+                if pr.left_operand == 'uid':
+                    ehr_ids = resolve_ehr_uid(self, right_operand, patients_collection)
+                    if ehr_ids:
+                        query.update({'_id': {'$in': ehr_ids}})
+                    else:
+                        # TODO: check what to do if no matching ID was found
+                        #       maybe throwing an exception is the best solution here
+                        pass
+                elif pr.left_operand == 'id':
+                    # use given EHR ID
+                    query.update(self._map_operand(pr.left_operand,
+                                                   right_operand,
+                                                   pr.operand))
+                else:
+                    query.update(self._compute_predicate(pr))
             else:
-                right_operand = pr.right_operand
-            if pr.left_operand == 'uid':
-                ehr_ids = resolve_ehr_uid(self, right_operand, patients_collection)
-                query.update({'_id': {'$in': ehr_ids}})
-            elif pr.left_operand == 'id':
-                # use given EHR ID
-                query.update(self._map_operand(pr.left_operand,
-                                               right_operand,
-                                               pr.operand))
-            else:
-                query.update(self._compute_predicate(pr))
-        else:
-            raise PredicateException('No left operand in predicate')
+                raise PredicateException('No left operand in predicate')
         return query
 
     def _calculate_location_expression(self, location, query_params, patients_collection,
@@ -622,37 +631,52 @@ class MongoDriver(DriverInterface):
         return query, aliases_mapping
 
     def _calculate_selection_expression(self, selection, aliases):
-        query = dict()
+        query = {'_id': False}
         results_aliases = dict()
         for v in selection.variables:
             path = '%s.%s' % (aliases[v.variable.variable],
                               self._normalize_path(v.variable.path.value))
             query[path] = True
-            results_aliases[path] = v.label
+            # use alias or ADL path
+            results_aliases[path] = v.label or v.variable.path.value
         return query, results_aliases
 
-    def _create_response(self, db_query, selection):
-        # execute the query
-        self.logger.debug("QUERY PRE: %s", str(db_query))
-        # Prepare the response
+    def _split_results(self, query_result):
+        for key, value in query_result.iteritems():
+            if isinstance(value, dict):
+                for k, v in self._split_results(value):
+                    yield '%s.%s' % (key, k), v
+            elif isinstance(value, list):
+                for element in value:
+                    for k, v in self._split_results(element):
+                        yield '%s.%s' % (key, k), v
+            else:
+                yield key, value
+
+    def _run_aql_query(self, query, fields, aliases, collection):
+        self.logger.debug("Running query\n%s\nwith filters\n%s", query, fields)
         rs = ResultSet()
-        # Declaring a projection to retrieve only the selected fields
-        proj = {'_id': False}
-        for var in selection.variables:
-            column_def = ResultColumnDef()
-            column_def.name = var.label
-            column_def.path = var.variable.path.value
-            rs.columns.append(column_def)
-            proj_col = column_def.path.replace('/', '.').strip('.')
-            proj[proj_col] = True
-        self.logger.debug("PROJ: %s", str(proj))
-        # query_result = self.collection.find(db_query, proj)
-        query_results = self.get_records_by_query(db_query, proj)
-        rs.total_results = query_results.count()
+        for path, alias in aliases.iteritems():
+            col = ResultColumnDef(alias, path)
+            rs.add_column_definition(col)
+        if self.is_connected:
+            original_collection = self.collection_name
+            close_conn_after_done = False
+        else:
+            close_conn_after_done = True
+        self.connect()
+        self.select_collection(collection)
+        query_results = self.get_records_by_query(query, fields)
+        if close_conn_after_done:
+            self.disconnect()
+        else:
+            self.select_collection(original_collection)
         for q in query_results:
-            rr = ResultRow()
-            rr.items = q.values()
-            rs.rows.append(rr)
+            record = dict()
+            for x in self._split_results(q):
+                record[x[0]] = x[1]
+            rr = ResultRow(record)
+            rs.add_row(rr)
         return rs
 
     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
@@ -704,30 +728,12 @@ class MongoDriver(DriverInterface):
         :return: a :class:`pyehr.ehr.services.dbmanager.querymanager.query.ResultSet` object
                  containing results for the given query
         """
-        self.connect()
-        if not query_params:
-            query_params = dict()
-        try:
-            selection = query_model.selection
-            location = query_model.location
-            condition = query_model.condition
-            # order_rules = query_model.order_rules
-            # time_constraints = query_model.time_constraints
-            db_query = dict()
-            # select the collection
-            q, aliases_mapping = self._calculate_location_expression(location, query_params,
-                                                                     patients_repository,
-                                                                     ehr_repository)
-            db_query.update(q)
-            # prepare the query to the db
-            if condition:
-                # db_query.update(self._calculate_condition_expression(condition))
-                cond_expr_results = self._calculate_condition_expression(condition,
-                                                                         aliases_mapping)
-                for query, mappings in cond_expr_results:
-                    db_query.update(query)
-                # create the response
-            return self._create_response(db_query, selection)
-        except Exception, e:
-            self.logger.error("Mongo Driver Error: %s", str(e))
-            return None
+        query_mappings = self.build_queries(query_model, patients_repository, ehr_repository,
+                                            query_params)
+        total_results = ResultSet()
+        for qm in query_mappings:
+            print qm
+            results = self._run_aql_query(*qm['query'], aliases=qm['results_aliases'],
+                                          collection=ehr_repository)
+            total_results.extend(results)
+        return total_results
