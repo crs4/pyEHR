@@ -445,7 +445,7 @@ class MongoDriver(DriverInterface):
 
     def _parse_simple_expression(self, expression):
         expr = {}
-        operator = re.search('>|>=|=|<|<=|!=', expression)
+        operator = re.search('>=|>|<=|<|!=|=', expression)
         if operator:
             op1 = expression[0:operator.start()].strip('\'')
             op2 = expression[operator.end():].strip('\'')
