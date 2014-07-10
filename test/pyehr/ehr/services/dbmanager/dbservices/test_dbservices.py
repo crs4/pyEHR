@@ -53,7 +53,7 @@ class TestDBServices(unittest.TestCase):
         self.assertTrue(ehr_rec.active)
         self.assertEqual(ehr_rec.ehr_data.archetype_class,
                          'openEHR-EHR-EVALUATION.dummy-evaluation.v1')
-        self.assertEqual(ehr_rec.ehr_data.data,
+        self.assertEqual(ehr_rec.ehr_data.archetype_details,
                          {'field1': 'value1', 'field2': 'value2'})
         self.assertEqual(len(pat_rec.ehr_records), 1)
         self.assertEqual(pat_rec.ehr_records[0], ehr_rec)
@@ -95,12 +95,12 @@ class TestDBServices(unittest.TestCase):
         self.assertEqual(len(pat_rec.ehr_records), 10)
         for ehr in pat_rec.ehr_records:
             self.assertIsInstance(ehr.ehr_data, ArchetypeInstance)
-            self.assertEqual(len(ehr.ehr_data.data), 0)
+            self.assertEqual(len(ehr.ehr_data.archetype_details), 0)
         pat_rec = dbs.load_ehr_records(pat_rec)
         self.assertEqual(len(pat_rec.ehr_records), 10)
         for ehr in pat_rec.ehr_records:
             self.assertIsInstance(ehr.ehr_data, ArchetypeInstance)
-            self.assertNotEqual(len(ehr.ehr_data.data), 0)
+            self.assertNotEqual(len(ehr.ehr_data.archetype_details), 0)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
         self._delete_index_db(dbs)

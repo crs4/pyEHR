@@ -238,7 +238,7 @@ class ElasticSearchDriver(DriverInterface):
             )
         else:
             if record.get('ehr_data'):
-                arch = ArchetypeInstance(record['ehr_data']['archetype'], {})
+                arch = ArchetypeInstance(record['ehr_data']['archetype_class'], {})
             else:
                 arch = None
             return ClinicalRecord(

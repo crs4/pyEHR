@@ -144,8 +144,8 @@ API Methods
             "ehr_records": [
                 {
                     "ehr_data": {
-                        "archetype": "openEHR.TEST-EVALUATION.v1",
-                        "data" {
+                        "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                        "archetype_details" {
                             "k2": "v2",
                             "k1": "v1"
                         }
@@ -157,8 +157,8 @@ API Methods
                 },
                 {
                     "ehr_data": {
-                        "archetype": "openEHR.TEST-EVALUATION.v1",
-                        "data": {
+                        "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                        "archetype_details": {
                             "k2": "v2",
                             "k1": "v1"
                         }
@@ -186,8 +186,8 @@ API Methods
             "ehr_records": [
                 {
                     "ehr_data": {
-                        "archetype": "openEHR.TEST-EVALUATION.v1",
-                        "data": {}
+                        "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                        "archetype_details": {}
                     },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
@@ -196,8 +196,8 @@ API Methods
                 },
                 {
                     "ehr_data": {
-                        "archetype": "openEHR.TEST-EVALUATION.v1",
-                        "data": {}
+                        "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                        "archetype_details": {}
                     },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
@@ -239,8 +239,8 @@ API Methods
             "ehr_records": [
                 {
                     "ehr_data": {
-                        "archetype": "openEHR.TEST-EVALUATION.v1",
-                        "data": {}
+                        "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                        "archetype_details": {}
                     },
                     "creation_time": 1399905956.765149,
                     "last_update": 1399905956.765149,
@@ -249,8 +249,8 @@ API Methods
                 },
                 {
                     "ehr_data": {
-                        "archetype": "openEHR.TEST-EVALUATION.v1",
-                        "data": {}
+                        "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                        "archetype_details": {}
                     },
                     "creation_time": 1400244143.18824,
                     "last_update": 1400244143.18824,
@@ -281,8 +281,8 @@ API Methods
             "ehr_records": [
                 {
                     "ehr_data": {
-                        "archetype": "openEHR.TEST-EVALUATION.v1",
-                        "data": {
+                        "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                        "archetype_details": {
                             "k2": "v2",
                             "k1": "v1"
                         }
@@ -294,8 +294,8 @@ API Methods
                 },
                 {
                     "ehr_data": {
-                        "archetype": "openEHR.TEST-EVALUATION.v1",
-                        "data": {
+                        "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                        "archetype_details": {
                             "k2": "v2",
                             "k1": "v1"
                         }
@@ -334,8 +334,8 @@ API Methods
 
       {
         "ehr_data": {
-          "archetype": "openEHR.TEST-EVALUATION.v1",
-          "data": {
+          "archetype_class": "openEHR.TEST-EVALUATION.v1",
+          "archetype_details": {
             "at0001": "val1",
             "at0002": "val2"
           }
@@ -352,8 +352,8 @@ API Methods
       {
         "RECORD": {
           "ehr_data": {
-            "archetype": "openEHR.TEST-EVALUATION.v1",
-            "data": {
+            "archetype_class": "openEHR.TEST-EVALUATION.v1",
+            "archetype_details": {
               "at0001": "val1",
               "at0002": "val2"
             }
@@ -479,8 +479,8 @@ API Methods
              "active": true,
              "creation_time": 1399905956.765149,
              "ehr_data" : {
-               "archetype": "openEHR.TEST-EVALUATION.v1",
-               "data": {
+               "archetype_class": "openEHR.TEST-EVALUATION.v1",
+               "archetype_details": {
                  "at0001": "val1",
                  "at0002": "val2"
                }
@@ -490,13 +490,13 @@ API Methods
              "active": true,
              "creation_time": 1399905956.895149,
              "ehr_data": {
-               "archetype": "openEHR.TEST-EVALUATION-BIS.v1",
-               "data": {
+               "archetype_class": "openEHR.TEST-EVALUATION-BIS.v1",
+               "archetype_details": {
                  "at0001": "val1",
                  "at0002": "val2",
                  "at0003": {
-                   "archetype": "openEHR.TEST-EVALUATION-BIS_SUBMODULE.v1",
-                   "data": {
+                   "archetype_class": "openEHR.TEST-EVALUATION-BIS_SUBMODULE.v1",
+                   "archetype_details": {
                      "at0001": "val1",
                      "at0002": "val2"
                    }
@@ -540,8 +540,8 @@ API Methods
               "creation_time": 1399905956.765149,
               "last_update": 1399905956.765149,
               "ehr_data": {
-                "archetype": "openEHR.TEST-EVALUATION.v1",
-                "data": {
+                "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                "archetype_details": {
                   "at0001": "val1",
                   "at0002": "val2"
                 }
@@ -558,8 +558,8 @@ API Methods
             "ehr_records": [
               {
                 "ehr_data": {
-                  "archetype": "openEHR.TEST-EVALUATION.v1",
-                  "data": {
+                  "archetype_class": "openEHR.TEST-EVALUATION.v1",
+                  "archetype_details": {
                     "at0001": "val1",
                     "at0002": "val2"
                   }

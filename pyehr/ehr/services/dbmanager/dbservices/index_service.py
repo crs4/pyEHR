@@ -42,7 +42,7 @@ class IndexService(object):
     @staticmethod
     def get_structure(ehr_record, parent_key=[]):
         def is_archetype(doc):
-            return 'archetype' in doc
+            return 'archetype_class' in doc
 
         def build_path(keys_list):
             if len(keys_list) == 0:
@@ -91,10 +91,10 @@ class IndexService(object):
         # TODO: sort records structure?
         root = etree.Element(
             'archetype',
-            {'class': ehr_record['archetype'], 'path_from_parent': build_path(parent_key)}
+            {'class': ehr_record['archetype_class'], 'path_from_parent': build_path(parent_key)}
         )
         parent_key = []
-        for k, x in ehr_record['data'].iteritems():
+        for k, x in ehr_record['archetype_details'].iteritems():
             pk = parent_key + [k]
             if isinstance(x, dict):
                 if is_archetype(x):

@@ -15,12 +15,12 @@ class TestIndexService(unittest.TestCase):
 
     def test_structure_simple(self):
         ehr_record = {
-            'archetype': 'test-openehr-OBSERVATION.test01.v1',
-            'data': {
+            'archetype_class': 'test-openehr-OBSERVATION.test01.v1',
+            'archetype_details': {
                 'data': {
                     'at0001': {
-                        'archetype': 'test-openehr-OBSERVATION.test02.v1',
-                        'data': {}
+                        'archetype_class': 'test-openehr-OBSERVATION.test02.v1',
+                        'archetype_details': {}
                     }
                 }
             }
@@ -33,16 +33,16 @@ class TestIndexService(unittest.TestCase):
 
     def test_structure_dict(self):
         ehr_record = {
-            'archetype': 'test-openehr-OBSERVATION.test01.v1',
-            'data': {
+            'archetype_class': 'test-openehr-OBSERVATION.test01.v1',
+            'archetype_details': {
                 'cluster': {
                     'at0001': {
-                        'archetype': 'test-openehr-OBSERVATION.test02.v1',
-                        'data': {}
+                        'archetype_class': 'test-openehr-OBSERVATION.test02.v1',
+                        'archetype_details': {}
                     },
                     'at0002': {
-                        'archetype': 'test-openehr-OBSERVATION.test03.v1',
-                        'data': {}
+                        'archetype_class': 'test-openehr-OBSERVATION.test03.v1',
+                        'archetype_details': {}
                     },
                     'at0003': 'foobar'
                 }
@@ -57,17 +57,17 @@ class TestIndexService(unittest.TestCase):
 
     def test_structure_list(self):
         ehr_record = {
-            'archetype': 'test-openehr-OBSERVATION.test01.v1',
-            'data': {
+            'archetype_class': 'test-openehr-OBSERVATION.test01.v1',
+            'archetype_details': {
                 'event': {
                     'at0001': [
                         {
-                            'archetype': 'test-openehr-OBSERVATION.test02.v1',
-                            'data': {}
+                            'archetype_class': 'test-openehr-OBSERVATION.test02.v1',
+                            'archetype_details': {}
                         },
                         {
-                            'archetype': 'test-openehr-OBSERVATION.test03.v1',
-                            'data': {}
+                            'archetype_class': 'test-openehr-OBSERVATION.test03.v1',
+                            'archetype_details': {}
                         }
                     ]
                 }
