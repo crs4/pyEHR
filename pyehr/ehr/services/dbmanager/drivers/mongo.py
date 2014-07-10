@@ -421,6 +421,18 @@ class MongoDriver(DriverInterface):
         return last_update
 
     def _map_operand(self, left, right, operand):
+        def cast_right_operand(rigth_operand):
+            if rigth_operand.isdigit():
+                return int(rigth_operand)
+            elif '.' in rigth_operand:
+                try:
+                    i, d = rigth_operand.split('.')
+                    if i.isdigit() and d.isdigit():
+                        return float(rigth_operand)
+                except ValueError:
+                    pass
+            return rigth_operand
+
         # map an AQL operand to the equivalent MongoDB one
         operands_map = {
             '!=': '$ne',
@@ -429,6 +441,8 @@ class MongoDriver(DriverInterface):
             '<': '$lt',
             '<=': '$lte'
         }
+        right = cast_right_operand(right.strip())
+        left = left.strip()
         if operand == '=':
             return {left: right}
         elif operand in operands_map:
