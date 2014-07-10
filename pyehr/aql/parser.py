@@ -110,7 +110,7 @@ class Parser():
     def parse_predicate_expression(self, expression):
         if expression:
             predicate_expr = PredicateExpression()
-            operator = re.search('>|>=|=|<|<=|!=', expression)
+            operator = re.search('>=|>|<=|<|!=|=', expression)
             if operator:
                 predicate_expr.left_operand = expression[:operator.start()]
                 predicate_expr.operand = expression[operator.start():operator.end()]
