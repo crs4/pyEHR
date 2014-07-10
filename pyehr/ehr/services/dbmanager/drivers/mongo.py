@@ -490,10 +490,10 @@ class MongoDriver(DriverInterface):
         return path
 
     def _build_path(self, path):
-        p = 'ehr_data.data'
+        p = 'ehr_data.archetype_details'
         if len(path) > 1:
             for x in path[1:]:
-                p = '.data.'.join([p, self._normalize_path(x)])
+                p = '.archetype_details.'.join([p, self._normalize_path(x)])
         return p
 
     def _build_paths(self, aliases):
