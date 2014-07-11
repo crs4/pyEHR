@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script can be used to handle the graph_manager daemon as a cronjob
+# This script can be used to handle the dbservice daemon as a cronjob
 # add to the crontab a line like
 #
 # */5 * * * * $PYEHR_REPO_PATH/services/dbservice_cron.sh &
