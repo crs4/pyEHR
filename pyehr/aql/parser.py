@@ -112,9 +112,9 @@ class Parser():
             predicate_expr = PredicateExpression()
             operator = re.search('>=|>|<=|<|!=|=', expression)
             if operator:
-                predicate_expr.left_operand = expression[:operator.start()]
-                predicate_expr.operand = expression[operator.start():operator.end()]
-                predicate_expr.right_operand = expression[operator.end():]
+                predicate_expr.left_operand = expression[:operator.start()].strip()
+                predicate_expr.operand = expression[operator.start():operator.end()].strip()
+                predicate_expr.right_operand = expression[operator.end():].strip()
             else:
                 predicate_expr.leftOperand = expression
             return predicate_expr
@@ -122,7 +122,7 @@ class Parser():
             raise ParsePredicateExpressionError("No valid expression found")
 
     def parse_predicate(self, predicate_string):
-        operator = re.search('>|>=|=|<|<=|!=', predicate_string)
+        operator = re.search('>=|>|<=|<|!=|=', predicate_string)
         if operator:
             # is a Standard predicate
             tokens = predicate_string.split()
@@ -166,7 +166,7 @@ class Parser():
         # 2 - consisting an AQL variable name followed by a predicate, e.g.
         # 3 - consisting an AQL variable name followed by a predicate and an openEHR path, e.g.
         if var:
-            path.variable = var
+            path.variable = var.strip()
             str = identified_path_string[len(var):]
             # calculating case 2 and 3
             if str.startswith('['):
@@ -327,7 +327,7 @@ class Parser():
                         pred_expr = self.parse_predicate_expression('%s %s %s' %
                                                                     (tokens[i - 1].strip(),
                                                                      token.strip(),
-                                                                    tokens[i + 1].strip()))
+                                                                     tokens[i + 1].strip()))
                         cond_seq.condition_sequence.append(pred_expr)
                 cond.condition = cond_seq
             return cond

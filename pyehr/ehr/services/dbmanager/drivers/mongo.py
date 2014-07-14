@@ -543,7 +543,7 @@ class MongoDriver(DriverInterface):
                         query.update(e)
                 # append query and used mapping
                 if not (query, p) in queries:
-                    queries.append((query,p))
+                    queries.append((query, p))
         return queries
 
     def _compute_predicate(self, predicate):
