@@ -652,7 +652,8 @@ class MongoDriver(DriverInterface):
                               self._normalize_path(v.variable.path.value))
             query[path] = True
             # use alias or ADL path
-            results_aliases[path] = v.label or v.variable.path.value
+            results_aliases[path] = v.label or '%s%s' % (v.variable.variable,
+                                                         v.variable.path.value)
         return query, results_aliases
 
     def _split_results(self, query_result):
