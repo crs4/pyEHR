@@ -4,7 +4,8 @@ from functools import wraps
 from bottle import post, get, run, response, request, abort, HTTPError
 
 from pyehr.utils import get_logger
-from pyehr.utils.services import get_service_configuration
+from pyehr.utils.services import get_service_configuration, check_pid_file,\
+    create_pid, destroy_pid
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 import pyehr.ehr.services.dbmanager.errors as pyehr_errors
@@ -430,22 +431,6 @@ def get_parser():
     parser.add_argument('--pid-file', type=str, help='PID file for the dbservice daemon',
                         default='/tmp/pyehr_dbservice.pid')
     return parser
-
-
-def check_pid_file(pid_file, logger):
-    if os.path.isfile(pid_file):
-        logger.info('Another dbservice daemon is running, exit')
-        sys.exit(0)
-
-
-def create_pid(pid_file):
-    pid = str(os.getpid())
-    with open(pid_file, 'w') as ofile:
-        ofile.write(pid)
-
-
-def destroy_pid(pid_file):
-    os.remove(pid_file)
 
 
 def main(argv):

@@ -97,3 +97,19 @@ def get_rotating_file_logger(log_file, log_level, logger_label,
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     return logger
+
+
+def check_pid_file(pid_file, logger):
+    if os.path.isfile(pid_file):
+        logger.info('Another dbservice daemon is running, exit')
+        sys.exit(0)
+
+
+def create_pid(pid_file):
+    pid = str(os.getpid())
+    with open(pid_file, 'w') as ofile:
+        ofile.write(pid)
+
+
+def destroy_pid(pid_file):
+    os.remove(pid_file)
