@@ -1,6 +1,6 @@
 from ConfigParser import SafeConfigParser, NoOptionError
 from pyehr.utils import get_logger
-import logging
+import logging, os, sys
 from logging.handlers import RotatingFileHandler
 
 
@@ -11,7 +11,8 @@ class ServiceConfig(object):
                  db_patients_repository, db_ehr_repository,
                  index_host, index_port, index_database,
                  index_user, index_passwd,
-                 service_host, service_port):
+                 db_service_host, db_service_port,
+                 query_service_host, query_service_port):
         self.db_driver = db_driver
         self.db_host = db_host
         self.db_database = db_database
@@ -25,8 +26,10 @@ class ServiceConfig(object):
         self.index_database = index_database
         self.index_user = index_user
         self.index_passwd = index_passwd
-        self.service_host = service_host
-        self.service_port = service_port
+        self.db_service_host = db_service_host
+        self.db_service_port = db_service_port
+        self.query_service_host = query_service_host
+        self.query_service_port = query_service_port
 
     def get_db_configuration(self):
         return {
@@ -49,10 +52,16 @@ class ServiceConfig(object):
             'passwd': self.index_passwd
         }
 
-    def get_service_configuration(self):
+    def get_db_service_configuration(self):
         return {
-            'host': self.service_host,
-            'port': self.service_port
+            'host': self.db_service_host,
+            'port': self.db_service_port
+        }
+
+    def get_query_service_configuration(self):
+        return {
+            'host': self.query_service_host,
+            'port': self.query_service_port
         }
 
 
@@ -76,8 +85,10 @@ def get_service_configuration(configuration_file, logger=None):
             parser.get('index', 'database'),
             parser.get('index', 'user'),
             parser.get('index', 'passwd'),
-            parser.get('service', 'host'),
-            parser.get('service', 'port')
+            parser.get('db_service', 'host'),
+            parser.get('db_service', 'port'),
+            parser.get('query_service', 'host'),
+            parser.get('query_service', 'port')
         )
         return conf
     except NoOptionError, nopt:

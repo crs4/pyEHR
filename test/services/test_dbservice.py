@@ -118,8 +118,8 @@ class TestDBService(unittest.TestCase):
         if CONF_FILE is None:
             sys.exit('ERROR: no configuration file provided')
         conf = get_service_configuration(CONF_FILE)
-        self.uri = 'http://%s:%s' % (conf.get_service_configuration()['host'],
-                                     conf.get_service_configuration()['port'])
+        self.uri = 'http://%s:%s' % (conf.get_db_service_configuration()['host'],
+                                     conf.get_db_service_configuration()['port'])
 
         target = urlparse(self.uri)
         try:

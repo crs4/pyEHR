@@ -1,4 +1,4 @@
-import sys, argparse, json, os
+import sys, argparse, json
 from functools import wraps
 
 from bottle import post, get, run, response, request, abort, HTTPError
@@ -440,12 +440,13 @@ def main(argv):
     conf = get_service_configuration(args.config, logger)
     if not conf:
         msg = 'It was impossible to load configuration, exit'
+        logger.critical(msg)
         sys.exit(msg)
     dbs = DBService(**conf.get_db_configuration())
     dbs.add_index_service(**conf.get_index_configuration())
     check_pid_file(args.pid_file, logger)
     create_pid(args.pid_file)
-    dbs.start_service(debug=args.debug, **conf.get_service_configuration())
+    dbs.start_service(debug=args.debug, **conf.get_db_service_configuration())
     destroy_pid(args.pid_file)
 
 
