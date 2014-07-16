@@ -40,3 +40,11 @@ class ParseSimpleExpressionException(Exception):
 
     def __str__(self):
         return repr(self.value)
+
+
+class MissingOperatorError(Exception):
+    pass
+
+
+class MissiongLocationExpressionError(Exception):
+    pass

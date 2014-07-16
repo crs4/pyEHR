@@ -6,10 +6,8 @@ from pyehr.ehr.services.dbmanager.errors import *
 from pyehr.utils import *
 import pymongo
 import pymongo.errors
-import re
 import time
 from itertools import izip
-
 
 class MongoDriver(DriverInterface):
     """
@@ -458,27 +456,10 @@ class MongoDriver(DriverInterface):
         return q
 
     def _parse_simple_expression(self, expression):
-        expr = {}
-        operator = re.search('>=|>|<=|<|!=|=', expression)
-        if operator:
-            op1 = expression[0:operator.start()].strip('\'')
-            op2 = expression[operator.end():].strip('\'')
-            op = expression[operator.start():operator.end()].strip()
-            try:
-                expr.update(self._map_operand(op1, op2, op))
-            except ValueError:
-                msg = 'Invalid operator in expression %s' % expression
-                self.logger.error(msg)
-                raise ParseSimpleExpressionException(msg)
-        else:
-            q = self._parse_expression(expression)
-            expr[q] = {'$exists': True}
-        return expr
+        return super(MongoDriver, self)._parse_simple_expression(expression)
 
     def _parse_match_expression(self, expr):
-        values = expr.expression.lstrip('{').rstrip('}').split(',')
-        final = [v.strip('\'') for v in values]
-        return final
+        return super(MongoDriver, self)._parse_match_expression(expr)
 
     def _normalize_path(self, path):
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
@@ -497,15 +478,10 @@ class MongoDriver(DriverInterface):
         return p
 
     def _build_paths(self, aliases):
-        encoded_paths = dict()
-        for var, paths in aliases.iteritems():
-            for path in paths:
-                p = self._build_path(path)
-                encoded_paths.setdefault(var, []).append(p)
-        return encoded_paths
+        return super(MongoDriver, self)._build_paths(aliases)
 
     def _extract_path_alias(self, path):
-        return path.split('/')[0], '/'.join(path.split('/')[1:])
+        return super(MongoDriver, self)._extract_path_alias(path)
 
     def _calculate_condition_expression(self, condition, aliases):
         queries = list()
@@ -553,7 +529,7 @@ class MongoDriver(DriverInterface):
             if pred_ex:
                 lo = pred_ex.left_operand
                 if not lo:
-                    raise PredicateException("MongoDriver._compute_predicate: No left operand found")
+                    raise PredicateException("No left operand found")
                 op = pred_ex.operand
                 ro = pred_ex.right_operand
                 if op and ro:
@@ -561,12 +537,12 @@ class MongoDriver(DriverInterface):
                     if op == "=":
                         query[lo] = ro
             else:
-                raise PredicateException("MongoDriver._compute_predicate: No predicate expression found")
+                raise PredicateException("No predicate expression found")
         elif type(predicate) == ArchetypePredicate:
             predicate_string = predicate.archetype_id
             query[predicate_string] = {'$exists': True}
         else:
-            raise PredicateException("MongoDriver._compute_predicate: No predicate expression found")
+            raise PredicateException("No predicate expression found")
         return query
 
     def _calculate_ehr_expression(self, ehr_class_expression, query_params, patients_collection,
@@ -638,8 +614,7 @@ class MongoDriver(DriverInterface):
                 if ce.predicate:
                     query.update(self._compute_predicate(ce.predicate))
         else:
-            raise Exception("MongoDriver Exception: Query must have a location expression")
-
+            raise MissiongLocationExpressionError("Query must have a location expression")
         structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
         query.update({'ehr_structure_id': {'$in': structure_ids}})
         return query, aliases_mapping
@@ -695,39 +670,8 @@ class MongoDriver(DriverInterface):
         return rs
 
     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
-        if not query_params:
-            query_params = dict()
-        selection = query_model.selection
-        location = query_model.location
-        condition = query_model.condition
-        # TODO: add ORDER RULES and TIME CONSTRAINTS
-        queries = []
-        location_query, aliases = self._calculate_location_expression(location, query_params,
-                                                                      patients_repository,
-                                                                      ehr_repository)
-        if condition:
-            condition_results = self._calculate_condition_expression(condition, aliases)
-            for condition_query, mappings in condition_results:
-                selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings)
-                condition_query.update(location_query)
-                queries.append(
-                    {
-                        'query': (condition_query, selection_filter),
-                        'results_aliases': results_aliases
-                    }
-                )
-        else:
-            paths = self._build_paths(aliases)
-            for a in izip(*paths.values()):
-                for p in [dict(izip(paths.keys(), a))]:
-                    selection_filter, results_aliases = self._calculate_selection_expression(selection, p)
-                    queries.append(
-                        {
-                            'query': (location_query, selection_filter),
-                            'results_aliases': results_aliases
-                        }
-                    )
-        return queries
+        return super(MongoDriver, self).build_queries(query_model, patients_repository, ehr_repository,
+                                                      query_params)
 
     def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
         """
