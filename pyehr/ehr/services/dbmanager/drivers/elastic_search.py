@@ -1,6 +1,6 @@
 from pyehr.aql.parser import *
 from pyehr.ehr.services.dbmanager.drivers.interface import DriverInterface
-from pyehr.ehr.services.dbmanager.querymanager.query import *
+from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import *
 from pyehr.ehr.services.dbmanager.errors import *
 from pyehr.utils import *
 import elasticsearch

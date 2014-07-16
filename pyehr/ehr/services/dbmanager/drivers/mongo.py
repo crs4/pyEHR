@@ -1,6 +1,6 @@
 from pyehr.aql.parser import *
 from pyehr.ehr.services.dbmanager.drivers.interface import DriverInterface
-from pyehr.ehr.services.dbmanager.querymanager.query import ResultSet,\
+from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import ResultSet,\
     ResultColumnDef, ResultRow
 from pyehr.ehr.services.dbmanager.errors import *
 from pyehr.utils import *

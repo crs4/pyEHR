@@ -4,7 +4,7 @@ import ConfigParser
 import json
 import pyehr
 from pyehr.aql.parser import *
-from pyehr.ehr.services.dbmanager.querymanager.query import *
+from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import *
 from pyehr.ehr.services.dbmanager import *
 
 from bottle import route, run, Response, request
