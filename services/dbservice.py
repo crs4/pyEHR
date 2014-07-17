@@ -32,8 +32,8 @@ class DBService(object):
         post('/batch/save/patient')(self.batch_save_patient)
         post('/batch/save/patients')(self.batch_save_patients)
         # Utilities
-        post('/check/status')(self.test_server)
-        get('/check/status')(self.test_server)
+        post('/check/status/dbservice')(self.test_server)
+        get('/check/status/dbservice')(self.test_server)
 
     def add_index_service(self, host, port, database, user, passwd):
         self.dbs.set_index_service(host, port, database, user, passwd)
@@ -58,7 +58,7 @@ class DBService(object):
                 inst._error(msg, 500)
         return wrapper
 
-    def _error(self, msg, error_code):
+    def _error(self, msg, error_code=500):
         self.logger.error(msg)
         body = {
             'SUCCESS': False,
@@ -67,7 +67,7 @@ class DBService(object):
         abort(error_code, json.dumps(body))
 
     def _missing_mandatory_field(self, field_label):
-        msg = 'Missing mandatory field, can\'t continue with the request'
+        msg = 'Missing mandatory field %s, can\'t continue with the request' % field_label
         self._error(msg, 400)
 
     def _success(self, body, return_code=200):
@@ -84,7 +84,7 @@ class DBService(object):
             raise ValueError('Can\'t convert to boolean value %s' % str_val)
 
     def test_server(self):
-        return "Server running"
+        return 'DBService daemon running'
 
     @exceptions_handler
     def save_patient(self):

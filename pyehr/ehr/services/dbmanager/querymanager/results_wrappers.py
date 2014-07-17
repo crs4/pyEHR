@@ -6,11 +6,11 @@ class ResultColumnDef(object):
 
     def __eq__(self, other):
         if isinstance(other, ResultColumnDef):
-            return self.get_json() == other.get_json()
+            return self.to_json() == other.to_json()
         else:
             return False
 
-    def get_json(self):
+    def to_json(self):
         return {'alias': self.alias, 'path': self.path}
 
 
@@ -34,16 +34,12 @@ class ResultSet(object):
         self.columns = []
         self.rows = []
 
-    def get_json(self):
-        columns = [col.get_json() for col in self.columns]
-        rows = [[i for i in r.record] for r in self.rows]
-        json = {
-            "name": self.name,
-            "totalResults": self.total_results,
-            "columns": columns,
-            "rows": rows
+    def to_json(self):
+        return {
+            'results_count': self.total_results,
+            'columns': [c.to_json() for c in self.columns],
+            'results': list(self.results)
         }
-        return json
 
     def _get_alias(self, key):
         for col in self.columns:
