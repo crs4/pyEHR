@@ -1,10 +1,11 @@
-import sys, argparse, json, os
+import sys, argparse, json
 from functools import wraps
 
 from bottle import post, get, run, response, request, abort, HTTPError
 
 from pyehr.utils import get_logger
-from pyehr.utils.services import get_service_configuration
+from pyehr.utils.services import get_service_configuration, check_pid_file,\
+    create_pid, destroy_pid
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 import pyehr.ehr.services.dbmanager.errors as pyehr_errors
@@ -31,8 +32,8 @@ class DBService(object):
         post('/batch/save/patient')(self.batch_save_patient)
         post('/batch/save/patients')(self.batch_save_patients)
         # Utilities
-        post('/check/status')(self.test_server)
-        get('/check/status')(self.test_server)
+        post('/check/status/dbservice')(self.test_server)
+        get('/check/status/dbservice')(self.test_server)
 
     def add_index_service(self, host, port, database, user, passwd):
         self.dbs.set_index_service(host, port, database, user, passwd)
@@ -57,7 +58,7 @@ class DBService(object):
                 inst._error(msg, 500)
         return wrapper
 
-    def _error(self, msg, error_code):
+    def _error(self, msg, error_code=500):
         self.logger.error(msg)
         body = {
             'SUCCESS': False,
@@ -66,7 +67,7 @@ class DBService(object):
         abort(error_code, json.dumps(body))
 
     def _missing_mandatory_field(self, field_label):
-        msg = 'Missing mandatory field, can\'t continue with the request'
+        msg = 'Missing mandatory field %s, can\'t continue with the request' % field_label
         self._error(msg, 400)
 
     def _success(self, body, return_code=200):
@@ -83,7 +84,7 @@ class DBService(object):
             raise ValueError('Can\'t convert to boolean value %s' % str_val)
 
     def test_server(self):
-        return "Server running"
+        return 'DBService daemon running'
 
     @exceptions_handler
     def save_patient(self):
@@ -432,22 +433,6 @@ def get_parser():
     return parser
 
 
-def check_pid_file(pid_file, logger):
-    if os.path.isfile(pid_file):
-        logger.info('Another dbservice daemon is running, exit')
-        sys.exit(0)
-
-
-def create_pid(pid_file):
-    pid = str(os.getpid())
-    with open(pid_file, 'w') as ofile:
-        ofile.write(pid)
-
-
-def destroy_pid(pid_file):
-    os.remove(pid_file)
-
-
 def main(argv):
     parser = get_parser()
     args = parser.parse_args(argv)
@@ -455,12 +440,13 @@ def main(argv):
     conf = get_service_configuration(args.config, logger)
     if not conf:
         msg = 'It was impossible to load configuration, exit'
+        logger.critical(msg)
         sys.exit(msg)
     dbs = DBService(**conf.get_db_configuration())
     dbs.add_index_service(**conf.get_index_configuration())
     check_pid_file(args.pid_file, logger)
     create_pid(args.pid_file)
-    dbs.start_service(debug=args.debug, **conf.get_service_configuration())
+    dbs.start_service(debug=args.debug, **conf.get_db_service_configuration())
     destroy_pid(args.pid_file)
 
 

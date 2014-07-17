@@ -23,8 +23,8 @@ class TestWrapper(unittest.TestCase):
                 'creation_time': creation_time,
                 'last_update': creation_time,
                 'ehr_data': {
-                    'archetype': 'openEHR.EHR-TEST-EVALUATION.v1',
-                    'data': {
+                    'archetype_class': 'openEHR.EHR-TEST-EVALUATION.v1',
+                    'archetype_details': {
                         'field1': 'value1',
                         'field2': 'value2'
                     }
@@ -34,7 +34,7 @@ class TestWrapper(unittest.TestCase):
 
         arch = ArchetypeInstance(
             archetype_class='openEHR.EHR-TEST-EVALUATION.v1',
-            data={'field1': 'value1', 'field2': 'value2'}
+            archetype_details={'field1': 'value1', 'field2': 'value2'}
         )
         crec = ClinicalRecord(
             ehr_data=arch,
@@ -53,8 +53,8 @@ class TestWrapper(unittest.TestCase):
     def test_from_json(self):
         creation_time = time.time()
         arch_json = {
-            'archetype': 'openEHR.EHR-TEST-EVALUATION.v1',
-            'data': {'field1': 'value1', 'field2': 'value2'}
+            'archetype_class': 'openEHR.EHR-TEST-EVALUATION.v1',
+            'archetype_details': {'field1': 'value1', 'field2': 'value2'}
         }
         crec_json = {
             'creation_time': creation_time,
@@ -80,7 +80,7 @@ class TestWrapper(unittest.TestCase):
     def test_get_clinical_record(self):
         arch = ArchetypeInstance(
             archetype_class='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-            data={'field1': 'value1', 'field2': 'value2'},
+            archetype_details={'field1': 'value1', 'field2': 'value2'},
         )
         crec = ClinicalRecord(
             ehr_data=arch,
@@ -100,7 +100,7 @@ class TestWrapper(unittest.TestCase):
         def build_clinical_record(record_id=None):
             arch = ArchetypeInstance(
                 archetype_class='openEHR-EHR-EVALUATION.dummy-evaluation.v1',
-                data={'field1': 'value1', 'field2': 'value2'}
+                archetype_details={'field1': 'value1', 'field2': 'value2'}
             )
             return ClinicalRecord(record_id=record_id,
                                   ehr_data=arch)

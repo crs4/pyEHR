@@ -1,6 +1,6 @@
 from pyehr.aql.parser import *
 from pyehr.ehr.services.dbmanager.drivers.interface import DriverInterface
-from pyehr.ehr.services.dbmanager.querymanager.query import *
+from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import *
 from pyehr.ehr.services.dbmanager.errors import *
 from pyehr.utils import *
 import elasticsearch
@@ -238,7 +238,7 @@ class ElasticSearchDriver(DriverInterface):
             )
         else:
             if record.get('ehr_data'):
-                arch = ArchetypeInstance(record['ehr_data']['archetype'], {})
+                arch = ArchetypeInstance(record['ehr_data']['archetype_class'], {})
             else:
                 arch = None
             return ClinicalRecord(
@@ -498,196 +498,57 @@ class ElasticSearchDriver(DriverInterface):
         self.logger.debug('updated %s document', res[u'_id'])
         return last_update
 
-    def parseExpression(self, expression):
-        q = expression.replace('/','.')
-        return q
+    def _map_operand(self, left, right, operand):
+        raise NotImplementedError()
 
-    def parseSimpleExpression(self, expression):
-        expr = {}
-        operator = re.search('>|>=|=|<|<=|!=', expression)
-        if operator:
-            op1 = expression[0:operator.start()].strip('\'')
-            op2 = expression[operator.end():].strip('\'')
-            op = expression[operator.start():operator.end()]
-            if re.match('=', op):
-                expr[op1] = op2
-            elif re.match('!=', op):
-                expr[op1] = {'$ne' : op2}
-            elif re.match('>', op):
-                expr[op1] = {'$gt' : op2}
-            elif re.match('>=', op):
-                expr[op1] = {'$gte' : op2}
-            elif re.match('<', op):
-                expr[op1] = {'$lt' : op2}
-            elif re.match('<=', op):
-                expr[op1] = {'$lte' : op2}
-            else:
-                raise ParseSimpleExpressionException("Invalid operator")
-        else:
-            q = expression.replace('/','.')
-            expr[q] = {'$exists' : True}
-        return expr
+    def _parse_expression(self, expression):
+        raise NotImplementedError()
 
-    def parseMatchExpression(self, expr):
-        range = expr.expression.lstrip('{')
-        range = range.rstrip('}')
-        values = range.split(',')
-        final = []
-        for val in values:
-            v = val.strip('\'')
-            final.append(v)
-        return final
+    def _parse_simple_expression(self, expression):
+        super(ElasticSearchDriver, self)._parse_expression(expression)
 
-    def calculateConditionExpression(self, query, condition):
-        i = 0
-        or_expressions = []
-        while i < len(condition.conditionSequence):
-            expression = condition.conditionSequence[i]
-            if isinstance(expression, ConditionExpression):
-                print "Expression: " + expression.expression
-                op1 = self.parseExpression(expression.expression)
-                if not i+1==len(condition.conditionSequence):
-                    operator = condition.conditionSequence[i+1]
-                    if isinstance(operator, ConditionOperator):
-                        if operator.op == "AND":
-                            if condition.conditionSequence[i+2].beginswith('('):
-                                op2 = self.mergeExpr(condition.conditionSequence[i+2:])
-                            else:
-                                op2 = self.mergeExpr(condition.conditionSequence[i+2:])
-                            expr = {"$and" : {op1, op2}}
-                            or_expressions.append(expr)
-                            i = i+3
-                        elif operator.op == "OR":
-                            or_expressions.append(op1)
-                            i = i+2
-                        elif operator.op == "MATCHES":
-                            match = self.parseMatchExpression(condition.conditionSequence[i+2])
-                            expr = {op1 : {"$in" : match}}
-                            or_expressions.append(expr)
-                            i = i+3
-                        elif operator.op == ">":
-                            expr = {op1 : {"$gt" : {condition.conditionSequence[i+2].expression}}}
-                            or_expressions.append(expr)
-                            i = i+3
-                        elif operator.op == "<":
-                            expr = {op1 : {"$lt" : {condition.conditionSequence[i+2].expression}}}
-                            or_expressions.append(expr)
-                            i = i+3
-                        elif operator.op == "=":
-                            expr = {op1 : {"$eq" : {condition.conditionSequence[i+2].expression}}}
-                            or_expressions.append(expr)
-                            i = i+3
-                        elif operator.op == ">=":
-                            expr = {op1 : {"$gte" : {condition.conditionSequence[i+2].expression}}}
-                            or_expressions.append(expr)
-                            i = i+3
-                        elif operator.op == "<=":
-                            expr = {op1 : {"$lte" : {condition.conditionSequence[i+2].expression}}}
-                            or_expressions.append(expr)
-                            i = i+3
-                        else:
-                            pass
-                        print "Operator: " + operator.op
-                    else:
-                        pass
-                else:
-                    or_expressions.append(self.parseSimpleExpression(op1))
-                    i += 1
-        if len(or_expressions) == 1:
-            print "or_expression single: " + str(or_expressions[0])
-            query.update(or_expressions[0])
-        else:
-            print "or_expression: " + str(or_expressions)
-            query["$or"] = or_expressions
+    def _parse_match_expression(self, expr):
+        super(ElasticSearchDriver, self)._parse_match_expression(expr)
 
-    def computePredicate(self, query, predicate):
-        if isinstance(predicate, PredicateExpression):
-            predEx = predicate.predicateExpression
-            if predEx:
-                lo = predEx.leftOperand
-                if not lo:
-                    raise PredicateException("MongoDriver.compute_predicate: No left operand found")
-                op = predEx.operand
-                ro = predEx.rightOperand
-                if op and ro:
-                    print "lo: %s - op: %s - ro: %s" % (lo, op, ro)
-                    if op == "=":
-                        query[lo] = ro
-            else:
-                raise PredicateException("MongoDriver.compute_predicate: No predicate expression found")
-        elif isinstance(predicate, ArchetypePredicate):
-            predicateString = predicate.archetypeId
-            query[predicateString] = {'$exists' : True}
-        else:
-            raise PredicateException("MongoDriver.compute_predicate: No predicate expression found")
+    def _normalize_path(self, path):
+        raise NotImplementedError()
 
-    def calculateLocationExpression(self, query, location):
-        # Here is where the collection has been chosen according to the selection
-        print "LOCATION: %s" % str(location)
-        if location.classExpression:
-            ce = location.classExpression
-            className = ce.className
-            variableName = ce.variableName
-            predicate = ce.predicate
-            if predicate:
-                self.computePredicate(query, predicate)
-        else:
-            raise Exception("MongoDriver Exception: Query must have a location expression")
+    def _build_path(self, path):
+        raise NotImplementedError()
 
-        for cont in location.containers:
-            if cont.classExpr:
-                ce = cont.classExpr
-                className = ce.className
-                variableName = ce.variableName
-                predicate = ce.predicate
-                if predicate:
-                    self.computePredicate(query, predicate)
-        print "QUERY: %s" % query
-        print (self.collection)
-        resp = self.collection.find(query)
-        print resp.count()
+    def _build_paths(self, aliases):
+        super(ElasticSearchDriver, self)._build_paths(aliases)
 
-    def createResponse(self, dbQuery, selection):
-        # execute the query
-        print "QUERY PRE: %s" % str(dbQuery)
-        # Prepare the response
-        rs = ResultSet()
-        # Declaring a projection to retrieve only the selected fields
-        proj = {}
-        proj['_id'] = 0
-        for var in selection.variables:
-            columnDef = ResultColumnDef()
-            columnDef.name = var.label
-            columnDef.path = var.variable.path.value
-            rs.columns.append(columnDef)
-            projCol = columnDef.path.replace('/','.').strip('.')
-            proj[projCol] = 1
-        print "PROJ: %s" % str(proj)
-        queryResult = self.collection.find(dbQuery, proj)
-        rs.totalResults = queryResult.count()
-        for q in queryResult:
-            rr = ResultRow()
-            rr = ResultRow()
-            rr.items = q.values()
-            rs.rows.append(rr)
-        return rs
+    def _extract_path_alias(self, path):
+        super(ElasticSearchDriver, self)._extract_path_alias(path)
 
-    def execute_query(self, query):
-        self.__check_connection()
-        try:
-            selection = query.selection
-            location = query.location
-            condition = query.condition
-            orderRules = query.orderRules
-            timeConstraints = query.timeConstraints
-            dbQuery = {}
-            # select the collection
-            self.calculateLocationExpression(dbQuery,location)
-            # prepare the query to the db
-            if condition:
-                self.calculateConditionExpression(dbQuery,condition)
-            # create the response
-            return self.createResponse(dbQuery, selection)
-        except Exception, e:
-            print "Mongo Driver Error: " + str(e)
-            return None
+    def _calculate_condition_expression(self, condition, aliases):
+        raise NotImplementedError()
+
+    def _compute_predicate(self, predicate):
+        raise NotImplementedError()
+
+    def _calculate_ehr_expression(self, ehr_class_expression, query_params, patients_collection,
+                                  ehr_collection):
+        raise NotImplementedError()
+
+    def _calculate_location_expression(self, location, query_params, patients_collection,
+                                       ehr_collection):
+        raise NotImplementedError()
+
+    def _calculate_selection_expression(self, selection, aliases):
+        raise NotImplementedError()
+
+    def _split_results(self, query_results):
+        raise NotImplementedError()
+
+    def _run_aql_query(self, query, fileds, aliases, collection):
+        raise NotImplementedError()
+
+    def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
+        super(ElasticSearchDriver, self).build_queries(query_model, patients_repository,
+                                                       ehr_repository, query_params)
+
+    def execute_query(self, query_model, patients_repository, ehr_repository,
+                      query_parameters):
+        raise NotImplementedError()
