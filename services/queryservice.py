@@ -1,133 +1,119 @@
-import sys
-import os
-import ConfigParser
-import json
-import pyehr
-from pyehr.aql.parser import *
-from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import *
-from pyehr.ehr.services.dbmanager import *
+import sys, argparse, json
+from functools import wraps
 
-from bottle import route, run, Response, request
+from bottle import post, get, run, response, request, abort, HTTPError
+
+from pyehr.ehr.services.dbmanager.querymanager import QueryManager
+from pyehr.utils import get_logger
+from pyehr.utils.services import get_service_configuration, check_pid_file,\
+    create_pid, destroy_pid
+import pyehr.ehr.services.dbmanager.errors as pyehr_errors
+
 
 class QueryService():
 
-    def __init__(self):
-        self.parser = Parser()
-        self.dbdriver = None
-        self.config = None
+    def __init__(self, driver, host, database, patients_repository=None,
+                 ehr_repository=None, port=None, user=None, passwd=None):
+        self.logger = get_logger('query_service_daemon')
+        self.qmanager = QueryManager(driver, host, database, patients_repository,
+                                     ehr_repository, port, user, passwd, self.logger)
         ###############################################
         # Web Service methods
         ###############################################
-        route('/query', method='POST')(self.query)
+        post('/query/execute')(self.execute_query)
+        # utilities
+        post('/check/status/querymanager')(self.test_server)
+        get('/check/status/querymanager')(self.test_server)
 
-    def query(self):
-        params = request.forms
-        resp = None
-        if 'query' in params:
+    def add_index_service(self, host, port, database, user, passwd):
+        self.qmanager.set_index_service(host, port, database, user, passwd)
+
+    def exception_handler(f):
+        @wraps(f)
+        def wrapper(inst, *args, **kwargs):
             try:
-                query = params.get('query')
-                obj = self.parseQuery(query)
-                rv = self.queryDB(obj)
-                resp = Response(body=json.dumps(rv))
-            except ParsingError as pe:
-                print "ParsingError Error: %s" % str(pe)
-                resp = Response(body="An error occurred while parsing the AQL query: %s" % str(pe))
-            except ParseSelectionError as pe:
-                print "ParseSelectionError Error: %s" % str(pe)
-                resp = Response(body="An error occurred while parsing the SELECTION statement of the AQL query: " % str(pe))
-            except ParseLocationError as pe:
-                print "ParseLocationError Error: %s" % str(pe)
-                resp = Response(body="An error occurred while parsing the LOCATION statement of the AQL query: " % str(pe))
-            except ParseConditionError as pe:
-                print "ParseConditionError Error: %s" % str(pe)
-                resp = Response(body="An error occurred while parsing the CONDITION statement of the AQL query: " % str(pe))
-            except ParseOrderRulesError as pe:
-                print "ParseOrderRulesError Error: %s" % str(pe)
-                resp = Response(body="An error occurred while parsing the ORDER_RULES statement of the AQL query: " % str(pe))
-            except ParseTimeConstraintsError as pe:
-                print "ParseTimeConstraintsError Error: %s" % str(pe)
-                resp = Response(body="An error occurred while parsing the TIME_CONSTRAINTS statement of the AQL query: " % str(pe))
-            except InvalidAQLError as e:
-                print "InvalidAQLError Error: %s" % str(e)
-                resp = Response(body="Invalid AQL: " % str(e))
-            except Exception as e:
-                print "Exception Error: %s" % str(e)
-                resp = Response(body='An Error Occurred: ' % str(e))
-        else:
-            resp = Response(body="Method not supported")
-        return resp
+                return f(inst, *args, **kwargs)
+            except pyehr_errors.UnknownDriverError, ude:
+                inst._error(str(ude), 500)
+            except HTTPError:
+                #if an abort was called in wrapped function, raise the generated HTTPError
+                raise
+            except Exception, e:
+                import traceback
+                inst.logger.error(traceback.print_stack())
+                msg = 'Unexpected error: %s' % e.message
+                inst._error(msg, 500)
+        return wrapper
 
-    def parseQuery(self, queryStatement, versionTime=None):
-        obj = self.parser.parse(queryStatement)
-        return obj
+    def _error(self, msg, error_code):
+        self.logger.error(msg)
+        body = {
+            'SUCCESS': False,
+            'ERROR': msg
+        }
+        abort(error_code, json.dumps(body))
 
-    def queryDB(self, query):
-        rs = self.dbdriver.execute_query(query)
-        if rs:
-            return rs.get_json()
-        else:
-            return None
+    def _missing_mandatory_field(self, field_label):
+        msg = 'Missing mandatory field %s, can\'t continue with the request' % field_label
+        self._error(msg, 400)
 
-    def load_configuration(self, fileconf):
+    def _success(self, body, return_code=200):
+        response.content_type = 'application/json'
+        response.status = return_code
+        return body
+
+    @exception_handler
+    def execute_query(self):
+        params = request.forms
+        aql_query = params.get('query')
+        if not aql_query:
+            self._missing_mandatory_field('query')
+        query_params = params.get('query_params')
+        results = self.qmanager.execute_aql_query(aql_query, query_params)
+        response_body = {
+            'SUCCESS': True,
+            'RESULTS_SET': results.to_json()
+        }
+        return self._success(response_body)
+
+    def start_service(self, host, port, debug=False):
+        self.logger.info('Starting QueryService daemon with DEBUG seto to %s', debug)
         try:
-            if os.path.exists(fileconf):
-                self.config = ConfigParser.RawConfigParser()
-                self.config.read(fileconf)
-                # Service configuration
-                self.host = self.config.get('service', 'host')
-                self.port = self.config.get('service', 'port')
-                # DB configuration
-                driver = None
-                host = None
-                database = None
-                port = None
-                collection = None
-                user = None
-                passwd = None
-                if self.config.has_option('db', 'driver'):
-                    driver = self.config.get('db', 'driver')
-                else:
-                    self.forceExit("ERROR: The driver option is missing in the configuration file")
-                if self.config.has_option('db', 'host'):
-                    host = self.config.get('db', 'host')
-                else:
-                    self.forceExit("ERROR: The host option is missing in the configuration file")
-                if self.config.has_option('db', 'database'):
-                    database = self.config.get('db', 'database')
-                else:
-                    self.forceExit("ERROR: The database option is missing in the configuration file")
-                if self.config.has_option('db', 'port'):
-                    port = int(self.config.get('db', 'port'))
-                else:
-                    self.forceExit("ERROR: The port option is missing in the configuration file")
-                if self.config.has_option('db', 'collection'):
-                    collection = self.config.get('db', 'collection')
-                if self.config.has_option('db', 'user'):
-                    user = self.config.get('db', 'user')
-                if self.config.has_option('db', 'passwd'):
-                    passwd = self.config.get('db', 'passwd')
-                paramList = (host,database,port,collection,user,passwd)
-                self.dbdriver = build_driver(driver,paramList)
-            else:
-                print "The %s configuration file does not exist." % fileconf
-                sys.exit(1)
-        except Exception as e:
-            print "Error: %s" % str(e)
-            print "Error opening the %s configuration file." % fileconf
-            sys.exit(1)
-
-    def forceExit(self, msg):
-        print msg
-        sys.exit(1)
-
-    def main(self, argv):
-        print("Starting the QueryService daemon...")
-        try:
-            self.load_configuration(argv[1])
-            run(host=self.host, port=self.port, debug=True)
+            run(host=host, port=port, debug=debug)
         except Exception, e:
-            print "Error: %s" % str(e)
+            self.logger.critical('An error has occurred: %s', e)
+
+    def test_server(self):
+        return 'QueryManager daemon running'
+
+
+def get_parser():
+    parser = argparse.ArgumentParser('Run the QueryService daemon')
+    parser.add_argument('--config', type=str, required=True,
+                        help='service configuration file')
+    parser.add_argument('--debug', action='store_true',
+                        help='Enable web server DEBUG mode')
+    parser.add_argument('--pid-file', type=str, help='PID file for the queryservice daemon',
+                        default='/tmp/pyehr_queryservice.pid')
+    return parser
+
+
+def main(argv):
+    parser = get_parser()
+    args = parser.parse_args(argv)
+    logger = get_logger('query_service_daemon_main')
+    conf = get_service_configuration(args.config, logger)
+    if not conf:
+        msg = 'It was impossible to load configuration, exit'
+        logger.critical(msg)
+        sys.exit(msg)
+    qservice = QueryService(**conf.get_db_configuration())
+    qservice.add_index_service(**conf.get_index_configuration())
+    check_pid_file(args.pid_file, logger)
+    create_pid(args.pid_file)
+    qservice.start_service(debug=args.debug, **conf.get_query_service_configuration())
+    destroy_pid(args.pid_file)
+
 
 if __name__ == '__main__':
-    qs = QueryService()
-    qs.main(sys.argv)
+    main(sys.argv[1:])
