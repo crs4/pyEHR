@@ -17,11 +17,11 @@ description of the occurred error. An example is the following:
 API Methods
 -----------
 
-.. http:get:: /check/status/
+.. http:get:: /check/status/dbservice
 
    Simple page to check if server is up and running.
 
-.. http:post:: /check/status/
+.. http:post:: /check/status/dbservice
 
    Simple page to check if server is up and running.
 
