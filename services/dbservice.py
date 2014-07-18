@@ -414,10 +414,10 @@ class DBService(object):
             #TODO: check this, not quite sure about the 400 error code...
             self._error(str(ve), 400)
 
-    def start_service(self, host, port, debug=False):
+    def start_service(self, host, port, engine, debug=False):
         self.logger.info('Starting DBService daemon with DEBUG set to %s', debug)
         try:
-            run(host=host, port=port, debug=debug)
+            run(host=host, port=port, server=engine, debug=debug)
         except Exception, e:
             self.logger.critical('An error has occurred: %s', e)
 

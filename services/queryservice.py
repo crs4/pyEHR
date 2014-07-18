@@ -76,10 +76,10 @@ class QueryService():
         }
         return self._success(response_body)
 
-    def start_service(self, host, port, debug=False):
+    def start_service(self, host, port, engine, debug=False):
         self.logger.info('Starting QueryService daemon with DEBUG seto to %s', debug)
         try:
-            run(host=host, port=port, debug=debug)
+            run(host=host, port=port, server=engine, debug=debug)
         except Exception, e:
             self.logger.critical('An error has occurred: %s', e)
 
