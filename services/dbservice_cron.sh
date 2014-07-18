@@ -7,6 +7,6 @@
 
 SERVICE_DIR=/opt/pyEHR/services
 PID_FILE=/tmp/pyehr_dbservice.pid
-DBSERVICE_CONF=/opt/pyEHR/conf/dbservice.conf
+SERVICE_CONF=/opt/pyEHR/conf/dbservice.conf
 
-nohup python $SERVICE_DIR/dbservice.py --config $DBSERVICE_CONF --pid-file $PID_FILE
+nohup python $SERVICE_DIR/dbservice.py --config $SERVICE_CONF --pid-file $PID_FILE
