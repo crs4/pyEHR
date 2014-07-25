@@ -146,7 +146,7 @@ class Parser():
             node = NodePath()
             predicate_start = re.search('\[', token)
             predicate_end = re.search('\]', token)
-            if predicate_start and  predicate_end:
+            if predicate_start and predicate_end:
                 node.attribute_name = token[0:predicate_start.start()]
                 node.predicate_value = self.parse_predicate(token[predicate_start.start()+1:predicate_end.start()-1])
             else:
@@ -237,7 +237,7 @@ class Parser():
                 if pred:
                     #... followed by a predicate expression.
                     class_expression.variable_name = tokens[0][:pred.start()]
-                    class_expression.predicate = self.parse_predicate(tokens[0][pred.start():])
+                    class_expression.predicate = self.parse_predicate(tokens[0][pred.start():].lstrip('[').rstrip(']'))
                 else:
                     #... without a predicate expression.
                     class_expression.variable_name = tokens[0]
@@ -286,10 +286,10 @@ class Parser():
                 if c:
                     cpos = c.start()
                     # retrieving the containment expression
-                    containment = location_string[cpos: ]
+                    containment = location_string[cpos:]
                     location.containers = self.parse_containers(containment)
                     # retrieving the class expression
-                    class_expr = location_string[0:cpos]
+                    class_expr = location_string[:cpos]
                 else:
                     # retrieving the class expression
                     class_expr = location_string

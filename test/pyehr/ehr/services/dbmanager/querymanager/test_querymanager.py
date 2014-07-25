@@ -103,7 +103,7 @@ class TestQueryManager(unittest.TestCase):
         query = """
         SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value AS systolic,
         o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value AS dyastolic
-        FROM Ehr e [uid=$ehrUid]
+        FROM Ehr e[uid=$ehrUid]
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         """
         batch_details = self._build_patients_batch(10, 10, (50, 100), (50, 100))
