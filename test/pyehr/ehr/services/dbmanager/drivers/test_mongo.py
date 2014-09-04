@@ -1,5 +1,6 @@
 import unittest
 from pyehr.ehr.services.dbmanager.drivers.mongo import MongoDriver
+from pyehr.ehr.services.dbmanager.errors import DuplicatedKeyError
 from uuid import uuid4
 
 
@@ -47,10 +48,31 @@ class TestMongoDBDriver(unittest.TestCase):
             'field2': 'value2',
         } for rid in record_ids]
         with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
-            saved_ids = driver.add_records(records)
+            saved_ids, errors = driver.add_records(records)
             for sid in saved_ids:
                 self.assertIn(sid, record_ids)
             self.assertEqual(driver.documents_count, 10)
+            self.assertEqual(len(errors), 0)
+            # check for failure when records with duplicated ID  are in the same batch
+            records.append(records[0])
+            with self.assertRaises(DuplicatedKeyError) as context:
+                driver.add_records(records)
+            records.pop(-1)
+            # check for failure when at least one record with an already used ID is in this batch
+            records_ids_2 = [uuid4().hex for x in xrange(0, 5)]
+            records.extend([{
+                '_id': rid,
+                'field1': 'value1',
+                'field2': 'value2',
+            } for rid in records_ids_2])
+            with self.assertRaises(DuplicatedKeyError) as context:
+                driver.add_records(records)
+            # save only records without a duplicated ID
+            saved_ids_2, errors = driver.add_records(records, skip_existing_duplicated=True)
+            self.assertEqual(len(saved_ids_2), 5)
+            self.assertEqual(len(errors), 10)
+            self.assertEqual(driver.documents_count, 15)
+            saved_ids.extend(saved_ids_2)
             # cleanup
             for sid in saved_ids:
                 driver.delete_record(sid)
@@ -75,7 +97,7 @@ class TestMongoDBDriver(unittest.TestCase):
             for x in xrange(0, 20)
         ]
         with MongoDriver('localhost', 'test_database', 'test_collection') as driver:
-            record_ids = driver.add_records(records)
+            record_ids, _ = driver.add_records(records)
             even_recs = list(driver.get_records_by_query({'even': True}))
             self.assertEqual(len(even_recs), 10)
             self.assertEqual(driver.documents_count, 20)

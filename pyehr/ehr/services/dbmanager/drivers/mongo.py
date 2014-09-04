@@ -246,17 +246,34 @@ class MongoDriver(DriverInterface):
         except pymongo.errors.DuplicateKeyError:
             raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
 
-    def add_records(self, records):
+    def add_records(self, records, skip_existing_duplicated=False):
         """
-        Save a list of records within MongoDB and return records' IDs
+        Save a list of records within MongoDB and return records' IDs. If skip_existing_duplicated is
+        True, ignore duplicated key errors and continue with the save process, if it is False a
+        DuplicatedKeyError will be raised and no record will be saved.
 
         :param records: the list of records that is going to be saved
         :type records: list
-        :return: a list of records' IDs
-        :rtype: list
+        :param skip_existing_duplicated: ignore duplicated key errors and save records with a unique ID
+        :type skip_existing_duplicated: bool
+        :return: a list of records' IDs and a list of records that caused a duplicated key error
         """
+        # check for duplicated ID in records' batch
+        from collections import Counter
+        duplicated_counter = Counter()
+        for r in records:
+            duplicated_counter[r['_id']] += 1
+        if len(duplicated_counter) < len(records):
+            raise DuplicatedKeyError('The following IDs have one or more duplicated in this batch: %s' %
+                                     [k for k, v in duplicated_counter.iteritems() if v > 1])
         self._check_connection()
-        return super(MongoDriver, self).add_records(records)
+        records_map = {r['_id']: r for r in records}
+        duplicated_ids = [x['_id'] for x in self.get_records_by_query({'_id': {'$in': records_map.keys()}},
+                                                                      {'_id': True})]
+        if len(duplicated_ids) > 0 and not skip_existing_duplicated:
+            raise DuplicatedKeyError('The following IDs are already in use: %s' % duplicated_ids)
+        return self.collection.insert([x for k, x in records_map.iteritems() if k not in duplicated_ids]),\
+               [records_map[x] for x in duplicated_ids]
 
     def get_record_by_id(self, record_id):
         """
