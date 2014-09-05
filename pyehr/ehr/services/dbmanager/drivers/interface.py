@@ -67,7 +67,6 @@ class DriverInterface(object):
         """
         Add a list of records in the backed server
         """
-        self._check_batch(records)
         errors = list()
         saved = list()
         for r in records:
