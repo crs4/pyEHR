@@ -63,11 +63,34 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def add_records(self, records):
+    def add_records(self, records, skip_existing_duplicated=False):
         """
         Add a list of records in the backed server
         """
-        return [self.add_record(r) for r in records]
+        self._check_batch(records)
+        errors = list()
+        saved = list()
+        for r in records:
+            try:
+                saved.append(self.add_record(r))
+            except DuplicatedKeyError, dke:
+                if skip_existing_duplicated:
+                    errors.append(r)
+                else:
+                    raise dke
+        return saved, errors
+
+    def _check_batch(self, records_batch, uid_field):
+        """
+        Check records batch for duplicated
+        """
+        from collections import Counter
+        duplicated_counter = Counter()
+        for r in records_batch:
+            duplicated_counter[r[uid_field]] += 1
+        if len(duplicated_counter) < len(records_batch):
+            raise DuplicatedKeyError('The following IDs have one or more duplicated in this batch: %s' %
+                                     [k for k, v in duplicated_counter.iteritems() if v > 1])
 
     @abstractmethod
     def get_record_by_id(self, record_id):

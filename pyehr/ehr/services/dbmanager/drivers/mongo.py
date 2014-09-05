@@ -259,13 +259,7 @@ class MongoDriver(DriverInterface):
         :return: a list of records' IDs and a list of records that caused a duplicated key error
         """
         # check for duplicated ID in records' batch
-        from collections import Counter
-        duplicated_counter = Counter()
-        for r in records:
-            duplicated_counter[r['_id']] += 1
-        if len(duplicated_counter) < len(records):
-            raise DuplicatedKeyError('The following IDs have one or more duplicated in this batch: %s' %
-                                     [k for k, v in duplicated_counter.iteritems() if v > 1])
+        self._check_batch(records, '_id')
         self._check_connection()
         records_map = {r['_id']: r for r in records}
         duplicated_ids = [x['_id'] for x in self.get_records_by_query({'_id': {'$in': records_map.keys()}},
