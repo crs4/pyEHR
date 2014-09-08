@@ -67,6 +67,7 @@ class TestMongoDBDriver(unittest.TestCase):
             } for rid in records_ids_2])
             with self.assertRaises(DuplicatedKeyError) as context:
                 driver.add_records(records)
+            self.assertEqual(driver.documents_count, 10)
             # save only records without a duplicated ID
             saved_ids_2, errors = driver.add_records(records, skip_existing_duplicated=True)
             self.assertEqual(len(saved_ids_2), 5)
