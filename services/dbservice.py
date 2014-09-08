@@ -328,22 +328,21 @@ class DBService(object):
             msg = 'Invalid PatientRecord JSON structure'
             self._error(msg, 500)
 
-    def _save_patient_from_batch(self, patient_record):
+    def _save_patient_from_batch(self, patient_record, ignore_duplicated_ehr=False):
         """
-        Returns SUCCESS_STATE, ERROR_MESSAGE, SAVED_RECORD
+        Returns SUCCESS_STATE, ERROR_MESSAGE, SAVED_RECORD, ERROR_RECORDS
         """
         ehr_records = patient_record.ehr_records
         patient_record.ehr_records = []
         patient_record = self.dbs.save_patient(patient_record)
-        for ehr in ehr_records:
-            try:
-                _, patient_record = self.dbs.save_ehr_record(ehr, patient_record)
-            except pyehr_errors.DuplicatedKeyError:
-                msg = 'Duplicated key error for EHR record with ID %s' % ehr.record_id
-                # Rollback
-                self.dbs.delete_patient(patient_record, cascade_delete=True)
-                return False, msg, None
-        return True, None, patient_record
+        try:
+            _, patient_record, errors = self.dbs.save_ehr_records(ehr_records, patient_record,
+                                                                  ignore_duplicated_ehr)
+        except pyehr_errors.DuplicatedKeyError, dup_key_err:
+            msg = dup_key_err.message
+            self.dbs.delete_patient(patient_record, cascade_delete=True)
+            return False, msg, None, None
+        return True, None, patient_record, errors
 
     @exceptions_handler
     def batch_save_patient(self):
@@ -358,7 +357,7 @@ class DBService(object):
             if patient_data is None:
                 self._missing_mandatory_field('patient_data')
             patient_record = PatientRecord.from_json(json.loads(patient_data))
-            success, msg, patient_record = self._save_patient_from_batch(patient_record)
+            success, msg, patient_record, errors = self._save_patient_from_batch(patient_record)
             if success:
                 response_body = {
                     'SUCCESS': True,
@@ -389,6 +388,7 @@ class DBService(object):
         patients_data = params.get('patients_data')
         if patients_data is None:
             self._missing_mandatory_field('patients_data')
+        print patients_data
         response_body = {
             'SUCCESS': True,
             'SAVED': [],
@@ -399,7 +399,7 @@ class DBService(object):
             for patient in patients_data:
                 try:
                     patient_record = PatientRecord.from_json(patient)
-                    success, msg, patient_record = self._save_patient_from_batch(patient_record)
+                    success, msg, patient_record, errors = self._save_patient_from_batch(patient_record)
                     if success:
                         response_body['SAVED'].append(patient_record.to_json())
                     else:
