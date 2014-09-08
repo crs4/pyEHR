@@ -266,8 +266,12 @@ class MongoDriver(DriverInterface):
                                                                       {'_id': True})]
         if len(duplicated_ids) > 0 and not skip_existing_duplicated:
             raise DuplicatedKeyError('The following IDs are already in use: %s' % duplicated_ids)
-        return self.collection.insert([x for k, x in records_map.iteritems() if k not in duplicated_ids]),\
-               [records_map[x] for x in duplicated_ids]
+        try:
+            return self.collection.insert([x for k, x in records_map.iteritems() if k not in duplicated_ids]),\
+                   [records_map[x] for x in duplicated_ids]
+        except pymongo.errors.InvalidOperation:
+            # empty bulk insert
+            return [], [records_map[x] for x in duplicated_ids]
 
     def get_record_by_id(self, record_id):
         """
