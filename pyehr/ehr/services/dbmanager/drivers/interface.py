@@ -131,6 +131,18 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
+    def extend_list(self, record_id, list_label, items,
+                    update_timestamp_label):
+        """
+        Add values provided with the *items* field to the list with label *list_label*
+        of the record with ID *record_id* and update the timestamp in field *update_timestamp_label*
+        """
+        for item in items:
+            update_timestamp = self.add_to_list(record_id, list_label, item,
+                                                update_timestamp_label)
+        return update_timestamp
+
+    @abstractmethod
     def remove_from_list(self, record_id, list_label, item_value,
                          update_timestamp_label):
         """

@@ -395,10 +395,32 @@ class MongoDriver(DriverInterface):
         :param item_value: the item that will be appended to the list
         :param update_timestamp_label: the label of the *last_update* field of the record if the last update timestamp
           must be recorded or None
-        :type update_timestamp_label: field label or None
+        :type update_timestamp_label: string or None
         :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
         """
         update_statement = {'$addToSet': {list_label: item_value}}
+        if update_timestamp_label:
+            update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
+                                                                          update_statement)
+        else:
+            last_update = None
+        self._update_record(record_id, update_statement)
+        return last_update
+
+    def extend_list(self, record_id, list_label, items, update_timestamp_label=None):
+        """
+        Extend a document's list with the list provided
+
+        :param record_id: record's ID
+        :param list_label: the label of the field containing the list
+        :type list_label: string
+        :param items: the items that will be appended to the list
+        :param update_timestamp_label:the label of the *last_update* field of the record if the last update timestamp
+          must be recorded or None
+        :type update_timestamp_label: string or None
+        :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
+        """
+        update_statement = {'$addToSet': {list_label: {'$each': items}}}
         if update_timestamp_label:
             update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
                                                                           update_statement)

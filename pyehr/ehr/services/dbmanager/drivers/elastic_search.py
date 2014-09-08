@@ -472,6 +472,11 @@ class ElasticSearchDriver(DriverInterface):
         self.logger.debug('updated %s document', res[u'_id'])
         return last_update
 
+    def extend_list(self, record_id, list_label, items,
+                    update_timestamp_label):
+        return super(ElasticSearchDriver, self).extend_list(record_id, list_label, items,
+                                                            update_timestamp_label)
+
     def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
         """
         Remove a value from a list within a document
