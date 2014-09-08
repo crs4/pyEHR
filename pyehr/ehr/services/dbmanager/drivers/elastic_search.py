@@ -286,9 +286,6 @@ class ElasticSearchDriver(DriverInterface):
         try:
             if(record.has_key('_id')):
                 return str(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],body=record,op_type='create',refresh='true')['_id'])
-#                print pippo
-#                return ObjectId(str(pippo))
-#                return ObjectId(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],body=record,op_type='create',refresh='true')['_id'])
             else:
                 return str(self.client.index(index=self.database,doc_type=self.collection,body=record,op_type='create',refresh='true')['_id'])
         except elasticsearch.ConflictError:
@@ -309,48 +306,50 @@ class ElasticSearchDriver(DriverInterface):
             puzzle=puzzle.strip(",")+"}\n"
         return puzzle
 
-    def add_records(self, records):
+    # def add_records(self, records):
+    #     """
+    #     Save a list of records within ElasticSearch and return records' IDs
+    #
+    #     :param records: the list of records that is going to be saved
+    #     :type record: list
+    #     :return: a list of records' IDs
+    #     :rtype: list
+    #     """
+    #     self.__check_connection()
+    #     #create a bulk list
+    #     bulklist = self.pack_record(records)
+    #     bulkanswer = self.client.bulk(body=bulklist,index=self.database,doc_type=self.collection,refresh='true')
+    #     if(bulkanswer['errors']): # there are errors
+    #         #count the errors
+    #         nerrors=0
+    #         err=[]
+    #         errtype=[]
+    #         for b in bulkanswer['items']:
+    #             if(b['create'].has_key('error')):
+    #                 err[nerrors] = b['create']['_id']
+    #                 errtype[nerrors] = b['create']['error']
+    #                 nerrors += 1
+    #         if(nerrors):
+    #             raise DuplicatedKeyError('Record with these id already exist: %s' %err)
+    #         else:
+    #             print 'bad programmer'
+    #             sys.exit(1)
+    #     else:
+    #         return [str(g['create']['_id']) for g in bulkanswer['items']]
+
+    def add_records(self, records, skip_existing_duplicated=False):
         """
         Save a list of records within ElasticSearch and return records' IDs
 
         :param records: the list of records that is going to be saved
-        :type record: list
-        :return: a list of records' IDs
-        :rtype: list
+        :type records: list
+        :param skip_existing_duplicated: ignore duplicated key errors and save records with a unique ID
+        :type skip_existing_duplicated: bool
+        :return: a list of records' IDs and a list of records that caused a duplicated key error
         """
+        self._check_batch(records, '_id')
         self.__check_connection()
-        #create a bulk list
-        bulklist = self.pack_record(records)
-        bulkanswer = self.client.bulk(body=bulklist,index=self.database,doc_type=self.collection,refresh='true')
-        if(bulkanswer['errors']): # there are errors
-            #count the errors
-            nerrors=0
-            err=[]
-            errtype=[]
-            for b in bulkanswer['items']:
-                if(b['create'].has_key('error')):
-                    err[nerrors] = b['create']['_id']
-                    errtype[nerrors] = b['create']['error']
-                    nerrors += 1
-            if(nerrors):
-                raise DuplicatedKeyError('Record with these id already exist: %s' %err)
-            else:
-                print 'bad programmer'
-                sys.exit(1)
-        else:
-            return [str(g['create']['_id']) for g in bulkanswer['items']]
-
-    def add_records2(self, records):
-        """
-        Save a list of records within ElasticSearch and return records' IDs
-
-        :param records: the list of records that is going to be saved
-        :type record: list
-        :return: a list of records' IDs
-        :rtype: list
-        """
-        self.__check_connection()
-        return super(ElasticSearchDriver, self).add_records(records)
+        return super(ElasticSearchDriver, self).add_records(records, skip_existing_duplicated)
 
     def get_record_by_id(self, record_id):
         """
@@ -472,6 +471,11 @@ class ElasticSearchDriver(DriverInterface):
         res = self.client.index(index=self.database,doc_type=self.collection,body=record_to_update,id=record_id)
         self.logger.debug('updated %s document', res[u'_id'])
         return last_update
+
+    def extend_list(self, record_id, list_label, items,
+                    update_timestamp_label):
+        return super(ElasticSearchDriver, self).extend_list(record_id, list_label, items,
+                                                            update_timestamp_label)
 
     def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
         """

@@ -3,6 +3,7 @@ from collections import Counter
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
     ClinicalRecord, ArchetypeInstance
+from pyehr.ehr.services.dbmanager.errors import DuplicatedKeyError
 from pyehr.utils.services import get_service_configuration
 
 CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
@@ -57,6 +58,37 @@ class TestDBServices(unittest.TestCase):
                          {'field1': 'value1', 'field2': 'value2'})
         self.assertEqual(len(pat_rec.ehr_records), 1)
         self.assertEqual(pat_rec.ehr_records[0], ehr_rec)
+        # cleanup
+        dbs.delete_patient(pat_rec, cascade_delete=True)
+        self._delete_index_db(dbs)
+
+    def test_save_ehr_records(self):
+        dbs = DBServices(**self.conf)
+        dbs.set_index_service(**self.index_conf)
+        pat_rec = dbs.save_patient(self.create_random_patient())
+        arch_rec = ArchetypeInstance('openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+                                     {'field1': 'value1', 'field2': 'value2'})
+        ehr_recs = [ClinicalRecord(arch_rec) for x in xrange(0, 10)]
+        ehr_recs, pat_rec, errors = dbs.save_ehr_records(ehr_recs, pat_rec)
+        self.assertEqual(len(ehr_recs), 10)
+        self.assertEqual(len(errors), 0)
+        self.assertEqual(len(pat_rec.ehr_records), 10)
+        self.assertEqual(pat_rec.ehr_records, ehr_recs)
+        for e in ehr_recs:
+            self.assertIsInstance(e.record_id, str)
+            self.assertTrue(e.active)
+            self.assertEqual(e.ehr_data.archetype_class,
+                             'openEHR-EHR-EVALUATION.dummy-evaluation.v1')
+            self.assertEqual(e.ehr_data.archetype_details,
+                             {'field1': 'value1', 'field2': 'value2'})
+        ehr_recs.extend([ClinicalRecord(arch_rec) for x in xrange(0, 5)])
+        with self.assertRaises(DuplicatedKeyError) as ctx:
+            dbs.save_ehr_records(ehr_recs, pat_rec)
+        ehr_recs, pat_rec, errors = dbs.save_ehr_records(ehr_recs, pat_rec,
+                                                         skip_existing_duplicated=True)
+        self.assertEqual(len(ehr_recs), 5)
+        self.assertEqual(len(errors), 10)
+        self.assertEqual(len(pat_rec.ehr_records), 15)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
         self._delete_index_db(dbs)
@@ -185,6 +217,7 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestDBServices('test_save_patient'))
     suite.addTest(TestDBServices('test_save_ehr_record'))
+    suite.addTest(TestDBServices('test_save_ehr_records'))
     suite.addTest(TestDBServices('test_remove_ehr_record'))
     suite.addTest(TestDBServices('test_load_ehr_records'))
     suite.addTest(TestDBServices('test_hide_ehr_record'))

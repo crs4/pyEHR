@@ -246,17 +246,32 @@ class MongoDriver(DriverInterface):
         except pymongo.errors.DuplicateKeyError:
             raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
 
-    def add_records(self, records):
+    def add_records(self, records, skip_existing_duplicated=False):
         """
-        Save a list of records within MongoDB and return records' IDs
+        Save a list of records within MongoDB and return records' IDs. If skip_existing_duplicated is
+        True, ignore duplicated key errors and continue with the save process, if it is False a
+        DuplicatedKeyError will be raised and no record will be saved.
 
         :param records: the list of records that is going to be saved
         :type records: list
-        :return: a list of records' IDs
-        :rtype: list
+        :param skip_existing_duplicated: ignore duplicated key errors and save records with a unique ID
+        :type skip_existing_duplicated: bool
+        :return: a list of records' IDs and a list of records that caused a duplicated key error
         """
+        # check for duplicated ID in records' batch
+        self._check_batch(records, '_id')
         self._check_connection()
-        return super(MongoDriver, self).add_records(records)
+        records_map = {r['_id']: r for r in records}
+        duplicated_ids = [x['_id'] for x in self.get_records_by_query({'_id': {'$in': records_map.keys()}},
+                                                                      {'_id': True})]
+        if len(duplicated_ids) > 0 and not skip_existing_duplicated:
+            raise DuplicatedKeyError('The following IDs are already in use: %s' % duplicated_ids)
+        try:
+            return self.collection.insert([x for k, x in records_map.iteritems() if k not in duplicated_ids]),\
+                   [records_map[x] for x in duplicated_ids]
+        except pymongo.errors.InvalidOperation:
+            # empty bulk insert
+            return [], [records_map[x] for x in duplicated_ids]
 
     def get_record_by_id(self, record_id):
         """
@@ -384,10 +399,32 @@ class MongoDriver(DriverInterface):
         :param item_value: the item that will be appended to the list
         :param update_timestamp_label: the label of the *last_update* field of the record if the last update timestamp
           must be recorded or None
-        :type update_timestamp_label: field label or None
+        :type update_timestamp_label: string or None
         :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
         """
         update_statement = {'$addToSet': {list_label: item_value}}
+        if update_timestamp_label:
+            update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
+                                                                          update_statement)
+        else:
+            last_update = None
+        self._update_record(record_id, update_statement)
+        return last_update
+
+    def extend_list(self, record_id, list_label, items, update_timestamp_label=None):
+        """
+        Extend a document's list with the list provided
+
+        :param record_id: record's ID
+        :param list_label: the label of the field containing the list
+        :type list_label: string
+        :param items: the items that will be appended to the list
+        :param update_timestamp_label:the label of the *last_update* field of the record if the last update timestamp
+          must be recorded or None
+        :type update_timestamp_label: string or None
+        :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
+        """
+        update_statement = {'$addToSet': {list_label: {'$each': items}}}
         if update_timestamp_label:
             update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
                                                                           update_statement)

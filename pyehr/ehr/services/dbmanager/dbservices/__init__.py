@@ -93,9 +93,33 @@ class DBServices(object):
         """
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
-            ehr_record.record_id = driver.add_record(driver.encode_record(ehr_record))
+            driver.add_record(driver.encode_record(ehr_record))
         patient_record = self._add_ehr_record(patient_record, ehr_record)
         return ehr_record, patient_record
+
+    def save_ehr_records(self, ehr_records, patient_record, skip_existing_duplicated=False):
+        """
+        Save a batch of clinical records into the DB and link them to a patient record
+
+        :param ehr_records: EHR records that are going to be saved
+        :type ehr_records: list of :class:`ClinicalRecord` objects
+        :param patient_record: the reference :class:`PatientRecord` for the EHR record that
+          is going to be saved
+        :type patient_record: :class:`PatientRecord`
+        :param skip_existing_duplicated: if True, continue with the save operation even if one
+          or more DuplicatedKeyError occur, if False raise an error
+        :type skip_existing_duplicated: bool
+        :return: a list with the saved :class:`ClinicalRecord`, the updated :class:`PatientRecord`
+          and a list containing any records that caused a duplicated key error
+        """
+        drf = self._get_drivers_factory(self.ehr_repository)
+        with drf.get_driver() as driver:
+            encoded_records = [driver.encode_record(r) for r in ehr_records]
+            saved, errors = driver.add_records(encoded_records, skip_existing_duplicated)
+            errors = [driver.decode_record(e) for e in errors]
+        saved_ehr_records = [ehr for ehr in ehr_records if ehr.record_id in saved]
+        patient_record = self._add_ehr_records(patient_record, saved_ehr_records)
+        return saved_ehr_records, patient_record, errors
 
     def _add_ehr_record(self, patient_record, ehr_record):
         """
@@ -111,6 +135,22 @@ class DBServices(object):
         self._add_to_list(patient_record, 'ehr_records', ehr_record.record_id,
                           self.patients_repository)
         patient_record.ehr_records.append(ehr_record)
+        return patient_record
+
+    def _add_ehr_records(self, patient_record, ehr_records):
+        """
+        Add a list of already saved :class:`ClinicalRecord`s to the given ;class:`PatientRecord`
+
+        :param patient_record: the reference :class:`PatientRecord`
+        :type patient_record: :class:`PatientRecord`
+        :param ehr_records: the existing :class:`ClinicalRecord`s that are going to be added to the
+          patient record
+        :type ehr_records: list
+        :return: the updated :class:`PatientRecord`
+        """
+        self._extend_list(patient_record, 'ehr_records', [ehr.record_id for ehr in ehr_records],
+                          self.patients_repository)
+        patient_record.ehr_records.extend(ehr_records)
         return patient_record
 
     def move_ehr_record(self, src_patient, dest_patient, ehr_record):
@@ -320,6 +360,11 @@ class DBServices(object):
         drf = self._get_drivers_factory(repository)
         with drf.get_driver() as driver:
             driver.add_to_list(record.record_id, list_label, element, 'last_update')
+
+    def _extend_list(self, record, list_label, elements, repository):
+        drf = self._get_drivers_factory(repository)
+        with drf.get_driver() as driver:
+            driver.extend_list(record.record_id, list_label, elements, 'last_update')
 
     def _remove_from_list(self, record, list_label, element, repository):
         drf = self._get_drivers_factory(repository)

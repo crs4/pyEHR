@@ -63,11 +63,33 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def add_records(self, records):
+    def add_records(self, records, skip_existing_duplicated=False):
         """
         Add a list of records in the backed server
         """
-        return [self.add_record(r) for r in records]
+        errors = list()
+        saved = list()
+        for r in records:
+            try:
+                saved.append(self.add_record(r))
+            except DuplicatedKeyError, dke:
+                if skip_existing_duplicated:
+                    errors.append(r)
+                else:
+                    raise dke
+        return saved, errors
+
+    def _check_batch(self, records_batch, uid_field):
+        """
+        Check records batch for duplicated
+        """
+        from collections import Counter
+        duplicated_counter = Counter()
+        for r in records_batch:
+            duplicated_counter[r[uid_field]] += 1
+        if len(duplicated_counter) < len(records_batch):
+            raise DuplicatedKeyError('The following IDs have one or more duplicated in this batch: %s' %
+                                     [k for k, v in duplicated_counter.iteritems() if v > 1])
 
     @abstractmethod
     def get_record_by_id(self, record_id):
@@ -107,6 +129,18 @@ class DriverInterface(object):
         of the record with ID *record_id* and update the timestamp in field *update_timestamp_label*
         """
         pass
+
+    @abstractmethod
+    def extend_list(self, record_id, list_label, items,
+                    update_timestamp_label):
+        """
+        Add values provided with the *items* field to the list with label *list_label*
+        of the record with ID *record_id* and update the timestamp in field *update_timestamp_label*
+        """
+        for item in items:
+            update_timestamp = self.add_to_list(record_id, list_label, item,
+                                                update_timestamp_label)
+        return update_timestamp
 
     @abstractmethod
     def remove_from_list(self, record_id, list_label, item_value,

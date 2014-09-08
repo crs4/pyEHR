@@ -47,23 +47,7 @@ class TestElasticSearchDriver(unittest.TestCase):
             'field2': 'value2',
         } for rid in record_ids]
         with ElasticSearchDriver([{"host": "localhost", "port": 9200}], 'test_database', 'test_collection') as driver:
-            saved_ids = driver.add_records(records)
-            for sid in saved_ids:
-                self.assertIn(sid, record_ids)
-            self.assertEqual(driver.count(), 10)
-            # cleanup
-            for sid in saved_ids:
-                driver.delete_record(sid)
-
-    def test_add_records2(self):
-        record_ids = [str(x) for x in xrange(0, 10)]
-        records = [{
-            '_id': rid,
-            'field1': 'value1',
-            'field2': 'value2',
-        } for rid in record_ids]
-        with ElasticSearchDriver([{"host": "localhost", "port": 9200}], 'test_database', 'test_collection') as driver:
-            saved_ids = driver.add_records2(records)
+            saved_ids, errors = driver.add_records(records)
             for sid in saved_ids:
                 self.assertIn(sid, record_ids)
             self.assertEqual(driver.count(), 10)
@@ -99,20 +83,6 @@ class TestElasticSearchDriver(unittest.TestCase):
             for rid in record_ids:
                 driver.delete_record(rid)
 
-    def test_get_records_by_value2(self):
-        records = [
-            {'value': x, 'even': x % 2 == 0, '_id': str(x)}
-            for x in xrange(0, 20)
-        ]
-        with ElasticSearchDriver([{"host": "localhost", "port": 9200}], 'test_database', 'test_collection') as driver:
-            record_ids = driver.add_records2(records)
-            even_recs = list(driver.get_records_by_value('even', True))
-            self.assertEqual(len(even_recs), 10)
-            self.assertEqual(driver.count(), 20)
-            # cleanup
-            for rid in record_ids:
-                driver.delete_record(rid)
-
     def test_update_field(self):
         record = {
             'label': 'label',
@@ -134,10 +104,8 @@ def suite():
     suite.addTest(TestElasticSearchDriver('test_select_collection'))
     suite.addTest(TestElasticSearchDriver('test_add_record'))
     suite.addTest(TestElasticSearchDriver('test_add_records'))
-    suite.addTest(TestElasticSearchDriver('test_add_records2'))
     suite.addTest(TestElasticSearchDriver('test_get_record_by_id'))
     suite.addTest(TestElasticSearchDriver('test_get_records_by_value'))
-    suite.addTest(TestElasticSearchDriver('test_get_records_by_value2'))
     suite.addTest(TestElasticSearchDriver('test_update_field'))
     return suite
 
