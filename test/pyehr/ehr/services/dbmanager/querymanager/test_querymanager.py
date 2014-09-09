@@ -57,13 +57,14 @@ class TestQueryManager(unittest.TestCase):
         records_details = dict()
         for x in xrange(0, num_patients):
             p = self.dbs.save_patient(PatientRecord('PATIENT_%02d' % x))
+            crecs = list()
             for y in xrange(0, num_ehr):
                 systolic = randint(*systolic_range) if systolic_range else None
                 dyastolic = randint(*dyastolic_range) if dyastolic_range else None
                 bp_arch = ArchetypeInstance(*self._get_blood_pressure_data(systolic, dyastolic))
-                crec = ClinicalRecord(bp_arch)
-                _, p = self.dbs.save_ehr_record(crec, p)
+                crecs.append(ClinicalRecord(bp_arch))
                 records_details.setdefault(p.record_id, []).append({'systolic': systolic, 'dyastolic': dyastolic})
+            _, p, _ = self.dbs.save_ehr_records(crecs, p)
             self.patients.append(p)
         return records_details
 
