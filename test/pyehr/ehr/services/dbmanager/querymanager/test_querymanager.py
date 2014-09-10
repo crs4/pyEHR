@@ -64,7 +64,9 @@ class TestQueryManager(unittest.TestCase):
                 bp_arch = ArchetypeInstance(*self._get_blood_pressure_data(systolic, dyastolic))
                 crecs.append(ClinicalRecord(bp_arch))
                 records_details.setdefault(p.record_id, []).append({'systolic': systolic, 'dyastolic': dyastolic})
-            _, p, _ = self.dbs.save_ehr_records(crecs, p)
+            for c in crecs:
+                _, p = self.dbs.save_ehr_record(c, p)
+            # _, p, _ = self.dbs.save_ehr_records(crecs, p)
             self.patients.append(p)
         return records_details
 
@@ -80,7 +82,10 @@ class TestQueryManager(unittest.TestCase):
         details_results = list()
         for k, v in batch_details.iteritems():
             details_results.extend(v)
-        self.assertEqual(details_results.sort(), list(results.results).sort())
+        res = list(results.results)
+        res.sort()
+        details_results.sort()
+        self.assertEqual(details_results, res)
 
     def test_simple_where_query(self):
         query = """
@@ -96,21 +101,27 @@ class TestQueryManager(unittest.TestCase):
         details_results = list()
         for k, v in batch_details.iteritems():
             for x in v:
-                if x['systolic'] >= 180 or x['dyastolic'] >= 100:
+                if x['systolic'] >= 180 or x['dyastolic'] >= 110:
                     details_results.append(x)
-        self.assertEqual(details_results.sort(), list(results.results).sort())
+        res = list(results.results)
+        res.sort()
+        details_results.sort()
+        self.assertEqual(details_results, res)
 
     def test_simple_parametric_query(self):
         query = """
         SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value AS systolic,
         o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value AS dyastolic
-        FROM Ehr e[uid=$ehrUid]
+        FROM Ehr e [uid=$ehrUid]
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         """
         batch_details = self._build_patients_batch(10, 10, (50, 100), (50, 100))
         for patient_label, records in batch_details.iteritems():
             results = self.qmanager.execute_aql_query(query, {'ehrUid': patient_label})
-            self.assertEqual(records.sort(), list(results.results).sort())
+            res = list(results.results)
+            res.sort()
+            records.sort()
+            self.assertEqual(records, res)
 
 
 def suite():
