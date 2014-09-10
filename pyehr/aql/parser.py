@@ -220,6 +220,9 @@ class Parser():
 
     # These functions are defined to parse the location part of an AQL statement
     def parse_class_expression(self, text):
+        def is_openehr_variable(token):
+            return 'openEHR-EHR' in token
+
         matching_obj = re.match('EHR |COMPOSITION |OBSERVATION ', text.upper())
         if matching_obj:
             class_expression = ClassExpression()
@@ -237,7 +240,10 @@ class Parser():
                 if pred:
                     #... followed by a predicate expression.
                     class_expression.variable_name = tokens[0][:pred.start()]
-                    class_expression.predicate = self.parse_predicate(tokens[0][pred.start():].lstrip('[').rstrip(']'))
+                    predicate = tokens[0][pred.start():]
+                    if not is_openehr_variable(tokens[0]):
+                        predicate = predicate.lstrip('[').rstrip(']')
+                    class_expression.predicate = self.parse_predicate(predicate)
                 else:
                     #... without a predicate expression.
                     class_expression.variable_name = tokens[0]
