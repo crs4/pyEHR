@@ -34,7 +34,7 @@ install:
   - .travis-data/run_dbservice_daemon.sh
 
 before_script:
-  - if [[ "$DB_ENGINE" == "mongodb" ]]; then export EXCLUDE_TEST_MODULE=elasticsearch|.*performance*; fi
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then export EXCLUDE_TEST_MODULE="elasticsearch|.*performance*"; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE="query*|.*mongo*"; fi
 
 script:
