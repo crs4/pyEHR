@@ -53,6 +53,7 @@ class TestIndexPerformance(object):
                 crec, p = self.dbs.save_ehr_record(ClinicalRecord(a), p)
                 self.update_counter(crec.ehr_data, hits_counter)
                 self.logger.debug('-- Saved EHR with ID %s', crec.record_id)
+        self.logger.info('*** Dataset created ***')
         return hits_counter
 
     def extract_aql_contains(self, xml_node, ancestors=[]):
@@ -78,9 +79,12 @@ class TestIndexPerformance(object):
 
     def run(self):
         hits_counter = self.create_dataset()
+        self.logger.info('*** Building paths for AQL queries ***')
         paths = self.extract_aql_contains(self.master_archetype.getroot())
+        self.logger.info('*** Building paths for AQL queries ***')
         parser = Parser()
         for p in paths:
+            self.logger.info('-- Executing query')
             aql = self.build_aql_query(p)
             qm = parser.parse(aql)
             indices = self.dbs.index_service.get_matching_ids(qm.location.containers)
