@@ -80,12 +80,62 @@ class TestIndexService(unittest.TestCase):
         ehr_structure = etree.tostring(IndexService.get_structure(ehr_record))
         self.assertEqual(ehr_structure, expected_structure)
 
+    def test_structure_sorting(self):
+        ehr_record_1 = {
+            'archetype_class': 'test-openehr-OBSERVATION.test01.v1',
+            'archetype_details': {
+                'data': {
+                    'at0001': [
+                        {
+                            'archetype_class': 'test-openehr-OBSERVATION.test02.v1',
+                            'archetype_details': {}
+                        },
+                        {
+                            'archetype_class': 'test-openehr-OBSERVATION.test03.v1',
+                            'archetype_details': {}
+                        }
+                    ],
+                    'at0011': {
+                        'archetype_class': 'test-openehr-OBSERVATION.test10.v1',
+                        'archetype_details': {}
+                    }
+                }
+            }
+        }
+        ehr_record_2 = {
+            'archetype_class': 'test-openehr-OBSERVATION.test01.v1',
+            'archetype_details': {
+                'data': {
+                    'at0011': {
+                        'archetype_class': 'test-openehr-OBSERVATION.test10.v1',
+                        'archetype_details': {
+                            'value': 'dummy_text'
+                        }
+                    },
+                    'at0001': [
+                        {
+                            'archetype_class': 'test-openehr-OBSERVATION.test03.v1',
+                            'archetype_details': {}
+                        },
+                        {
+                            'archetype_class': 'test-openehr-OBSERVATION.test02.v1',
+                            'archetype_details': {}
+                        }
+                    ]
+                }
+            }
+        }
+        ehr_structure_1 = etree.tostring(IndexService.get_structure(ehr_record_1))
+        ehr_structure_2 = etree.tostring(IndexService.get_structure(ehr_record_2))
+        self.assertEqual(ehr_structure_1, ehr_structure_2)
+
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestIndexService('test_structure_simple'))
     suite.addTest(TestIndexService('test_structure_dict'))
     suite.addTest(TestIndexService('test_structure_list'))
+    suite.addTest(TestIndexService('test_structure_sorting'))
     return suite
 
 if __name__ == '__main__':

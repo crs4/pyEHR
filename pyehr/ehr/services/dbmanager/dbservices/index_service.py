@@ -57,7 +57,7 @@ class IndexService(object):
 
         def get_structure_from_dict(doc, parent_key):
             archetypes = []
-            for k, v in doc.iteritems():
+            for k, v in sorted(doc.iteritems()):
                 pk = parent_key + [k]
                 if isinstance(v, dict):
                     if is_archetype(v):
@@ -73,8 +73,14 @@ class IndexService(object):
             return archetypes
 
         def get_structure_from_list(dlist, parent_key):
+            def list_sort_key(element):
+                if is_archetype(element):
+                    return element['archetype_class']
+                else:
+                    return element
+
             archetypes = []
-            for x in dlist:
+            for x in sorted(dlist, key=list_sort_key):
                 if isinstance(x, dict):
                     if is_archetype(x):
                         archetypes.append(IndexService.get_structure(x, parent_key))
@@ -94,7 +100,7 @@ class IndexService(object):
             {'class': ehr_record['archetype_class'], 'path_from_parent': build_path(parent_key)}
         )
         parent_key = []
-        for k, x in ehr_record['archetype_details'].iteritems():
+        for k, x in sorted(ehr_record['archetype_details'].iteritems()):
             pk = parent_key + [k]
             if isinstance(x, dict):
                 if is_archetype(x):
