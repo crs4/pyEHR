@@ -83,9 +83,7 @@ class TestQueryManager(unittest.TestCase):
         for k, v in batch_details.iteritems():
             details_results.extend(v)
         res = list(results.results)
-        res.sort()
-        details_results.sort()
-        self.assertEqual(details_results, res)
+        self.assertEqual(sorted(details_results), sorted(res))
 
     def test_simple_where_query(self):
         query = """
@@ -104,9 +102,7 @@ class TestQueryManager(unittest.TestCase):
                 if x['systolic'] >= 180 or x['dyastolic'] >= 110:
                     details_results.append(x)
         res = list(results.results)
-        res.sort()
-        details_results.sort()
-        self.assertEqual(details_results, res)
+        self.assertEqual(sorted(details_results), sorted(res))
 
     def test_simple_parametric_query(self):
         query = """
@@ -119,9 +115,7 @@ class TestQueryManager(unittest.TestCase):
         for patient_label, records in batch_details.iteritems():
             results = self.qmanager.execute_aql_query(query, {'ehrUid': patient_label})
             res = list(results.results)
-            res.sort()
-            records.sort()
-            self.assertEqual(records, res)
+            self.assertEqual(sorted(records), sorted(res))
 
 
 def suite():
