@@ -39,16 +39,16 @@ class TestQueryManager(unittest.TestCase):
     def _get_blood_pressure_data(self, systolic=None, dyastolic=None, mean_arterial=None, pulse=None):
         archetype_id = 'openEHR-EHR-OBSERVATION.blood_pressure.v1'
         bp_doc = {"data": {"at0001": [{"events": [{"at0006": {"data": {"at0003": [{"items": {}}]}}}]}]}}
-        if systolic:
+        if not systolic is None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0004'] = \
                 {'value': systolic}
-        if dyastolic:
+        if not dyastolic is None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0005'] = \
                 {'value': dyastolic}
-        if mean_arterial:
+        if not mean_arterial is None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1006'] = \
                 {'value': mean_arterial}
-        if pulse:
+        if not pulse is None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1007'] = \
                 {'value': pulse}
         return archetype_id, bp_doc
