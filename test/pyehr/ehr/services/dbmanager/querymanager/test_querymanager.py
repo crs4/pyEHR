@@ -64,9 +64,7 @@ class TestQueryManager(unittest.TestCase):
                 bp_arch = ArchetypeInstance(*self._get_blood_pressure_data(systolic, dyastolic))
                 crecs.append(ClinicalRecord(bp_arch))
                 records_details.setdefault(p.record_id, []).append({'systolic': systolic, 'dyastolic': dyastolic})
-            for c in crecs:
-                _, p = self.dbs.save_ehr_record(c, p)
-            # _, p, _ = self.dbs.save_ehr_records(crecs, p)
+            _, p, _ = self.dbs.save_ehr_records(crecs, p)
             self.patients.append(p)
         return records_details
 
