@@ -136,7 +136,7 @@ class Parser():
         else:
             # If the expression doesn't contain an operator, it means that is an Archetype predicate
             predicate = ArchetypePredicate()
-            predicate.archetype_id = predicate_string[1:len(predicate_string)-1]
+            predicate.archetype_id = predicate_string[:len(predicate_string)].rstrip(']').lstrip('[')
         return predicate
 
     def parse_path(self, path_string):
