@@ -30,21 +30,27 @@ class QueryPerformanceTest(object):
             return res, execution_time
         return wrapper
 
+    def _get_quantity(self, value, units):
+        return {
+            'magnitude': value,
+            'units': units
+        }
+
     def build_blood_pressure_data(self, systolic=None, dyastolic=None, mean_arterial=None, pulse=None):
         archetype_id = 'openEHR-EHR-OBSERVATION.blood_pressure.v1'
         bp_doc = {"data": {"at0001": [{"events": [{"at0006": {"data": {"at0003": [{"items": {}}]}}}]}]}}
         if systolic:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0004'] =\
-                {'value': systolic}
+                {'value': self._get_quantity(systolic, 'mm[Hg]')}
         if dyastolic:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0005'] =\
-                {'value': dyastolic}
+                {'value': self._get_quantity(dyastolic, 'mm[Hg]')}
         if mean_arterial:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1006'] =\
-                {'value': mean_arterial}
+                {'value': self._get_quantity(mean_arterial, 'mm[Hg]')}
         if pulse:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1007'] =\
-                {'value': pulse}
+                {'value': self._get_quantity(pulse, 'mm[Hg]')}
         return archetype_id, bp_doc
 
     @get_execution_time
@@ -65,8 +71,8 @@ class QueryPerformanceTest(object):
     @get_execution_time
     def execute_select_all_query(self):
         query = """
-        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value AS dyastolic
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         """
@@ -75,8 +81,8 @@ class QueryPerformanceTest(object):
     @get_execution_time
     def execute_select_all_patient_query(self, patient_index=0):
         query = """
-        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude
         FROM Ehr e [uid=$ehrUid]
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         """
@@ -85,24 +91,24 @@ class QueryPerformanceTest(object):
     @get_execution_time
     def execute_filtered_query(self):
         query = """
-        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
-        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value >= 180
-        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value >= 110
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
         """
         return self.execute_query(query)
 
     @get_execution_time
     def execute_patient_filtered_query(self, patient_index=0):
         query = """
-        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude
         FROM Ehr e [uid=$ehrUid]
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
-        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value >= 180
-        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value >= 110
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
         """
         return self.execute_query(query, {'ehrUid': 'PATIENT_%05d' % patient_index})
 

@@ -36,21 +36,27 @@ class TestQueryManager(unittest.TestCase):
                                                self.dbs.index_service.db)
         self.dbs.index_service.disconnect()
 
+    def _get_quantity(self, value, units):
+        return {
+            'magnitude': value,
+            'units': units
+        }
+
     def _get_blood_pressure_data(self, systolic=None, dyastolic=None, mean_arterial=None, pulse=None):
         archetype_id = 'openEHR-EHR-OBSERVATION.blood_pressure.v1'
         bp_doc = {"data": {"at0001": [{"events": [{"at0006": {"data": {"at0003": [{"items": {}}]}}}]}]}}
         if not systolic is None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0004'] = \
-                {'value': systolic}
+                {'value': self._get_quantity(systolic, 'mm[Hg]')}
         if not dyastolic is None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0005'] = \
-                {'value': dyastolic}
+                {'value': self._get_quantity(dyastolic, 'mm[Hg]')}
         if not mean_arterial is None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1006'] = \
-                {'value': mean_arterial}
+                {'value': self._get_quantity(mean_arterial, 'mm[Hg]')}
         if not pulse is None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1007'] = \
-                {'value': pulse}
+                {'value': self._get_quantity(pulse, 'mm[Hg]')}
         return archetype_id, bp_doc
 
     def _build_patients_batch(self, num_patients, num_ehr, systolic_range=None, dyastolic_range=None):
@@ -70,8 +76,8 @@ class TestQueryManager(unittest.TestCase):
 
     def test_simple_select_query(self):
         query = """
-        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value AS dyastolic
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         """
@@ -85,12 +91,12 @@ class TestQueryManager(unittest.TestCase):
 
     def test_simple_where_query(self):
         query = """
-        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value AS dyastolic
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
-        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value >= 180
-        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value >= 110
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
         """
         batch_details = self._build_patients_batch(10, 10, (0, 250), (0, 200))
         results = self.qmanager.execute_aql_query(query)
@@ -104,8 +110,8 @@ class TestQueryManager(unittest.TestCase):
 
     def test_simple_parametric_query(self):
         query = """
-        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value AS dyastolic
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
         FROM Ehr e [uid=$ehrUid]
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         """
