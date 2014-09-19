@@ -1,0 +1,70 @@
+{
+    "archetype_class" : "openEHR-EHR-CLUSTER.lab_result_annotation.v1",
+    "archetype_details" : {
+        "definition" : {
+            "at0000" : [
+                {
+                    "items" : {
+                        "at0007" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0002" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0001" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0003" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0004" : {
+                            "value" : {
+                                "value" : "at0008",
+                                "defining_code" : {
+                                    "terminology_id" : {
+                                        "value" : "terminology dummy value"
+                                    },
+                                    "code_string" : "dummy code string"
+                                }
+
+                            }
+                        },
+                        "at0005" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0006" : [
+                            {
+                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.specimen(-[a-zA-Z0-9_]+)*\\.v1/",
+                                "archetype_details" : {}
+                            }
+                        ],
+                        "at0015" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0014" : [
+                            {
+                                "archetype_class" : "/.*/",
+                                "archetype_details" : {}
+                            }
+                        ],
+                        "at0017" : {
+                            "value" : "dummyURI"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

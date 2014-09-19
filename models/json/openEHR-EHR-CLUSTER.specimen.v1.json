@@ -1,0 +1,220 @@
+{
+    "archetype_class" : "openEHR-EHR-CLUSTER.specimen.v1",
+    "archetype_details" : {
+        "definition" : {
+            "at0000" : [
+                {
+                    "items" : {
+                        "at0029" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0007" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0013" : [
+                            {
+                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.anatomical_location(-[a-zA-Z0-9_]+)*\\.v1/",
+                                "archetype_details" : {}
+
+
+                            }
+
+                        ],
+                        "at0027" : [
+                            {
+                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.physical_properties(-[a-zA-Z0-9_]+)*\\.v1/",
+                                "archetype_details" : {}
+
+
+                            }
+
+                        ],
+                        "at0073" : [
+                            {
+                                "items" : {
+                                    "at0074" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0075" : {
+                                        "value" : {
+                                            "magnitude" : 0.0,
+                                            "units" : "mm"
+                                        }
+                                    },
+                                    "at0076" : {
+                                        "magnitude" : 0
+                                    }
+
+
+                                }
+                            }
+                        ],
+                        "at0050" : [
+                            {
+                                "items": {
+                                    "at0005" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0008" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at00080" : {
+                                        "magnitude" : 0
+                                    },
+                                    "at0079" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0025" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0068" : [
+                                        {
+                                            "archetype_class" : "/openEHR-EHR-CLUSTER\\.specimen_preparation(-[a-zA-Z0-9_]+)*\\.v1/",
+                                            "archetype_details" : {}
+
+                                        }
+                                    ],
+                                    "at0078" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0077" : [
+                                        {
+                                            "archetype_class" : "/openEHR-EHR-CLUSTER\\.device(-[a-zA-Z0-9_]+)*\\.v1/",
+                                            "archetype_details" : {}
+
+                                        }
+                                    ]
+                                }
+                            }
+                        ],
+                        "at0046" : [
+                            {
+                                "items" : {
+                                    "at0015" : {
+                                        "value" : {
+                                            "dv_date_time" : "2014-01-01T00:00:00"
+                                        }
+                                    },
+                                    "at0067" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0034" : {
+                                        "value" : {
+                                            "dv_date_time" : "2014-01-01T00:00:00"
+                                        }
+                                    },
+                                    "at0035" : {
+                                        "value" : {
+                                            "dv_date_time" : "2014-01-01T00:00:00"
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "at0039" : [
+                            {
+                                "items" : {
+                                    "at0042" : {
+                                        "value" : {
+                                            "value" : "at0052",
+                                            "defining_code" : {
+                                                "terminology_id" : {
+                                                    "value" : "terminology dummy value"
+                                                },
+                                                "code_string" : "dummy code string"
+                                            }
+
+                                        }
+                                    },
+                                    "at0044" : {
+                                        "value" : {
+                                            "value" : "at0056",
+                                            "defining_code" : {
+                                                "terminology_id" : {
+                                                    "value" : "terminology dummy value"
+                                                },
+                                                "code_string" : "dummy code string"
+                                            }
+
+                                        }
+                                    },
+                                    "at0041" : {
+                                        "value" : {
+                                            "value" : "at0062",
+                                            "defining_code" : {
+                                                "terminology_id" : {
+                                                    "value" : "terminology dummy value"
+                                                },
+                                                "code_string" : "dummy code string"
+                                            }
+
+                                        },
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0045" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "at0002" : [
+                            {
+                                "items" : {
+                                    "at0001" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0003" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0072" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0070" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0071" : [
+                                        {
+                                            "archetype_class" : "/.*/",
+                                            "archetype_details" : {}
+
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

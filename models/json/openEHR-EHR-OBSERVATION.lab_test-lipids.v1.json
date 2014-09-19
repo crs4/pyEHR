@@ -1,0 +1,165 @@
+{
+    "archetype_class" : "openEHR-EHR-OBSERVATION.lab_test-lipids.v1",
+    "archetype_details" : {
+        "data" : {
+            "at0001" : [
+                {
+                    "events" :
+                    {
+                        "at0002": {
+                            "data" : {
+                                "at0003" : [
+                                    {
+                                        "items" :
+                                        {
+                                            "at0005" : {
+                                                "value" : {
+                                                    "value" : "dummy text"
+                                                }
+                                            },
+                                            "at0077" : {
+                                                "value" : {
+                                                    "value" : "dummy text"
+                                                }
+                                            },
+                                            "at0073" : {
+                                                "value" : {
+                                                    "value" : "dummy coded text",
+                                                    "defining_code" : {
+                                                        "terminology_id" : {
+                                                            "value" : "terminology dummy value"
+                                                        },
+                                                        "code_string" : "dummy code string"
+                                                    }
+
+                                                }
+                                            },
+                                            "at0065" : [
+                                                {
+                                                    "archetype_class" : "/openEHR-EHR-CLUSTER\\.specimen\\.v1/",
+                                                    "archetype_details" : {}
+
+
+                                                }
+
+                                            ],
+                                            "at0078.5" : {
+                                                "value" : {
+                                                    "magnitude" : 0.0,
+                                                    "units" : "mg/dl"
+                                                }
+                                            },
+                                            "at0078.4" : {
+                                                "value" : {
+                                                    "magnitude" : 0.0,
+                                                    "units" : "mg/dl"
+                                                }
+
+
+                                            },
+                                            "at0078.3" : {
+                                                "value" : {
+                                                    "magnitude" : 0.0,
+                                                    "units" : "mg/dl"
+                                                }
+
+
+                                            },
+                                            "at0078.2" : {
+                                                "value" : {
+                                                    "magnitude" : 0.0,
+                                                    "units" : "mg/dl"
+                                                }
+                                            },
+                                            "at0078.1" : [
+                                                {
+                                                    "value" : {
+                                                        "numerator" : "1.0",
+                                                        "denominator" : "1.0",
+                                                        "type" : {
+                                                            "value" : "0"
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "at0089" : [
+                                                {
+                                                    "archetype_class" : "/openEHR-EHR-CLUSTER\\.lab_result_annotation(-[a-zA-Z0-9_]+)*\\.v1/",
+                                                    "archetype_details" : {}
+                                                }
+                                            ],
+                                            "at0057" : {
+                                                "value" : {
+                                                    "value" : "dummy text"
+                                                }
+                                            },
+                                            "at0010" : [
+                                                {
+                                                    "value" : {
+                                                        "media_type" : "http://foo.link.to.mediatype",
+                                                        "size" : 100
+                                                    }
+                                                }
+                                            ]
+                                        }
+
+                                    }
+                                ]
+                            }
+                        }
+                    }
+
+
+                }
+
+            ]
+        },
+        "protocol" : {
+            "at0004" : [
+                {
+                    "items"  :
+                    {
+                        "at0013" : [
+                            {
+                                "items" :
+                                {
+                                    "at0062" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0063" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0068" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0017" : [
+                                        {
+                                            "archetype_class" : "/openEHR-EHR-CLUSTER\\.organisation\\.v1/",
+                                            "archetype_details" : {}
+                                        }
+                                    ]
+                                }
+
+                            }
+                        ],
+                        "at0075" : {
+                            "value" : {
+                                "dv_date_time" : "2014-01-01T00:00:00"
+                            }
+                        }
+                    }
+
+                }
+            ]
+
+        }
+
+
+    }
+}

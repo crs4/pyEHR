@@ -1,0 +1,82 @@
+{
+    "archetype_class" : "openEHR-EHR-OBSERVATION.urinalysis.v1",
+    "archetype_details" : {
+        "data" : {
+            "at0001" : [
+                {
+                    "events" : {
+                        "at0002" : {
+                            "data" : {
+                                "at0003" : [
+                                    {
+                                        "items" : {
+                                            "at0050": {
+                                                "value" : "1|[local::at0127]"
+
+                                            },
+                                            "at0095": {
+                                                "value" : "1|[local::at0096]"
+
+                                            },
+                                            "at0062": {
+                                                "value" : "1|[local::at0121]"
+
+                                            },
+                                            "at0037": {
+                                                "value" : "1|[local::at0109]"
+
+                                            },
+                                            "at00151": {
+                                                "value" : "1|[local::at0152]"
+
+                                            },
+                                            "at0032": {
+                                                "value" : "1|[local::at0102]"
+
+                                            },
+                                            "at0056": {
+                                                "value" : "1|[local::at0161]"
+
+                                            },
+                                            "at0043": {
+                                                "value" : "1|[local::at0159]"
+
+                                            },
+                                            "at0068": {
+                                                "value" : "1|[local::at0135]"
+
+                                            },
+                                            "at0030" : {
+                                                "value" : {
+                                                    "value" : "dummy text"
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "protocol" : {
+            "at0079" : [
+                {
+                    "items" : {
+                        "at0180": [
+                            {
+                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.device(-[a-zA-Z0-9_]+)*\\.v1/",
+                                "archetype_details" : {}
+
+
+                            }
+
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

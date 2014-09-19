@@ -1,0 +1,475 @@
+﻿archetype (adl_version=1.4)
+	openEHR-EHR-OBSERVATION.urinalysis.v1
+
+concept
+	[at0000]	-- Urinalysis
+language
+	original_language = <[ISO_639-1::en]>
+description
+	original_author = <
+		["name"] = <"Heather Leslie">
+		["organisation"] = <"Ocean Informatics">
+		["email"] = <"heather.leslie@oceaninformatics.com">
+		["date"] = <"2006-09-08">
+	>
+	details = <
+		["en"] = <
+			language = <[ISO_639-1::en]>
+			purpose = <"To record the findings of urinalysis or dipstick testing.">
+			use = <"">
+			keywords = <"urine", "test", "dip-stick">
+			misuse = <"">
+			copyright = <"© openEHR Foundation">
+		>
+	>
+	lifecycle_state = <"Initial">
+	other_contributors = <"Heather Leslie, Ocean Informatics, Australia (Editor)", "Ian McNicoll, Ocean Informatics, United Kingdom (Editor)", "Mona Saleh (Translator)">
+	other_details = <
+		["MD5-CAM-1.0.1"] = <"E8D4957AA1D05841BC3F828E2581679D">
+	>
+
+definition
+	OBSERVATION[at0000] matches {	-- Urinalysis
+		data matches {
+			HISTORY[at0001] matches {	-- Event Series
+				events cardinality matches {1..*; unordered} matches {
+					EVENT[at0002] occurrences matches {0..1} matches {	-- Any event
+						data matches {
+							ITEM_TREE[at0003] matches {	-- Tree
+								items cardinality matches {0..*; unordered} matches {
+									ELEMENT[at0050] occurrences matches {0..1} matches {	-- Glucose
+										value matches {
+											1|[local::at0115], 	-- Negative
+											2|[local::at0116], 	-- Trace 
+											3|[local::at0117], 	-- + 
+											4|[local::at0118], 	-- ++
+											5|[local::at0119], 	-- +++
+											6|[local::at0120]  	-- ++++
+										}
+									}
+									ELEMENT[at0095] occurrences matches {0..1} matches {	-- Protein
+										value matches {
+											1|[local::at0096], 	-- Negative
+											2|[local::at0097], 	-- Trace
+											3|[local::at0098], 	-- +
+											4|[local::at0099], 	-- ++
+											5|[local::at0100], 	-- +++
+											6|[local::at0101]  	-- ++++
+										}
+									}
+									ELEMENT[at0062] occurrences matches {0..1} matches {	-- Bilirubin
+										value matches {
+											1|[local::at0121], 	-- Negative
+											2|[local::at0122], 	-- +
+											3|[local::at0123], 	-- ++
+											4|[local::at0124]  	-- +++
+										}
+									}
+									ELEMENT[at0037] occurrences matches {0..1} matches {	-- Ketones
+										value matches {
+											1|[local::at0109], 	-- Negative
+											2|[local::at0110], 	-- Trace
+											3|[local::at0111], 	-- Small
+											4|[local::at0112], 	-- Moderate
+											5|[local::at0113], 	-- Large
+											6|[local::at0114]  	-- Large+
+										}
+									}
+									ELEMENT[at0151] occurrences matches {0..1} matches {	-- Specific gravity
+										value matches {
+											1|[local::at0152], 	-- 1.000
+											2|[local::at0153], 	-- 1.005
+											3|[local::at0154], 	-- 1.010
+											4|[local::at0155], 	-- 1.015
+											5|[local::at0156], 	-- 1.020
+											6|[local::at0157], 	-- 1.025
+											7|[local::at0158]  	-- 1.030
+										}
+									}
+									ELEMENT[at0032] occurrences matches {0..1} matches {	-- Blood
+										value matches {
+											1|[local::at0102], 	-- Negative
+											2|[local::at0103], 	-- Non-haemolysed Trace
+											3|[local::at0104], 	-- Non-haemolysed Moderate
+											4|[local::at0105], 	-- Haemolysed Trace
+											5|[local::at0106], 	-- +
+											6|[local::at0107], 	-- ++
+											7|[local::at0108]  	-- +++
+										}
+									}
+									ELEMENT[at0126] occurrences matches {0..1} matches {	-- pH
+										value matches {
+											1|[local::at0127], 	-- 5.0
+											2|[local::at0128], 	-- 5.5
+											3|[local::at0129], 	-- 6.0
+											4|[local::at0130], 	-- 6.5
+											5|[local::at0131], 	-- 7.0
+											6|[local::at0132], 	-- 7.5
+											7|[local::at0133], 	-- 8.0
+											8|[local::at0134], 	-- 8.5
+											9|[local::at0176], 	-- 9.0
+											10|[local::at0177], 	-- 9.5
+											11|[local::at0179]  	-- 10.0
+										}
+									}
+									ELEMENT[at0056] occurrences matches {0..1} matches {	-- Urobilinogen
+										value matches {
+											1|[local::at0161], 	-- 0.2 mg/dL
+											2|[local::at0162], 	-- 1 mg/dL
+											3|[local::at0163], 	-- 2 mg/dL
+											4|[local::at0164], 	-- 4 mg/dL
+											5|[local::at0165]  	-- 8 mg/dL
+										}
+									}
+									ELEMENT[at0043] occurrences matches {0..1} matches {	-- Nitrite
+										value matches {
+											1|[local::at0159], 	-- Negative
+											2|[local::at0160]  	-- Positive
+										}
+									}
+									ELEMENT[at0068] occurrences matches {0..1} matches {	-- Leukocytes
+										value matches {
+											1|[local::at0135], 	-- Negative
+											2|[local::at0136], 	-- Trace
+											3|[local::at0137], 	-- +
+											4|[local::at0138], 	-- ++
+											5|[local::at0139]  	-- +++
+										}
+									}
+									ELEMENT[at0030] occurrences matches {0..1} matches {	-- Comments
+										value matches {
+											DV_TEXT matches {*}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		protocol matches {
+			ITEM_TREE[at0079] matches {	-- Tree
+				items cardinality matches {0..*; unordered} matches {
+					allow_archetype CLUSTER[at0180] occurrences matches {0..1} matches {	-- Device
+						include
+							archetype_id/value matches {/openEHR-EHR-CLUSTER\.device(-[a-zA-Z0-9_]+)*\.v1/}
+					}
+				}
+			}
+		}
+	}
+
+
+ontology
+	terminologies_available = <"SNOMED-CT", ...>
+	term_definitions = <
+		["en"] = <
+			items = <
+				["at0000"] = <
+					text = <"Urinalysis">
+					description = <"Semi-quantitative chemical analysis of a urine sample by direct observation. The color change occurring on each segment of a dipstick is read by being compared to a color chart.">
+				>
+				["at0001"] = <
+					text = <"Event Series">
+					description = <"@ internal @">
+				>
+				["at0002"] = <
+					text = <"Any event">
+					description = <"*">
+				>
+				["at0003"] = <
+					text = <"Tree">
+					description = <"@ internal @">
+				>
+				["at0030"] = <
+					text = <"Comments">
+					description = <"Any general comments on the results.">
+				>
+				["at0032"] = <
+					text = <"Blood">
+					description = <"Detection of blood in urine sample.">
+				>
+				["at0037"] = <
+					text = <"Ketones">
+					description = <"Detection of ketones in urine sample.">
+				>
+				["at0043"] = <
+					text = <"Nitrite">
+					description = <"Detection of nitrites in urine sample.">
+				>
+				["at0050"] = <
+					text = <"Glucose">
+					description = <"Detection of glucose in urine sample.">
+				>
+				["at0056"] = <
+					text = <"Urobilinogen">
+					description = <"Detection of urobilinogen in urine sample.">
+				>
+				["at0062"] = <
+					text = <"Bilirubin">
+					description = <"Detection of bilirubin in urine sample.">
+				>
+				["at0068"] = <
+					text = <"Leukocytes">
+					description = <"Detection of white blood cells in the urine.">
+				>
+				["at0079"] = <
+					text = <"Tree">
+					description = <"@ internal @">
+				>
+				["at0095"] = <
+					text = <"Protein">
+					description = <"Detection of protein in urine sample.">
+				>
+				["at0096"] = <
+					text = <"Negative">
+					description = <"Negative">
+				>
+				["at0097"] = <
+					text = <"Trace">
+					description = <"Trace">
+				>
+				["at0098"] = <
+					text = <"+">
+					description = <"30mg/dl">
+				>
+				["at0099"] = <
+					text = <"++">
+					description = <"100mg/dl">
+				>
+				["at0100"] = <
+					text = <"+++">
+					description = <"300mg/dl">
+				>
+				["at0101"] = <
+					text = <"++++">
+					description = <"over 2000mg/dl">
+				>
+				["at0102"] = <
+					text = <"Negative">
+					description = <"Negative">
+				>
+				["at0103"] = <
+					text = <"Non-haemolysed Trace">
+					description = <"Non-haemolysed Trace">
+				>
+				["at0104"] = <
+					text = <"Non-haemolysed Moderate">
+					description = <"Non-haemolysed Moderate">
+				>
+				["at0105"] = <
+					text = <"Haemolysed Trace">
+					description = <"Haemolysed Trace">
+				>
+				["at0106"] = <
+					text = <"+">
+					description = <"Small">
+				>
+				["at0107"] = <
+					text = <"++">
+					description = <"Moderate">
+				>
+				["at0108"] = <
+					text = <"+++">
+					description = <"Large">
+				>
+				["at0109"] = <
+					text = <"Negative">
+					description = <"Negative">
+				>
+				["at0110"] = <
+					text = <"Trace">
+					description = <"5mg/dl">
+				>
+				["at0111"] = <
+					text = <"Small">
+					description = <"15mg/dl">
+				>
+				["at0112"] = <
+					text = <"Moderate">
+					description = <"40mg/dl">
+				>
+				["at0113"] = <
+					text = <"Large">
+					description = <"80mg/dl">
+				>
+				["at0114"] = <
+					text = <"Large+">
+					description = <"150mg/dl">
+				>
+				["at0115"] = <
+					text = <"Negative">
+					description = <"Negative">
+				>
+				["at0116"] = <
+					text = <"Trace ">
+					description = <"1/10 g/dl (100mg/dl)">
+				>
+				["at0117"] = <
+					text = <"+ ">
+					description = <"1/4 g/dl (250mg/dl)">
+				>
+				["at0118"] = <
+					text = <"++">
+					description = <"1/2 g/dl (500mg/dl)">
+				>
+				["at0119"] = <
+					text = <"+++">
+					description = <"1 g/dl (1000mg/dl)">
+				>
+				["at0120"] = <
+					text = <"++++">
+					description = <"2 g/dl or more (2000mg/dl or more)">
+				>
+				["at0121"] = <
+					text = <"Negative">
+					description = <"Negative.">
+				>
+				["at0122"] = <
+					text = <"+">
+					description = <"Small.">
+				>
+				["at0123"] = <
+					text = <"++">
+					description = <"Moderate.">
+				>
+				["at0124"] = <
+					text = <"+++">
+					description = <"Large.">
+				>
+				["at0126"] = <
+					text = <"pH">
+					description = <"Record pH from urinalysis (range 5.0-10.0).">
+				>
+				["at0127"] = <
+					text = <"5.0">
+					description = <"Ph of 5">
+				>
+				["at0128"] = <
+					text = <"5.5">
+					description = <"Ph of 5.5">
+				>
+				["at0129"] = <
+					text = <"6.0">
+					description = <"Ph of 6">
+				>
+				["at0130"] = <
+					text = <"6.5">
+					description = <"Ph of 6.5">
+				>
+				["at0131"] = <
+					text = <"7.0">
+					description = <"Ph of 7">
+				>
+				["at0132"] = <
+					text = <"7.5">
+					description = <"Ph of 7.5">
+				>
+				["at0133"] = <
+					text = <"8.0">
+					description = <"Ph of 8">
+				>
+				["at0134"] = <
+					text = <"8.5">
+					description = <"Ph of 8.5">
+				>
+				["at0135"] = <
+					text = <"Negative">
+					description = <"No leukocytes">
+				>
+				["at0136"] = <
+					text = <"Trace">
+					description = <"Trace of leukocytes">
+				>
+				["at0137"] = <
+					text = <"+">
+					description = <"Small">
+				>
+				["at0138"] = <
+					text = <"++">
+					description = <"Moderate">
+				>
+				["at0139"] = <
+					text = <"+++">
+					description = <"Large">
+				>
+				["at0151"] = <
+					text = <"Specific gravity">
+					description = <"Specific gravity is measuring the concentration of solutes in the urine relative to distilled water.">
+				>
+				["at0152"] = <
+					text = <"1.000">
+					description = <"*">
+				>
+				["at0153"] = <
+					text = <"1.005">
+					description = <"*">
+				>
+				["at0154"] = <
+					text = <"1.010">
+					description = <"*">
+				>
+				["at0155"] = <
+					text = <"1.015">
+					description = <"*">
+				>
+				["at0156"] = <
+					text = <"1.020">
+					description = <"*">
+				>
+				["at0157"] = <
+					text = <"1.025">
+					description = <"*">
+				>
+				["at0158"] = <
+					text = <"1.030">
+					description = <"*">
+				>
+				["at0159"] = <
+					text = <"Negative">
+					description = <"*">
+				>
+				["at0160"] = <
+					text = <"Positive">
+					description = <"*">
+				>
+				["at0161"] = <
+					text = <"0.2 mg/dL">
+					description = <"Normal (low)">
+				>
+				["at0162"] = <
+					text = <"1 mg/dL">
+					description = <"Normal (upper)">
+				>
+				["at0163"] = <
+					text = <"2 mg/dL">
+					description = <"+">
+				>
+				["at0164"] = <
+					text = <"4 mg/dL">
+					description = <"++">
+				>
+				["at0165"] = <
+					text = <"8 mg/dL">
+					description = <"+++">
+				>
+				["at0176"] = <
+					text = <"9.0">
+					description = <"Ph of 9.0">
+				>
+				["at0177"] = <
+					text = <"9.5">
+					description = <"Ph of 9.5">
+				>
+				["at0179"] = <
+					text = <"10.0">
+					description = <"Ph of 10.0">
+				>
+				["at0180"] = <
+					text = <"Device">
+					description = <"The device/test method used">
+				>
+			>
+		>
+	>

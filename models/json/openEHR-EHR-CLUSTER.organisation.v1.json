@@ -1,0 +1,55 @@
+{
+    "archetype_class" : "openEHR-EHR-CLUSTER.organisation.v1",
+    "archetype_details" : {
+        "definition" : {
+            "at0000" : [
+                {
+                    "items" : {
+                        "at0001" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0011" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0008" : {
+                            "archetype_class" : "/openEHR-EHR-CLUSTER\\.address\\.v1/",
+                            "archetype_details" : {}
+
+
+                        },
+                        "at0009" : {
+                            "archetype_class" : "/openEHR-EHR-CLUSTER\\.telecom_details\\.v1/",
+                            "archetype_details" : {}
+
+
+                        },
+                        "at0005" : [
+                            {
+                                "items" : {
+                                    "at0010" : [
+                                        {
+                                            "archetype_class" : "/openEHR-EHR-CLUSTER\\.person_name\\.v1/",
+                                            "archetype_details" : {}
+                                        }
+                                    ],
+                                    "at0007" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+
+
+                    }
+                }
+            ]
+        }
+
+    }
+}

@@ -1,0 +1,238 @@
+{
+    "archetype_class" : "openEHR-EHR-OBSERVATION.lab_test-blood_glucose.v1",
+    "archetype_details" : {
+        "data" : {
+            "at0001" : [
+                {
+                    "events" : {
+                        "at0002" : {
+                            "data" : {
+                                "at_0003" : [
+                                    {
+                                        "items" : {
+                                            "at0005" : {
+                                                "value" : {
+                                                    "value" : "dummy text"
+                                                }
+                                            },
+                                            "at0077" : {
+                                                "value" : {
+                                                    "value" : "dummy text"
+                                                }
+                                            },
+                                            "at0073" : {
+                                                "value" : {
+                                                    "value" : "at0037",
+                                                    "defining_code" : {
+                                                        "terminology_id" : {
+                                                            "value" : "terminology dummy value"
+                                                        },
+                                                        "code_string" : "dummy code string"
+                                                    }
+
+                                                }
+                                            },
+                                            "at0065" : [
+                                                {
+                                                    "archetype_class" : "/openEHR-EHR-CLUSTER\\.specimen\\.v1/",
+                                                    "archetype_details" : {}
+
+
+                                                }
+
+                                            ],
+                                            "at0078.2" : {
+                                                "value" : {
+                                                    "magnitude" : 0.0,
+                                                    "units" : "mmol/l"
+                                                }
+                                            },
+                                            "at0078" : [
+                                                {
+                                                    "archetype_class" : "/openEHR-EHR-CLUSTER\\.lab_result_annotation(-[a-zA-Z0-9_]+)*\\.v1/",
+                                                    "archetype_details" : {}
+
+
+                                                }
+
+                                            ],
+                                            "at0057" : {
+                                                "value" : {
+                                                    "value" : "dummy text"
+                                                }
+                                            },
+                                            "at0010" : [
+                                                {
+                                                    "value" : {
+                                                        "media_type" : "http://foo.link.to.mediatype",
+                                                        "size" : 100
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            },
+                            "state" : {
+                                "at0.89" : [
+                                    {
+                                        "items" : {
+                                            "at0.90" : [
+                                                {
+                                                    "items" : {
+                                                        "at0.91" : {
+                                                            "value" : {
+                                                                "value" : "at0.92",
+                                                                "defining_code" : {
+                                                                    "terminology_id" : {
+                                                                        "value" : "terminology dummy value"
+                                                                    },
+                                                                    "code_string" : "dummy code string"
+                                                                }
+
+                                                            }
+                                                        },
+                                                        "at0.96" : {
+                                                            "value" : "12H"
+                                                        },
+                                                        "at0.97" : {
+                                                            "value" : {
+                                                                "value" : "dummy text"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "at0.98" : [
+                                                {
+                                                    "items" : {
+                                                        "at0.100" : {
+                                                            "value" : {
+                                                                "magnitude" : 0.0,
+                                                                "units" : "gm"
+                                                            }
+                                                        },
+                                                        "at0.101" : {
+                                                            "value" : {
+                                                                "value" : "at0.105",
+                                                                "defining_code" : {
+                                                                    "terminology_id" : {
+                                                                        "value" : "terminology dummy value"
+                                                                    },
+                                                                    "code_string" : "dummy code string"
+                                                                }
+
+                                                            }
+                                                        },
+                                                        "at0.99" : {
+                                                            "value" : {
+                                                                "value" : "at0.103",
+                                                                "defining_code" : {
+                                                                    "terminology_id" : {
+                                                                        "value" : "terminology dummy value"
+                                                                    },
+                                                                    "code_string" : "dummy code string"
+                                                                }
+
+                                                            }
+                                                        },
+                                                        "use_node_element" : "/data[at0001]/events[at0002]/state[at0.89]/items[at0.90]/items[at0.96]"
+                                                    }
+                                                }
+                                            ],
+                                            "at0.107" : [
+                                                {
+                                                    "items" : {
+                                                        "at0.110" : {
+                                                            "value" : {
+                                                                "magnitude" : 0.0,
+                                                                "units" : "U"
+                                                            }
+                                                        },
+                                                        "at0.111" : {
+                                                            "value" : {
+                                                                "value" : "at0.112",
+                                                                "defining_code" : {
+                                                                    "terminology_id" : {
+                                                                        "value" : "terminology dummy value"
+                                                                    },
+                                                                    "code_string" : "dummy code string"
+                                                                }
+
+                                                            }
+                                                        },
+                                                        "use_node_element" : "/data[at0001]/events[at0002]/state[at0.89]/items[at0.98]/items[at0.99]",
+                                                        "use_node_element" : "/data[at0001]/events[at0002]/state[at0.89]/items[at0.90]/items[at0.96]"
+                                                    }
+                                                }
+                                            ],
+                                            "at.108" : [
+                                                {
+                                                    "items" : {
+                                                        "a.109" : {
+                                                            "value" : {
+                                                                "value" : "dummy text"
+                                                            }
+                                                        },
+                                                        "use_node_element" : "/data[at0001]/events[at0002]/state[at0.89]/items[at0.98]/items[at0.99]",
+                                                        "use_node_element" : "/data[at0001]/events[at0002]/state[at0.89]/items[at0.90]/items[at0.96]"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "protocol" : {
+            "at0004" : [
+                {
+                    "items" : {
+                        "at0013" : [
+                            {
+                                "items" : {
+                                    "at0062" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0063" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0068" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0017" : [
+                                        {
+                                            "archetype_class" : "/openEHR-EHR-CLUSTER\\.organisation\\.v1/",
+                                            "archetype_details" : {}
+
+
+                                        }
+
+
+                                    ]
+
+                                }
+                            }
+                        ],
+                        "at0075" : {
+                            "value" : {
+                                "dv_date_time" : "2014-01-01T00:00:00"
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

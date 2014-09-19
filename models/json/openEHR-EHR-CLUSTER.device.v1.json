@@ -1,0 +1,96 @@
+{
+    "archetype_class" : "openEHR-EHR-CLUSTER.device.v1",
+    "archetype_details" : {
+        "definition" : {
+            "at0000" : [
+                {
+                    "items" : {
+                        "at0001" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0002" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0003" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0016" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0017" : [
+                            {
+                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.dimensions(-[a-zA-Z0-9_]+)*\\.v1",
+                                "archetype_details" : {}
+
+
+                            }
+
+                        ],
+                        "at0004" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0005" : {
+                            "value" : {
+                                "dv_date_time" : "2014-01-01T00:00:00"
+                            }
+                        },
+                        "at0006" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0007" : {
+                            "value" : {
+                                "dv_date_time" : "2014-01-01T00:00:00"
+                            }
+                        },
+                        "at0013" : [
+                            {
+                                "items" : {
+                                    "at0014" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0015" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "at0008" : {
+                            "value" : {
+                                "value" : "dummy text"
+                            }
+                        },
+                        "at0009" : [
+                            {
+                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.device_details(-[a-zA-Z0-9_]+)*\\.v1",
+                                "archetype_details" : {}
+                            }
+
+                        ],
+                        "at0018" : [
+                            {
+                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.device(-[a-zA-Z0-9_]+)*\\.v1/",
+                                "archetype_details" : {}
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}
