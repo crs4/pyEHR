@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from pyehr.ehr.services.dbmanager.errors import *
 import re
+from copy import deepcopy
 from itertools import izip
 
 class DriverInterface(object):
@@ -196,8 +197,8 @@ class DriverInterface(object):
     @abstractmethod
     def _build_paths(self, aliases):
         encoded_paths = dict()
-        for var, paths in aliases.iteritems():
-            for path in paths:
+        for var, details in aliases.iteritems():
+            for path in details['paths']:
                 p = self._build_path(path)
                 encoded_paths.setdefault(var, []).append(p)
         return encoded_paths
@@ -205,6 +206,10 @@ class DriverInterface(object):
     @abstractmethod
     def _extract_path_alias(self, path):
         return path.split('/')[0], '/'.join(path.split('/')[1:])
+
+    @abstractmethod
+    def _get_archetype_class_path(self, path):
+        pass
 
     @abstractmethod
     def _calculate_condition_expression(self, condition, aliases):
@@ -263,10 +268,13 @@ class DriverInterface(object):
             paths = self._build_paths(aliases)
             for a in izip(*paths.values()):
                 for p in [dict(izip(paths.keys(), a))]:
+                    loc_q = deepcopy(location_query)
+                    for k in aliases.keys():
+                        loc_q.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
                     selection_filter, results_aliases = self._calculate_selection_expression(selection, p)
                     queries.append(
                         {
-                            'query': (location_query, selection_filter),
+                            'query': (loc_q, selection_filter),
                             'results_aliases': results_aliases
                         }
                     )

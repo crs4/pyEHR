@@ -526,6 +526,9 @@ class ElasticSearchDriver(DriverInterface):
     def _extract_path_alias(self, path):
         super(ElasticSearchDriver, self)._extract_path_alias(path)
 
+    def _get_archetype_class_path(self, path):
+        super(ElasticSearchDriver, self)._get_archetype_class_path(path)
+
     def _calculate_condition_expression(self, condition, aliases):
         raise NotImplementedError()
 

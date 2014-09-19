@@ -189,7 +189,7 @@ class IndexService(object):
         return [(a.find('structure_id').get('uid')) for a in results.findall('archetype_structure')]
 
     def _get_matching_paths(self, results, archetype_class):
-        paths = list()
+        paths = dict()
         for node in results.xpath('//archetype[@class="{0}"]/self::*[@class="{0}"]'.format(archetype_class)):
             path = list()
             path.append(node.get('path_from_parent'))
@@ -200,7 +200,8 @@ class IndexService(object):
                     path.insert(0, node.get('path_from_parent'))
                 else:
                     break
-            paths.append(tuple(path))
+            paths.setdefault('paths', []).append(tuple(path))
+        paths['archetype_class'] = archetype_class
         return paths
 
     def map_aql_contains(self, aql_containers):

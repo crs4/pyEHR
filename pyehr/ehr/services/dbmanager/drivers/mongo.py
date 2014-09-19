@@ -520,12 +520,20 @@ class MongoDriver(DriverInterface):
     def _extract_path_alias(self, path):
         return super(MongoDriver, self)._extract_path_alias(path)
 
+    def _get_archetype_class_path(self, path):
+        path_pieces = path.split('.')
+        path_pieces[-1] = 'archetype_class'
+        return '.'.join(path_pieces)
+
     def _calculate_condition_expression(self, condition, aliases):
         queries = list()
         paths = self._build_paths(aliases)
         for a in izip(*paths.values()):
             for p in [dict(izip(paths.keys(), a))]:
                 query = dict()
+                # bind fields to archetypes
+                for k in aliases.keys():
+                    query.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
                 expressions = dict()
                 or_indices = list()
                 and_indices = list()
