@@ -1,5 +1,5 @@
 import logging
-
+import collections
 
 def get_logger(logger_label,
                log_format='%(asctime)s|%(levelname)-8s|%(message)s',
@@ -32,9 +32,9 @@ def decode_list(data):
     for item in data:
         if isinstance(item, unicode):
             item = item.encode('utf-8')
-        elif isinstance(item, list):
+        elif isinstance(item, collections.MutableSequence):
             item = decode_list(item)
-        elif isinstance(item, dict):
+        elif isinstance(item, collections.MutableMapping):
             item = decode_dict(item)
         decoded.append(item)
     return decoded
@@ -55,9 +55,9 @@ def decode_dict(data):
             key = key.encode('utf-8')
         if isinstance(val, unicode):
             val = val.encode('utf-8')
-        elif isinstance(val, list):
+        elif isinstance(val, collections.MutableSequence):
             val = decode_list(val)
-        elif isinstance(val, dict):
+        elif isinstance(val, collections.MutableMapping):
             val = decode_dict(val)
         decoded[key] = val
     return decoded
@@ -73,8 +73,16 @@ def cleanup_json(data):
     :return: the cleaned dictionary
     :rtype: dictionary
     """
-    cleanead_data = {}
+    cleaned_data = {}
     for k, v in data.iteritems():
+        if isinstance(v, collections.MutableMapping):
+            v = cleanup_json(v)
+        if isinstance(v, collections.MutableSequence):
+            v = [cleanup_json(item) for item in v if item is not None]
+            if len(v) == 0:
+                v = None
         if not v is None:
-            cleanead_data[k] = v
-    return cleanead_data
+            cleaned_data[k] = v
+    if len(cleaned_data) == 0:
+        return None
+    return cleaned_data
