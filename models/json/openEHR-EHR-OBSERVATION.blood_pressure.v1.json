@@ -50,7 +50,7 @@
                                             "items": {
                                                 "at0008": {
                                                     "value" : {
-                                                        "value" : "dummy coded text",
+                                                        "value" : "at1000",
                                                         "defining_code" : {
 
                                                             "terminology_id" : {
@@ -75,7 +75,7 @@
                                                 ],
                                                 "at1043": {
                                                     "value" : {
-                                                        "value" : "dummy coded text",
+                                                        "value" : "at1044",
                                                         "defining_code" : {
                                                             "terminology_id" : {
                                                                 "value" : "terminology dummy value"
@@ -100,7 +100,7 @@
                             "at1042": {
                                 "math_function" : {
                                     "value" : {
-                                        "value" : "dummy coded text",
+                                        "value" : "[openehr::146]",
                                         "defining_code" : {
                                             "terminology_id" : {
                                                 "value" : "terminology dummy value"
@@ -132,7 +132,7 @@
                         "at0013": {
                             "math_function" : {
                                 "value" : {
-                                    "value" : "dummy coded text",
+                                    "value" : "at0015",
                                     "defining_code" : {
                                         "terminology_id" : {
                                             "value" : "terminology dummy value"
@@ -148,7 +148,7 @@
                                     "at0014": {
                                         "math_function" : {
                                             "value" : {
-                                                "value" : "dummy coded text",
+                                                "value" : "at0025",
                                                 "defining_code" : {
                                                     "terminology_id" : {
                                                         "value" : "terminology dummy value"
@@ -169,7 +169,7 @@
                         "at1035": {
                             "math_function" : {
                                 "value" : {
-                                    "value" : "dummy coded text",
+                                    "value" : "at1036",
                                     "defining_code" : {
                                         "terminology_id" : {
                                             "value" : "terminology dummy value"
@@ -187,7 +187,7 @@
                         "at1010": {
                             "math_function" : {
                                 "value" : {
-                                    "value" : "dummy coded text",
+                                    "value" : "at1011",
                                     "defining_code" : {
                                         "terminology_id" : {
                                             "value" : "terminology dummy value"
