@@ -1,0 +1,37 @@
+{
+    "archetype_class" : "openEHR-EHR-COMPOSITION.encounter.v1",
+    "archetype_details" : {
+        "category": {
+            "value" : {
+                "value" : "[openehr::433]",
+                "defining_code" : {
+
+                    "terminology_id" : {
+                        "value" : "terminology dummy value"
+                    },
+                    "code_string" : "dummy code string"
+                }
+
+            }
+        },
+        "context" : {
+            "event_context" : {
+                "other_context" : {
+                    "at0001" : [
+                        {
+                            "items" : {
+                                "at0002": [
+                                    {
+                                        "archetype_class" : "/.*/",
+                                        "archetype_details" : {}
+                                    }
+
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}
