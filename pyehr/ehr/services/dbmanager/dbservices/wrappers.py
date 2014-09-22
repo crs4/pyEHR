@@ -121,7 +121,7 @@ class PatientRecord(Record):
             Required('ehr_records'): list
         })
         try:
-            json_data = cleanup_json(decode_dict(json_data))
+            json_data = decode_dict(json_data)
             schema(json_data)
             ehr_records = [ClinicalRecord.from_json(ehr) for ehr in json_data['ehr_records']]
             json_data['ehr_records'] = ehr_records
@@ -181,7 +181,7 @@ class ClinicalRecord(Record):
             'record_id': str,
         })
         try:
-            json_data = cleanup_json(decode_dict(json_data))
+            json_data = decode_dict(json_data)
             schema(json_data)
             json_data['ehr_data'] = ArchetypeInstance.from_json(json_data['ehr_data'])
             return ClinicalRecord(**json_data)
@@ -309,6 +309,6 @@ class ArchetypeInstance(object):
                     archetype_data[k] = decode_list_data(v)
                 else:
                     archetype_data[k] = v
-            return ArchetypeInstance(json_data['archetype_class'], archetype_data)
+            return ArchetypeInstance(json_data['archetype_class'], cleanup_json(archetype_data))
         except MultipleInvalid:
             raise InvalidJsonStructureError('JSON record\'s structure is not compatible with ArchetypeInstance object')
