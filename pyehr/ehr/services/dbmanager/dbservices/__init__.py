@@ -93,6 +93,7 @@ class DBServices(object):
         """
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
+            ehr_record.bind_to_patient(patient_record)
             driver.add_record(driver.encode_record(ehr_record))
         patient_record = self._add_ehr_record(patient_record, ehr_record)
         return ehr_record, patient_record
@@ -114,6 +115,8 @@ class DBServices(object):
         """
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
+            for r in ehr_records:
+                r.bind_to_patient(patient_record)
             encoded_records = [driver.encode_record(r) for r in ehr_records]
             saved, errors = driver.add_records(encoded_records, skip_existing_duplicated)
             errors = [driver.decode_record(e) for e in errors]
@@ -191,7 +194,7 @@ class DBServices(object):
             driver.delete_record(ehr_record.record_id)
         patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
         if new_record_id:
-            ehr_record.new_record_id()
+            ehr_record.reset()
         return ehr_record, patient_record
 
     def _get_active_records(self, driver):

@@ -128,6 +128,7 @@ class MongoDriver(DriverInterface):
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = normalize_keys(ehr_data, original_value, encoded_value)
         encoded_record = {
+            'patient_id': clinical_record.patient_id,
             'creation_time': clinical_record.creation_time,
             'last_update': clinical_record.last_update,
             'active': clinical_record.active,
@@ -197,25 +198,30 @@ class MongoDriver(DriverInterface):
             ehr_data = record['ehr_data']
             for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
                 ehr_data = decode_keys(ehr_data, encoded_value, original_value)
-            return ClinicalRecord(
+            crec = ClinicalRecord(
                 ehr_data=ArchetypeInstance.from_json(ehr_data),
                 creation_time=record['creation_time'],
                 last_update=record['last_update'],
                 active=record['active'],
                 record_id=record.get('_id')
             )
+            if 'patient_id' in record:
+                crec._set_patient_id(record['patient_id'])
         else:
             if record.get('ehr_data'):
                 arch = ArchetypeInstance(record['ehr_data']['archetype_class'], {})
             else:
                 arch = None
-            return ClinicalRecord(
+            crec = ClinicalRecord(
                 creation_time=record.get('creation_time'),
                 record_id=record.get('_id'),
                 last_update=record.get('last_update'),
                 active=record.get('active'),
                 ehr_data=arch
             )
+            if 'patient_id' in record:
+                crec._set_patient_id(record['patient_id'])
+        return crec
 
     def decode_record(self, record, loaded=True):
         """
@@ -592,27 +598,6 @@ class MongoDriver(DriverInterface):
 
     def _calculate_ehr_expression(self, ehr_class_expression, query_params, patients_collection,
                                   ehr_collection):
-        def resolve_ehr_uid(driver, patient_id, patients_collection):
-            if driver.is_connected:
-                original_collection = str(driver.collection.name)
-                close_conn_after_done = False
-            else:
-                close_conn_after_done = True
-            driver.connect()
-            driver.select_collection(patients_collection)
-            res = driver.get_records_by_query(
-                {'_id': patient_id},
-                {'_id': False, 'ehr_records': True}
-            )
-            if close_conn_after_done:
-                driver.disconnect()
-            else:
-                driver.select_collection(original_collection)
-            try:
-                return res.next()['ehr_records']
-            except StopIteration:
-                return None
-
         # Resolve predicate expressed for EHR AQL expression
         query = dict()
         if ehr_class_expression.predicate:
@@ -626,13 +611,7 @@ class MongoDriver(DriverInterface):
                 else:
                     right_operand = pr.right_operand
                 if pr.left_operand == 'uid':
-                    ehr_ids = resolve_ehr_uid(self, right_operand, patients_collection)
-                    if ehr_ids:
-                        query.update({'_id': {'$in': ehr_ids}})
-                    else:
-                        # TODO: check what to do if no matching ID was found
-                        #       maybe throwing an exception is the best solution here
-                        pass
+                    query.update({'patient_id': right_operand})
                 elif pr.left_operand == 'id':
                     # use given EHR ID
                     query.update(self._map_operand(pr.left_operand,
