@@ -128,6 +128,7 @@ class MongoDriver(DriverInterface):
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = normalize_keys(ehr_data, original_value, encoded_value)
         encoded_record = {
+            'patient_id': clinical_record.patient_id,
             'creation_time': clinical_record.creation_time,
             'last_update': clinical_record.last_update,
             'active': clinical_record.active,
@@ -197,25 +198,30 @@ class MongoDriver(DriverInterface):
             ehr_data = record['ehr_data']
             for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
                 ehr_data = decode_keys(ehr_data, encoded_value, original_value)
-            return ClinicalRecord(
+            crec = ClinicalRecord(
                 ehr_data=ArchetypeInstance.from_json(ehr_data),
                 creation_time=record['creation_time'],
                 last_update=record['last_update'],
                 active=record['active'],
                 record_id=record.get('_id')
             )
+            if 'patient_id' in record:
+                crec._set_patient_id(record['patient_id'])
         else:
             if record.get('ehr_data'):
                 arch = ArchetypeInstance(record['ehr_data']['archetype_class'], {})
             else:
                 arch = None
-            return ClinicalRecord(
+            crec = ClinicalRecord(
                 creation_time=record.get('creation_time'),
                 record_id=record.get('_id'),
                 last_update=record.get('last_update'),
                 active=record.get('active'),
                 ehr_data=arch
             )
+            if 'patient_id' in record:
+                crec._set_patient_id(record['patient_id'])
+        return crec
 
     def decode_record(self, record, loaded=True):
         """

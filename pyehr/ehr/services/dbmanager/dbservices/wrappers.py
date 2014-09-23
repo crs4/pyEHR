@@ -143,9 +143,28 @@ class ClinicalRecord(Record):
         super(ClinicalRecord, self).__init__(creation_time or time.time(),
                                              last_update, active, record_id)
         self.ehr_data = ehr_data
+        self.patient_id = None
+
+    def reset(self):
+        self.new_record_id()
+        self.unbind_from_patient()
         
     def new_record_id(self):
         super(ClinicalRecord, self).new_record_id()
+
+    def unbind_from_patient(self):
+        self.patient_id = None
+
+    def _set_patient_id(self, patient_id):
+        self.patient_id = patient_id
+
+    def bind_to_patient(self, patient):
+        """
+        Bind the current :class:`ClinicalRecord` instance to a given :class:`PatientRecord`
+        :param patient:
+        :return:
+        """
+        self._set_patient_id(patient.record_id)
 
     def to_json(self):
         """
@@ -160,6 +179,8 @@ class ClinicalRecord(Record):
             json[a] = getattr(self, a)
         if self.record_id:
             json['record_id'] = str(self.record_id)
+        if self.patient_id:
+            json['patient_id'] = str(self.patient_id)
         json['ehr_data'] = self.ehr_data.to_json()
         return json
 
@@ -179,12 +200,20 @@ class ClinicalRecord(Record):
             'last_update': float,
             'active': bool,
             'record_id': str,
+            'patient_id': str
         })
         try:
             json_data = decode_dict(json_data)
             schema(json_data)
             json_data['ehr_data'] = ArchetypeInstance.from_json(json_data['ehr_data'])
-            return ClinicalRecord(**json_data)
+            try:
+                patient_id = json_data.pop('patient_id')
+            except KeyError:
+                patient_id = None
+            crec = ClinicalRecord(**json_data)
+            if patient_id:
+                crec._set_patient_id(patient_id)
+            return crec
         except MultipleInvalid:
             raise InvalidJsonStructureError('JSON record\'s structure is not compatible with ClinicalRecord object')
 
