@@ -598,27 +598,6 @@ class MongoDriver(DriverInterface):
 
     def _calculate_ehr_expression(self, ehr_class_expression, query_params, patients_collection,
                                   ehr_collection):
-        def resolve_ehr_uid(driver, patient_id, patients_collection):
-            if driver.is_connected:
-                original_collection = str(driver.collection.name)
-                close_conn_after_done = False
-            else:
-                close_conn_after_done = True
-            driver.connect()
-            driver.select_collection(patients_collection)
-            res = driver.get_records_by_query(
-                {'_id': patient_id},
-                {'_id': False, 'ehr_records': True}
-            )
-            if close_conn_after_done:
-                driver.disconnect()
-            else:
-                driver.select_collection(original_collection)
-            try:
-                return res.next()['ehr_records']
-            except StopIteration:
-                return None
-
         # Resolve predicate expressed for EHR AQL expression
         query = dict()
         if ehr_class_expression.predicate:
@@ -632,13 +611,7 @@ class MongoDriver(DriverInterface):
                 else:
                     right_operand = pr.right_operand
                 if pr.left_operand == 'uid':
-                    ehr_ids = resolve_ehr_uid(self, right_operand, patients_collection)
-                    if ehr_ids:
-                        query.update({'_id': {'$in': ehr_ids}})
-                    else:
-                        # TODO: check what to do if no matching ID was found
-                        #       maybe throwing an exception is the best solution here
-                        pass
+                    query.update({'patient_id': right_operand})
                 elif pr.left_operand == 'id':
                     # use given EHR ID
                     query.update(self._map_operand(pr.left_operand,
