@@ -13,31 +13,31 @@
                                             "items": {
                                                 "at0004": {
                                                     "value": {
-                                                        "magnitude" : 0.0,
-                                                        "units" : "mm[Hg]"
+                                                        "magnitude" : null,
+                                                        "units" : null
                                                     }
                                                 },
                                                 "at0005": {
                                                     "value": {
-                                                        "magnitude" : 0.0,
-                                                        "units" : "mm[Hg]"
+                                                        "magnitude" : null,
+                                                        "units" : null
                                                     }
                                                 },
                                                 "at1006": {
                                                     "value": {
-                                                        "magnitude" : 0.0,
-                                                        "units" : "mm[Hg]"
+                                                        "magnitude" : null,
+                                                        "units" : null
                                                     }
                                                 },
                                                 "at1007": {
                                                     "value": {
-                                                        "magnitude" : 0.0,
-                                                        "units" : "mm[Hg]"
+                                                        "magnitude" : null,
+                                                        "units" : null
                                                     }
                                                 },
                                                 "at0033": {
                                                     "value": {
-                                                        "value" : "just a dummy comment"
+                                                        "value" : null
                                                     }
                                                 }
                                             }
@@ -50,37 +50,37 @@
                                             "items": {
                                                 "at0008": {
                                                     "value" : {
-                                                        "value" : "at1000",
+                                                        "value" : null,
                                                         "defining_code" : {
 
                                                             "terminology_id" : {
-                                                                "value" : "terminology dummy value"
+                                                                "value" : null
                                                             },
-                                                            "code_string" : "dummy code string"
+                                                            "code_string" : null
                                                         }
 
                                                     }
                                                 },
                                                 "at1052": {
                                                     "value": {
-                                                        "value" : "dummy text"
+                                                        "value" : null
                                                     }
                                                 },
                                                 "at1030": [
                                                     {
-                                                        "archetype_class" : "/openEHR-EHR-CLUSTER\\.level_of_exertion(-[a-zA-Z0-9_]+)*\\.v1/",
-                                                        "archetype_details" : {}
+                                                        "archetype_class" : null,
+                                                        "archetype_details" : null
                                                     }
 
                                                 ],
                                                 "at1043": {
                                                     "value" : {
-                                                        "value" : "at1044",
+                                                        "value" : null,
                                                         "defining_code" : {
                                                             "terminology_id" : {
-                                                                "value" : "terminology dummy value"
+                                                                "value" : null
                                                             },
-                                                            "code_string" : "dummy code string"
+                                                            "code_string" : null
                                                         }
 
                                                     }
@@ -88,8 +88,8 @@
                                                 },
                                                 "at1005": {
                                                     "value" : {
-                                                        "magnitude" : 0.0,
-                                                        "units" : "°"
+                                                        "magnitude" : null,
+                                                        "units" : null
                                                     }
                                                 }
                                             }
@@ -100,23 +100,23 @@
                             "at1042": {
                                 "math_function" : {
                                     "value" : {
-                                        "value" : "[openehr::146]",
+                                        "value" : null,
                                         "defining_code" : {
                                             "terminology_id" : {
-                                                "value" : "terminology dummy value"
+                                                "value" : null
                                             },
-                                            "code_string" : "dummy code string"
+                                            "code_string" : null
                                         }
                                     }
                                 },
                                 "width" : {
-                                    "value" : "12H"
+                                    "value" : null
                                 },
                                 "data" : {
-                                    "use_node_item_tree" : "/data[at0001]/events[at0006]/data[at0003]"
+                                    "use_node_item_tree" : null
                                 },
                                 "state" : {
-                                    "use_node_item_tree" : "/data[at0001]/events[at0006]/state[at0007]"
+                                    "use_node_item_tree" : null
                                 }
 
                             }
@@ -132,12 +132,12 @@
                         "at0013": {
                             "math_function" : {
                                 "value" : {
-                                    "value" : "at0015",
+                                    "value" : null,
                                     "defining_code" : {
                                         "terminology_id" : {
-                                            "value" : "terminology dummy value"
+                                            "value" : null
                                         },
-                                        "code_string" : "dummy code string"
+                                        "code_string" : null
                                     }
                                 }
                             }
@@ -148,19 +148,19 @@
                                     "at0014": {
                                         "math_function" : {
                                             "value" : {
-                                                "value" : "at0025",
+                                                "value" : null,
                                                 "defining_code" : {
                                                     "terminology_id" : {
-                                                        "value" : "terminology dummy value"
+                                                        "value" : null
                                                     },
-                                                    "code_string" : "dummy code string"
+                                                    "code_string" : null
                                                 }
                                             }
                                         }
                                     },
                                     "at1034": {
                                         "value" : {
-                                            "value": "Dummy value"
+                                            "value": null
                                         }
                                     }
                                 }
@@ -169,37 +169,37 @@
                         "at1035": {
                             "math_function" : {
                                 "value" : {
-                                    "value" : "at1036",
+                                    "value" : null,
                                     "defining_code" : {
                                         "terminology_id" : {
-                                            "value" : "terminology dummy value"
+                                            "value" : null
                                         },
-                                        "code_string" : "dummy code string"
+                                        "code_string" : null
                                     }
                                 }
                             }
                         },
                         "at1038": {
                             "value": {
-                                "value" : "Dummy text"
+                                "value" : null
                             }
                         },
                         "at1010": {
                             "math_function" : {
                                 "value" : {
-                                    "value" : "at1011",
+                                    "value" : null,
                                     "defining_code" : {
                                         "terminology_id" : {
-                                            "value" : "terminology dummy value"
+                                            "value" : null
                                         },
-                                        "code_string" : "dummy code string"
+                                        "code_string" : null
                                     }
                                 }
                             }
                         },
                         "at1025": [
                             {
-                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.device(-[a-zA-Z0-9_]+)*\\.v1/",
+                                "archetype_class" : null,
                                 "archetype_details" : {}
                             }
 

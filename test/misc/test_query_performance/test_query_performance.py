@@ -8,10 +8,11 @@ from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.querymanager import QueryManager
 from pyehr.utils.services import get_service_configuration, get_logger
 
+from archetype_builder import ArchetypeBuilder
 
 class QueryPerformanceTest(object):
 
-    def __init__(self, pyehr_conf_file, log_file=None, log_level='INFO'):
+    def __init__(self, pyehr_conf_file, archetype_dir, log_file=None, log_level='INFO'):
         sconf = get_service_configuration(pyehr_conf_file)
         self.db_service = DBServices(**sconf.get_db_configuration())
         self.db_service.set_index_service(**sconf.get_index_configuration())
@@ -19,6 +20,7 @@ class QueryPerformanceTest(object):
         self.query_manager.set_index_service(**sconf.get_index_configuration())
         self.logger = get_logger('query_performance_test',
                                  log_file=log_file, log_level=log_level)
+        self.builder = ArchetypeBuilder(archetype_dir)
 
     def get_execution_time(f):
         @wraps(f)
@@ -30,37 +32,14 @@ class QueryPerformanceTest(object):
             return res, execution_time
         return wrapper
 
-    def _get_quantity(self, value, units):
-        return {
-            'magnitude': value,
-            'units': units
-        }
-
-    def build_blood_pressure_data(self, systolic=None, dyastolic=None, mean_arterial=None, pulse=None):
-        archetype_id = 'openEHR-EHR-OBSERVATION.blood_pressure.v1'
-        bp_doc = {"data": {"at0001": [{"events": [{"at0006": {"data": {"at0003": [{"items": {}}]}}}]}]}}
-        if systolic:
-            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0004'] =\
-                {'value': self._get_quantity(systolic, 'mm[Hg]')}
-        if dyastolic:
-            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0005'] =\
-                {'value': self._get_quantity(dyastolic, 'mm[Hg]')}
-        if mean_arterial:
-            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1006'] =\
-                {'value': self._get_quantity(mean_arterial, 'mm[Hg]')}
-        if pulse:
-            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1007'] =\
-                {'value': self._get_quantity(pulse, 'mm[Hg]')}
-        return archetype_id, bp_doc
-
     @get_execution_time
     def build_dataset(self, patients, ehrs):
         for x in xrange(0, patients):
             crecs = list()
             p = self.db_service.save_patient(PatientRecord('PATIENT_%05d' % x))
             for y in xrange(0, ehrs):
-                arch = ArchetypeInstance(*self.build_blood_pressure_data(randint(80, 250),
-                                                                         randint(60, 100)))
+                arch = ArchetypeInstance(*self.builder.build_blood_pressure_data(randint(80, 250),
+                                                                                 randint(60, 100)))
                 crecs.append(ClinicalRecord(arch))
             self.db_service.save_ehr_records(crecs, p)
 
@@ -164,13 +143,15 @@ def get_parser():
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
+    parser.add_argument('--archetype_dir', type=str, required=True,
+                        help='The directory containing archetype in json format')
     return parser
 
 
 def main(argv):
     parser = get_parser()
     args = parser.parse_args(argv)
-    qpt = QueryPerformanceTest(args.conf_file, args.log_file, args.log_level)
+    qpt = QueryPerformanceTest(args.conf_file, args.archetype_dir, args.log_file, args.log_level)
     qpt.logger.info('--- STARTING TESTS ---')
     qpt.run(args.patients_size, args.ehrs_size)
     qpt.logger.info('--- DONE WITH TESTS ---')

@@ -12,30 +12,30 @@
                                         "items" : {
                                             "at0005" : {
                                                 "value" : {
-                                                    "value" : "dummy value"
+                                                    "value" : null
                                                 }
                                             },
                                             "at0077" : {
                                                 "value" : {
-                                                    "value" : "dummy value"
+                                                    "value" : null
                                                 }
                                             },
                                             "at0073" : {
                                                 "value" : {
-                                                    "value" : "at0037",
+                                                    "value" : null,
                                                     "defining_code" : {
                                                         "terminology_id" : {
-                                                            "value" : "terminology dummy value"
+                                                            "value" : null
                                                         },
-                                                        "code_string" : "dummy code string"
+                                                        "code_string" : null
                                                     }
 
                                                 }
                                             },
                                             "at0065" : [
                                                 {
-                                                    "archetype_class" : "/openEHR-EHR-CLUSTER\\.specimen\\.v1/",
-                                                    "archetype_details" : {}
+                                                    "archetype_class" : null,
+                                                    "archetype_details" : null
 
 
                                                 }
@@ -43,94 +43,94 @@
                                             ],
                                             "at0078.4" : {
                                                 "value" : {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "gm/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.5" : {
                                                 "value" : {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "10*12/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.6" : {
                                                 "value" : {
-                                                    "numerator" : "1.0",
-                                                    "denominator" : "100.0",
-                                                    "is_integral" : true,
+                                                    "numerator" : null,
+                                                    "denominator" : null,
+                                                    "is_integral" : null,
                                                     "type" : {
-                                                        "value" : "2"
+                                                        "value" : null
                                                     }
                                                 }
                                             },
                                             "at0078.7" : {
                                                 "value" : {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "gm/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.8" : {
                                                 "value" : {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "fl"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.9" : {
                                                 "value" : {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "pg"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.10" : {
                                                 "value" : {
-                                                    "numerator" : "1.0",
-                                                    "denominator" : "1.0",
+                                                    "numerator" : null,
+                                                    "denominator" : null,
                                                     "type" : {
-                                                        "value" : "1"
+                                                        "value" : null
                                                     }
                                                 }
                                             },
                                             "at0078.11" : {
                                                 "value" : {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "mm/h"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.20" : {
                                                 "value" : {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "fl"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.21" : {
                                                 "value" : {
-                                                    "numerator" : "1.0",
-                                                    "denominator" : "1.0",
+                                                    "numerator" : null,
+                                                    "denominator" : null,
                                                     "type" : {
-                                                        "value" : "1"
+                                                        "value" : null
                                                     }
                                                 }
                                             },
                                             "at0078.12" : {
                                                 "value" : {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "10*9/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.22" : {
                                                 "value" : {
-                                                    "numerator" : "1.0",
-                                                    "denominator" : "100.0",
-                                                    "is_integral" : true,
+                                                    "numerator" : null,
+                                                    "denominator" : null,
+                                                    "is_integral" : null,
                                                     "type" : {
-                                                        "value" : "2"
+                                                        "value" : null
                                                     }
                                                 }
                                             },
                                             "at0078.13" : {
                                                 "value" : {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "10*9/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.14" : [
@@ -138,49 +138,49 @@
                                                     "items" : {
                                                         "at0078.15" : {
                                                             "value" : {
-                                                                "magnitude" : 0.0,
-                                                                "units" : "10*9/l"
+                                                                "magnitude" : null,
+                                                                "units" : null
                                                             }
                                                         },
                                                         "at0078.16" : {
                                                             "value" : {
-                                                                "magnitude" : 0.0,
-                                                                "units" : "10*9/l"
+                                                                "magnitude" : null,
+                                                                "units" : null
                                                             }
                                                         },
                                                         "at0078.17" : {
                                                             "value" : {
-                                                                "magnitude" : 0.0,
-                                                                "units" : "10*9/l"
+                                                                "magnitude" : null,
+                                                                "units" : null
                                                             }
                                                         },
                                                         "at0078.18" : {
                                                             "value" : {
-                                                                "magnitude" : 0.0,
-                                                                "units" : "10*9/l"
+                                                                "magnitude" : null,
+                                                                "units" : null
                                                             }
                                                         },
                                                         "at0078.19" : {
                                                             "value" : {
-                                                                "magnitude" : 0.0,
-                                                                "units" : "10*9/l"
+                                                                "magnitude" : null,
+                                                                "units" : null
                                                             }
                                                         },
                                                         "at0078.23" : {
                                                             "value" : {
-                                                                "value" : "dummy value"
+                                                                "value" : null
                                                             }
                                                         }
                                                     }
                                                 }
                                             ],
                                             "at0078" : {
-                                                "value" : "*"
+                                                "value" : null
                                             },
                                             "at0089" : [
                                                 {
-                                                    "archetype_class" : "/openEHR-EHR-CLUSTER\\.lab_result_annotation(-[a-zA-Z0-9_]+)*\\.v1/",
-                                                    "archetype_details" : {}
+                                                    "archetype_class" : null,
+                                                    "archetype_details" : null
 
 
                                                 }
@@ -188,14 +188,14 @@
                                             ],
                                             "at0057" : {
                                                 "value" : {
-                                                    "value" : "dummy value"
+                                                    "value" : null
                                                 }
                                             },
                                             "at0010" : [
                                                 {
                                                     "value" : {
-                                                        "media_type" : "http://foo.link.to.mediatype",
-                                                        "size" : 100
+                                                        "media_type" : null,
+                                                        "size" : null
                                                     }
                                                 }
                                             ]
@@ -218,23 +218,23 @@
                                 "items" : {
                                     "at0062" : {
                                         "value" : {
-                                            "value" : "dummy value"
+                                            "value" : null
                                         }
                                     },
                                     "at0063" : {
                                         "value" : {
-                                            "value" : "dummy value"
+                                            "value" : null
                                         }
                                     },
                                     "at0068" : {
                                         "value" : {
-                                            "value" : "dummy value"
+                                            "value" : null
                                         }
                                     },
                                     "at0017" : [
                                         {
-                                            "archetype_class" : "/openEHR-EHR-CLUSTER\\.organisation\\.v1/",
-                                            "archetype_details" : {}
+                                            "archetype_class" : null,
+                                            "archetype_details" : null
                                         }
                                     ]
                                 }
@@ -243,7 +243,7 @@
                         ],
                         "at0075" : {
                             "value" : {
-                                "dv_date_time" : "2014-01-01T00:00:00"
+                                "dv_date_time" : null
                             }
                         }
                     }
