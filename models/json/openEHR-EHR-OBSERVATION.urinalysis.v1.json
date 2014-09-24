@@ -11,44 +11,43 @@
                                     {
                                         "items" : {
                                             "at0050": {
-                                                "value" : "1|[local::at0127]"
+                                                "value" : null
 
                                             },
                                             "at0095": {
-                                                "value" : "1|[local::at0096]"
+                                                "value" : null
 
                                             },
                                             "at0062": {
-                                                "value" : "1|[local::at0121]"
+                                                "value" : null
 
                                             },
                                             "at0037": {
-                                                "value" : "1|[local::at0109]"
-
+                                                "value" : null
                                             },
                                             "at00151": {
-                                                "value" : "1|[local::at0152]"
+                                                "value" : null
 
                                             },
                                             "at0032": {
-                                                "value" : "1|[local::at0102]"
+                                                "value" : null
 
                                             },
                                             "at0056": {
-                                                "value" : "1|[local::at0161]"
+                                                "value" : null
 
                                             },
                                             "at0043": {
-                                                "value" : "1|[local::at0159]"
+                                                "value" : null
 
                                             },
                                             "at0068": {
-                                                "value" : "1|[local::at0135]"
+                                                "value" : null
 
                                             },
                                             "at0030" : {
                                                 "value" : {
-                                                    "value" : "dummy text"
+                                                    "value" : null
                                                 }
                                             }
 
@@ -67,8 +66,8 @@
                     "items" : {
                         "at0180": [
                             {
-                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.device(-[a-zA-Z0-9_]+)*\\.v1/",
-                                "archetype_details" : {}
+                                "archetype_class" : null,
+                                "archetype_details" : null
 
 
                             }

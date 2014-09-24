@@ -12,116 +12,116 @@
                                         "items" : {
                                             "at0005" : {
                                                 "value" : {
-                                                    "value" : "dummy text"
+                                                    "value" : null
                                                 }
                                             },
                                             "at0077" : {
                                                 "value" : {
-                                                    "value" : "dummy text"
+                                                    "value" : null
                                                 }
                                             },
                                             "at0073" : {
                                                 "value" : {
-                                                    "value" : "at0037",
+                                                    "value" : null,
                                                     "defining_code" : {
                                                         "terminology_id" : {
-                                                            "value" : "terminology dummy value"
+                                                            "value" : null
                                                         },
-                                                        "code_string" : "dummy code string"
+                                                        "code_string" : null
                                                     }
 
                                                 }
                                             },
                                             "at0065" : [
                                                 {
-                                                    "archetype_class" : "/openEHR-EHR-CLUSTER\\.specimen\\.v1/",
-                                                    "archetype_details" : {}
+                                                    "archetype_class" : null,
+                                                    "archetype_details" : null
 
 
                                                 }
                                             ],
                                             "at0078.2" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "U/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.4" :  {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "µmol/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.11" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "µmol/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.9" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "µmol/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.1" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "U/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.3" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "U/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.5" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "U/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.6" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "U/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.7" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "gm/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.8" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "gm/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0078.10" : {
                                                 "value": {
-                                                    "magnitude" : 0.0,
-                                                    "units" : "gm/l"
+                                                    "magnitude" : null,
+                                                    "units" : null
                                                 }
                                             },
                                             "at0089" : [
                                                 {
-                                                    "archetype_class" : "/openEHR-EHR-CLUSTER\\.lab_result_annotation(-[a-zA-Z0-9_]+)*\\.v1/",
-                                                    "archetype_details" : {}
+                                                    "archetype_class" : null,
+                                                    "archetype_details" : null
                                                 }
                                             ],
                                             "at0057" : {
                                                 "value" : {
-                                                    "value" : "dummy text"
+                                                    "value" : null
                                                 }
                                             },
                                             "at0010" : [
                                                 {
                                                     "value" : {
-                                                        "media_type" : "http://foo.link.to.mediatype",
-                                                        "size" : 100
+                                                        "media_type" : null,
+                                                        "size" : null
                                                     }
                                                 }
                                             ]
@@ -141,34 +141,34 @@
                     {
                         "at0062" : {
                             "value" : {
-                                "value" : "dummy value"
+                                "value" : null
                             }
                         },
                         "at0090" : [
                             {
-                                "archetype_class" : "/.*/",
-                                "archetype_details" : {}
+                                "archetype_class" : null,
+                                "archetype_details" : null
                             }
                         ],
                         "at0063" : {
                             "value" : {
-                                "value" : "dummy value"
+                                "value" : null
                             }
                         },
                         "at0017" : [
                             {
-                                "archetype_class" : "/openEHR-EHR-CLUSTER\\.organisation\\.v1/",
-                                "archetype_details" : {}
+                                "archetype_class" : null,
+                                "archetype_details" : null
                             }
                         ],
                         "at0068" : {
                             "value" : {
-                                "value" : "dummy value"
+                                "value" : null
                             }
                         },
                         "at0075" : {
                             "value" : {
-                                "dv_date_time" : "2014-01-01T00:00:00"
+                                "dv_date_time" : null
                             }
 
 
