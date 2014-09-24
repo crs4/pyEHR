@@ -5,7 +5,7 @@ python:
 env:
   matrix:
     - DB_ENGINE=mongodb
-    - DB_ENGINE=elasticsearch
+    # - DB_ENGINE=elasticsearch
 
 before_install:
   # start proper service
