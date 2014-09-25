@@ -48,3 +48,7 @@ class MissingOperatorError(Exception):
 
 class MissiongLocationExpressionError(Exception):
     pass
+
+
+class InvalidFieldError(Exception):
+    pass
