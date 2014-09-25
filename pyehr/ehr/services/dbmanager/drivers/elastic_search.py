@@ -552,6 +552,9 @@ class ElasticSearchDriver(DriverInterface):
     def _calculate_selection_expression(self, selection, aliases):
         raise NotImplementedError()
 
+    def _calculate_selection_expression(self, selection, aliases, ehr_alias):
+        pass
+
     def _split_results(self, query_results):
         raise NotImplementedError()
 

@@ -230,7 +230,11 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def _calculate_selection_expression(self, selection, aliases):
+    def _map_ehr_selection(self, path, ehr_var):
+        pass
+
+    @abstractmethod
+    def _calculate_selection_expression(self, selection, aliases, ehr_alias):
         pass
 
     @abstractmethod
@@ -250,13 +254,14 @@ class DriverInterface(object):
         condition = query_model.condition
         # TODO: add ORDER RULES and TIME CONSTRAINTS
         queries = []
-        location_query, aliases = self._calculate_location_expression(location, query_params,
-                                                                      patients_repository,
-                                                                      ehr_repository)
+        location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
+                                                                                 patients_repository,
+                                                                                 ehr_repository)
         if condition:
             condition_results = self._calculate_condition_expression(condition, aliases)
             for condition_query, mappings in condition_results:
-                selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings)
+                selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
+                                                                                         ehr_alias)
                 condition_query.update(location_query)
                 queries.append(
                     {
@@ -271,7 +276,8 @@ class DriverInterface(object):
                     loc_q = deepcopy(location_query)
                     for k in aliases.keys():
                         loc_q.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
-                    selection_filter, results_aliases = self._calculate_selection_expression(selection, p)
+                    selection_filter, results_aliases = self._calculate_selection_expression(selection, p,
+                                                                                             ehr_alias)
                     queries.append(
                         {
                             'query': (loc_q, selection_filter),

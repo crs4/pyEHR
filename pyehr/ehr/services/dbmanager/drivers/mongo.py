@@ -628,12 +628,14 @@ class MongoDriver(DriverInterface):
         query = dict()
         # Here is where the collection has been chosen according to the selection
         self.logger.debug("LOCATION: %s", str(location))
+        ehr_alias = None
         if location.class_expression:
             ce = location.class_expression
             if ce.class_name.upper() == 'EHR':
                 query.update(self._calculate_ehr_expression(ce, query_params,
                                                             patients_collection,
                                                             ehr_collection))
+                ehr_alias = ce.variable_name
             else:
                 if ce.predicate:
                     query.update(self._compute_predicate(ce.predicate))
@@ -641,18 +643,31 @@ class MongoDriver(DriverInterface):
             raise MissiongLocationExpressionError("Query must have a location expression")
         structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
         query.update({'ehr_structure_id': {'$in': structure_ids}})
-        return query, aliases_mapping
+        return query, aliases_mapping, ehr_alias
 
-    def _calculate_selection_expression(self, selection, aliases):
+    def _map_ehr_selection(self, path, ehr_var):
+        path = path.replace('%s.' % ehr_var, '')
+        if path == 'ehr_id.value':
+            return {'patient_id': True}
+        if path == 'uid.value':
+            return {'_id': True}
+
+    def _calculate_selection_expression(self, selection, aliases, ehr_alias):
         query = {'_id': False}
         results_aliases = dict()
         for v in selection.variables:
-            path = '%s.%s' % (aliases[v.variable.variable],
-                              self._normalize_path(v.variable.path.value))
-            query[path] = True
-            # use alias or ADL path
-            results_aliases[path] = v.label or '%s%s' % (v.variable.variable,
-                                                         v.variable.path.value)
+            path = self._normalize_path(v.variable.path.value)
+            if v.variable.variable == ehr_alias:
+                q = self._map_ehr_selection(path, ehr_alias)
+                query.update(q)
+                results_aliases[q.keys()[0]] = v.label or '%s%s' % (v.variable.variable,
+                                                                    v.variable.path.value)
+            else:
+                path = '%s.%s' % (aliases[v.variable.variable], path)
+                query[path] = True
+                # use alias or ADL path
+                results_aliases[path] = v.label or '%s%s' % (v.variable.variable,
+                                                             v.variable.path.value)
         return query, results_aliases
 
     def _split_results(self, query_result):
