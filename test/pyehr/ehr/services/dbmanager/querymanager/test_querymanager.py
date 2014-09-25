@@ -121,12 +121,31 @@ class TestQueryManager(unittest.TestCase):
             res = list(results.results)
             self.assertEqual(sorted(records), sorted(res))
 
+    def test_simple_patients_selection(self):
+        query = """
+        SELECT e/ehr_id/value AS patient_identifier
+        FROM Ehr e
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
+        """
+        batch_details = self._build_patients_batch(10, 10, (0,250), (0,200))
+        results = self.qmanager.execute_aql_query(query)
+        details_results = set()
+        for k, v in batch_details.iteritems():
+            for x in v:
+                if x['systolic'] >= 180 or x['dyastolic'] >= 110:
+                    details_results.add(k)
+        res = list(results.get_distinct_results('patient_identifier'))
+        self.assertEqual(sorted(list(details_results)), sorted(res))
+
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestQueryManager('test_simple_select_query'))
     suite.addTest(TestQueryManager('test_simple_where_query'))
     suite.addTest(TestQueryManager('test_simple_parametric_query'))
+    suite.addTest(TestQueryManager('test_simple_patients_selection'))
     return suite
 
 if __name__ == '__main__':

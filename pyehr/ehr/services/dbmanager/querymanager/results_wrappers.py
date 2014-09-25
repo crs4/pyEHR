@@ -1,3 +1,5 @@
+from pyehr.ehr.services.dbmanager.errors import InvalidFieldError
+
 class ResultColumnDef(object):
 
     def __init__(self, alias=None, path=None):
@@ -69,3 +71,10 @@ class ResultSet(object):
     def results(self):
         for r in self.rows:
             yield {self._get_alias(k): v for k, v in r.record.iteritems()}
+
+    def get_distinct_results(self, field):
+        try:
+            for x in set([r[field] for r in self.results]):
+                yield x
+        except KeyError:
+            raise InvalidFieldError('There is no field "%s" in this results set' % field)
