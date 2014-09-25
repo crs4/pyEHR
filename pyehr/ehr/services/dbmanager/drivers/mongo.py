@@ -115,6 +115,8 @@ class MongoDriver(DriverInterface):
             for k, v in document.iteritems():
                 k = k.replace(original, encoded)
                 if not isinstance(v, dict):
+                    if isinstance(v, list):
+                        v = [normalize_keys(x, original, encoded) for x in v]
                     normalized_doc[k] = v
                 else:
                     normalized_doc[k] = normalize_keys(v, original, encoded)
