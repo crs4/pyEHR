@@ -29,7 +29,7 @@ def get_output_writer(out_file):
     writer = csv.DictWriter(ofile, ['patients', 'ehrs_for_patient', 'build_dataset_time',
                                     'select_all_time', 'select_all_patient_time',
                                     'filtered_query_time', 'filtered_patient_time',
-                                    'cleanup_time'], delimiter='\t')
+                                    'patient_count_time', 'cleanup_time'], delimiter='\t')
     writer.writeheader()
     return writer, ofile
 
@@ -37,13 +37,14 @@ def get_output_writer(out_file):
 def run_test(patients_size, ehr_size, conf_file, logfile, loglevel):
     qpt = QueryPerformanceTest(conf_file, logfile, loglevel)
     build_dataset_time, select_all_time, select_all_patient_time, filtered_query_time,\
-    filtered_patient_time, cleanup_time = qpt.run(patients_size, ehr_size)
+    filtered_patient_time, patient_count_time, cleanup_time = qpt.run(patients_size, ehr_size)
     return {
         'build_dataset_time': build_dataset_time,
         'select_all_time': select_all_time,
         'select_all_patient_time': select_all_patient_time,
         'filtered_query_time': filtered_query_time,
         'filtered_patient_time': filtered_patient_time,
+        'patient_count_time': patient_count_time,
         'cleanup_time': cleanup_time
     }
 

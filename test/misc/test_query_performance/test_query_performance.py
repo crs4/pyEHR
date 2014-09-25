@@ -113,6 +113,17 @@ class QueryPerformanceTest(object):
         return self.execute_query(query, {'ehrUid': 'PATIENT_%05d' % patient_index})
 
     @get_execution_time
+    def execute_patient_count_query(self):
+        query = """
+        SELECT e/ehr_id/value AS patient_identifier
+        FROM Ehr e
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
+        """
+        return self.execute_query(query)
+
+    @get_execution_time
     def cleanup(self):
         patients = self.db_service.get_patients()
         for p in patients:
@@ -134,11 +145,12 @@ class QueryPerformanceTest(object):
         _, filtered_query_time = self.execute_filtered_query()
         self.logger.info('Running filtered with patient filter')
         _, filtered_patient_time = self.execute_patient_filtered_query()
-        self.logger.info('Running patient filtered query')
+        self.logger.info('Running patient_count_query')
+        _, patient_count_time = self.execute_patient_count_query()
         self.logger.info('Everything done, running DB cleanup')
-        _, clenup_time = self.cleanup()
+        _, cleanup_time = self.cleanup()
         return build_dataset_time, select_all_time, select_all_patient_time, filtered_query_time,\
-               filtered_patient_time, clenup_time
+               filtered_patient_time, patient_count_time, cleanup_time
 
 
 def get_parser():

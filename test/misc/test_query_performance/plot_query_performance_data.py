@@ -29,6 +29,7 @@ def main(argv):
         select_all_patient_data = list()
         filtered_query_data = list()
         filtered_patient_data = list()
+        patient_count_data = list()
         cleanup_data = list()
         for row in reader:
             x_axis_data.append(int(row['patients']) * int(row['ehrs_for_patient']))
@@ -37,6 +38,7 @@ def main(argv):
             select_all_patient_data.append(float(row['select_all_patient_time']))
             filtered_query_data.append(float(row['filtered_query_time']))
             filtered_patient_data.append(float(row['filtered_patient_time']))
+            patient_count_data.append(float(row['patient_count_time']))
             cleanup_data.append(float(row['cleanup_time']))
     output_file(args.output_file)
     hold()
@@ -61,6 +63,10 @@ def main(argv):
                                  line_dash='dashed')
     filtered_patient_scatter = scatter(x_axis_data, filtered_patient_data, color='orange',
                                        size=4, legend='FILTERED QUERY for single patient query time')
+    patient_count_line = line(x_axis_data, patient_count_data, color='navy',
+                              line_dash='dashed')
+    patient_count_scatter = scatter(x_axis_data, patient_count_data, color='navy',
+                                    size=4, legend='PATIENT COUNT query time')
     if not args.exclude_cleanup_time:
         cleanup_line = line(x_axis_data, cleanup_data, color='yellow',
                             line_dash='dashed')
