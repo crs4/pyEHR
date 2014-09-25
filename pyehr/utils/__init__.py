@@ -78,7 +78,13 @@ def cleanup_json(data):
         if isinstance(v, collections.MutableMapping):
             v = cleanup_json(v)
         if isinstance(v, collections.MutableSequence):
-            v = [cleanup_json(item) for item in v if item is not None]
+            cleaned_list = []
+            for item in v:
+                if item is not None:
+                    i = cleanup_json(item)
+                    if i is not None:
+                        cleaned_list.append(i)
+            v = cleaned_list
             if len(v) == 0:
                 v = None
         if not v is None:
