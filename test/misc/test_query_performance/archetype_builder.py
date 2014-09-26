@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import json
+from random import randint
 
 from pyehr.utils import decode_dict, cleanup_json
 
 class ArchetypeBuilder(object):
 
-    def __init__(self, archetype_dir):
+    def __init__(self, archetype_id, archetype_dir):
+        self.archetype_id = archetype_id
         self.archetype_dir = archetype_dir
 
     def _get_quantity(self, value, units):
@@ -56,150 +58,22 @@ class ArchetypeBuilder(object):
                     }
         }
 
-    def _load_file(self, archetype_id):
-        path = '/'.join([self.archetype_dir, archetype_id])
+    def _load_file(self):
+        path = '/'.join([self.archetype_dir, self.archetype_id])
         with open("%s.json" % path) as f:
-            return json.loads(f.read())
+            doc = json.loads(f.read())
 
-
-    def build_blood_pressure_data(self, systolic=None, dyastolic=None, mean_arterial=None, pulse=None):
-        archetype_id = 'openEHR-EHR-OBSERVATION.blood_pressure.v1'
-        bp_doc = self._load_file(archetype_id)
         try:
-            bp_doc = bp_doc['archetype_details']
+            doc = doc['archetype_details']
         except KeyError:
-            raise Exception("Invalid archetype file: %s" % archetype_id)
+            raise Exception("Invalid archetype file: %s" % self.archetype_id)
         else:
-            bp_doc = decode_dict(bp_doc)
+            doc = decode_dict(doc)
 
-        if systolic:
-            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0004'] =\
-                {'value': self._get_quantity(systolic, 'mm[Hg]')}
-        if dyastolic:
-            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0005'] =\
-                {'value': self._get_quantity(dyastolic, 'mm[Hg]')}
-        if mean_arterial:
-            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1006'] =\
-                {'value': self._get_quantity(mean_arterial, 'mm[Hg]')}
-        if pulse:
-            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1007'] =\
-                {'value': self._get_quantity(pulse, 'mm[Hg]')}
-        return archetype_id, self._clean_archetype(bp_doc)
+        return doc
 
-
-    def build_blood_glucose_data(self, test_name=None, specimen_arch_detail=None, diet_intake=None, diet_duration=None, glucose_dose=None, glucose_timing=None, \
-                            insulin_dose=None, insulin_route = None, laboratory_result_id = None, result_datetime= None):
-        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-blood_glucose.v1'
-        bg_doc = self._load_file(archetype_id)
-        try:
-            bg_doc = bg_doc['archetype_details']
-        except KeyError:
-            raise Exception("Invalid archetype file: %s" % archetype_id)
-
-        if test_name:
-            bg_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
-                {'value' : self._get_dv_text(test_name)}
-        if specimen_arch_detail: #todo: decide about  handling an example of nested archetipe
-            pass
-        if diet_intake:
-            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.90'][0]['items']['at0.91'] =\
-                {"value" : self._get_dv_coded_text(diet_intake,'at0.92' )}
-        if diet_duration:
-            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.90'][0]['items']['at0.96'] =\
-                {'value' : self._get_dv_duration(diet_duration, 'H')}
-        if glucose_dose:
-            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.98'][0]['items']['at0.100'] =\
-                {'value' : self._get_quantity(glucose_dose, 'gm')}
-        if glucose_timing:
-            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.98'][0]['items']['at0.99'] = \
-                {'value': self._get_dv_coded_text(glucose_timing, 'at0.103')}
-        if insulin_dose:
-            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.107'][0]['items']['at0.110'] = \
-                {'value' : self._get_quantity(insulin_dose, 'U')}
-        if insulin_route:
-            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.107'][0]['items']['at0.111'] = \
-                {'value' : self._get_dv_coded_text(insulin_route, 'at0.112')}
-        if laboratory_result_id:
-            bg_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(laboratory_result_id)}
-        if result_datetime:
-            bg_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(result_datetime)}
-        return archetype_id, self._clean_archetype(bg_doc)
-
-    def build_full_blood_count_data(self, test_name=None, haemoglobin=None, mchc=None, mcv=None, mch=None, lymphocytes=None, basophils=None, \
-                                    monocytes=None, eosinophils=None, multimedia_representation=None, laboratory_result_id = None, result_datetime= None):
-        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-full_blood_count.v1'
-        fbc_doc = self._load_file(archetype_id)
-        try:
-            fbc_doc = fbc_doc['archetype_details']
-        except KeyError:
-            raise Exception("Invalid archetype file: %s" % archetype_id)
-
-        if test_name:
-            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
-                {'value' : self._get_dv_text(test_name)}
-        if haemoglobin:
-            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.4'] = \
-                {'value' : self._get_quantity(haemoglobin, 'gm/l')}
-        if mchc:
-            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.7'] = \
-                {'value' : self._get_quantity(mchc, 'gm/l')}
-        if mcv:
-            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.8'] = \
-                {'value' : self._get_quantity(mcv, 'fl')}
-        if lymphocytes:
-            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.14'][0]['items']['at0078.16]'] = \
-                {'value' : self._get_quantity(lymphocytes, '10*9/l')}
-        if basophils:
-            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.14'][0]['items']['at0078.17]'] = \
-                {'value' : self._get_quantity(basophils, '10*9/l')}
-        if monocytes:
-            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.14'][0]['items']['at0078.18]'] = \
-                {'value' : self._get_quantity(monocytes, '10*9/l')}
-        if eosinophils:
-            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.14'][0]['items']['at0078.19]'] = \
-                {'value' : self._get_quantity(eosinophils, '10*9/l')}
-        if multimedia_representation:
-            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
-                [{'value' : self._get_dv_multimedia(multimedia_representation['media_type'], multimedia_representation['size'])}]
-        if laboratory_result_id:
-            fbc_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(laboratory_result_id)}
-        if result_datetime:
-            fbc_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(result_datetime)}
-        return archetype_id, self._clean_archetype(fbc_doc)
-
-    def build_lipids_data (self, test_name=None, specimen_detail=None, total_cholesterol=None, tryglicerides=None, hdl=None, ldl=None,  \
-                           hdl_ldl_ratio=None, laboratory_result_id = None, result_datetime= None):
-        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-lipids.v1'
-        lpd_doc = self._load_file(archetype_id)
-        try:
-            lpd_doc = lpd_doc['archetype_details']
-        except KeyError:
-            raise Exception("Invalid archetype file: %s" % archetype_id)
-        if test_name:
-            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
-                {'value' : self._get_dv_text(test_name)}
-        if specimen_detail:
-            pass  #decide about  handling an example of nested archetipe
-        if total_cholesterol:
-            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.5'] = \
-                {'value' : self._get_quantity(total_cholesterol, "mg/dl")}
-        if tryglicerides:
-            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.4'] = \
-                {'value' : self._get_quantity(tryglicerides, "mg/dl")}
-        if hdl:
-            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.3'] = \
-                {'value' : self._get_quantity(hdl, "mg/dl")}
-        if ldl:
-            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.2'] = \
-                {'value' : self._get_quantity(ldl, "mg/dl")}
-        if hdl_ldl_ratio:
-            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.1'] = \
-                {'value' : self._get_dv_proportion(hdl_ldl_ratio, 1)}
-        if laboratory_result_id:
-            lpd_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(laboratory_result_id)}
-        if result_datetime:
-            lpd_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(result_datetime)}
-        return archetype_id, self._clean_archetype(lpd_doc)
+    def build(self):
+        raise NotImplementedError()
 
     def build_liver_function_data(self, test_name=None, alp=None, total_bilirubin=None, direct_bilirubin=None, indirect_bilirubin=None, alt=None, \
                                   ast=None, ggt=None, albumin=None, total_protein=None, laboratory_result_id = None, result_datetime= None) :
@@ -354,3 +228,211 @@ class ArchetypeBuilder(object):
             ualy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0030'] = \
                 {'value' : self._get_dv_text(comments)}
         return archetype_id, self._clean_archetype(ualy_doc)
+
+
+class BloodGlucose(ArchetypeBuilder):
+    def __init__(self, archetype_dir, test_name=None, specimen_arch_detail=None, diet_intake=None,
+                 diet_duration=None, glucose_dose=None, glucose_timing=None,
+                 insulin_dose=None, insulin_route=None, laboratory_result_id=None,
+                 result_datetime= None):
+        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-blood_glucose.v1'
+        self.test_name = test_name or None
+        self.specimen_arch_detail = specimen_arch_detail or None
+        self.diet_intake = diet_intake or 'at0.95'
+        self.diet_duration = diet_duration or 'P'
+        self.glucose_dose = glucose_dose or randint(3, 10)
+        self.glucose_timing = glucose_timing or 'at0.104'
+        self.insulin_dose = insulin_dose or randint(2, 10)
+        self.insulin_route = insulin_route or 'at0.113'
+        self.laboratory_result_id = laboratory_result_id or None
+        self.result_datetime = result_datetime or None
+        super(BloodGlucose, self).__init__(archetype_id, archetype_dir)
+
+    def build(self):
+
+        bg_doc = self._load_file()
+
+        if self.specimen_arch_detail: #decide about  handling an example of nested archetipe
+            pass
+        if self.diet_intake:
+            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.90'][0]['items']['at0.91'] = \
+                {"value" : self._get_dv_coded_text(self.diet_intake, 'at0.92' )}
+        if self.diet_duration:
+            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.90'][0]['items']['at0.96'] = \
+                {'value' : self._get_dv_duration(self.diet_duration, 'H')}
+        if self.glucose_dose:
+            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.98'][0]['items']['at0.100'] = \
+                {'value' : self._get_quantity(self.glucose_dose, 'gm')}
+        if self.glucose_timing:
+            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.98'][0]['items']['at0.99'] = \
+                {'value': self._get_dv_coded_text(self.glucose_timing, 'at0.103')}
+        if self.insulin_dose:
+            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.107'][0]['items']['at0.110'] = \
+                {'value' : self._get_quantity(self.insulin_dose, 'U')}
+        if self.insulin_route:
+            bg_doc['data']['at0001'][0]['events']['at0002']['state']['at0.89'][0]['items']['at0.107'][0]['items']['at0.111'] = \
+                {'value' : self._get_dv_coded_text(self.insulin_route, 'at0.112')}
+        if self.laboratory_result_id:
+            bg_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(self.laboratory_result_id)}
+        if self.result_datetime:
+            bg_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(self.result_datetime)}
+        return self.archetype_id, self._clean_archetype(bg_doc)
+
+
+class BloodPressure(ArchetypeBuilder):
+
+    def __init__(self, archetype_dir, systolic=None, dyastolic=None, mean_arterial=None, pulse=None):
+        archetype_id = 'openEHR-EHR-OBSERVATION.blood_pressure.v1'
+        self.systolic = systolic or randint(80, 250)
+        self.dyastolic = dyastolic or randint(60, 100)
+        self.mean_arterial = mean_arterial or randint(0, 1000)
+        self.pulse = pulse or randint(0,1000)
+        super(BloodPressure, self).__init__(archetype_id, archetype_dir)
+
+    def build(self):
+        bp_doc = self._load_file()
+
+        if self.systolic:
+            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0004'] =\
+                {'value': self._get_quantity(self.systolic, 'mm[Hg]')}
+        if self.dyastolic:
+            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0005'] =\
+                {'value': self._get_quantity(self.dyastolic, 'mm[Hg]')}
+        if self.mean_arterial:
+            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1006'] =\
+                {'value': self._get_quantity(self.mean_arterial, 'mm[Hg]')}
+        if self.pulse:
+            bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1007'] =\
+                {'value': self._get_quantity(self.pulse, 'mm[Hg]')}
+        return self.archetype_id, self._clean_archetype(bp_doc)
+
+
+class FullBloodCount(ArchetypeBuilder):
+    def __init__(self, archetype_dir, test_name=None, haemoglobin=None, mchc=None, mcv=None,
+                 mch=None, lymphocytes=None, basophils=None, monocytes=None,
+                 eosinophils=None, multimedia_representation=None,
+                 laboratory_result_id=None, result_datetime=None):
+        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-full_blood_count.v1'
+        self.test_name = test_name or None
+        self.haemoglobin = haemoglobin or None
+        self.mchc = mchc or None
+        self.mcv = mcv or None
+        self.mch = mch or None
+        self.lymphocytes = lymphocytes or None
+        self.basophils = basophils or None
+        self.monocytes = monocytes or None
+        self.eosinophils = eosinophils or None
+        self.multimedia_representation = multimedia_representation or None
+        self.laboratory_result_id = laboratory_result_id or None
+        self.result_datetime = result_datetime or None
+        super(FullBloodCount, self).__init__(archetype_id, archetype_dir)
+
+    def build(self):
+        fbc_doc = self._load_file()
+
+        if self.test_name:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
+                {'value' : self._get_dv_text(self.test_name)}
+        if self.haemoglobin:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.4'] = \
+                {'value' : self._get_quantity(self.haemoglobin, 'gm/l')}
+        if self.mchc:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.7'] = \
+                {'value' : self._get_quantity(self.mchc, 'gm/l')}
+        if self.mcv:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.8'] = \
+                {'value' : self._get_quantity(self.mcv, 'fl')}
+        if self.lymphocytes:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.14'][0]['items']['at0078.16]'] = \
+                {'value' : self._get_quantity(self.lymphocytes, '10*9/l')}
+        if self.basophils:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.14'][0]['items']['at0078.17]'] = \
+                {'value' : self._get_quantity(self.basophils, '10*9/l')}
+        if self.monocytes:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.14'][0]['items']['at0078.18]'] = \
+                {'value' : self._get_quantity(self.monocytes, '10*9/l')}
+        if self.eosinophils:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.14'][0]['items']['at0078.19]'] = \
+                {'value' : self._get_quantity(self.eosinophils, '10*9/l')}
+        if self.multimedia_representation:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
+                [{'value' : self._get_dv_multimedia(self.multimedia_representation['media_type'], self.multimedia_representation['size'])}]
+        if self.laboratory_result_id:
+            fbc_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(self.laboratory_result_id)}
+        if self.result_datetime:
+            fbc_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(self.result_datetime)}
+        return self.archetype_id, self._clean_archetype(fbc_doc)
+
+
+class Lipids(ArchetypeBuilder):
+    def __init__(self, archetype_dir, test_name=None, specimen_detail=None, total_cholesterol=None,
+                 tryglicerides=None, hdl=None, ldl=None, hdl_ldl_ratio=None,
+                 laboratory_result_id=None, result_datetime= None):
+
+        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-lipids.v1'
+
+        self.test_name = test_name
+        self.specimen_detail = specimen_detail
+        self.total_cholesterol = total_cholesterol
+        self.tryglicerides = tryglicerides
+        self.hdl = hdl
+        self.ldl = ldl
+        self.hdl_ldl_ratio = hdl_ldl_ratio
+        self.laboratory_result_id = laboratory_result_id
+        self.result_datetime = result_datetime
+
+        super(Lipids, self).__init__(archetype_id, archetype_dir)
+
+    def build(self):
+        lpd_doc = self._load_file()
+
+        if self.test_name:
+            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
+                {'value' : self._get_dv_text(self.test_name)}
+        if self.specimen_detail:
+            pass  #decide about  handling an example of nested archetipe
+        if self.total_cholesterol:
+            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.5'] = \
+                {'value' : self._get_quantity(self.total_cholesterol, "mg/dl")}
+        if self.tryglicerides:
+            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.4'] = \
+                {'value' : self._get_quantity(self.tryglicerides, "mg/dl")}
+        if self.hdl:
+            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.3'] = \
+                {'value' : self._get_quantity(self.hdl, "mg/dl")}
+        if self.ldl:
+            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.2'] = \
+                {'value' : self._get_quantity(self.ldl, "mg/dl")}
+        if self.hdl_ldl_ratio:
+            lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.1'] = \
+                {'value' : self._get_dv_proportion(self.hdl_ldl_ratio, 1)}
+        if self.laboratory_result_id:
+            lpd_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(laboratory_result_id)}
+        if self.result_datetime:
+            lpd_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(self.result_datetime)}
+        return self.archetype_id, self._clean_archetype(lpd_doc)
+
+
+class Composition(ArchetypeBuilder):
+    def __init__(self, archetype_dir, children):
+        archetype_id = 'openEHR-EHR-COMPOSITION.encounter.v1'
+        super(Composition, self).__init__(archetype_id, archetype_dir)
+        self.children = children
+
+    def build(self):
+        doc = self._load_file()
+        doc['context']['event_context']['other_context']['at0001'][0]['items']['at0002'] = self.children
+
+        return self.archetype_id, doc #self._clean_archetype(doc)
+
+
+BUILDERS = {
+    'blood_pressure' : BloodPressure,
+    'blood_glucose' : BloodGlucose,
+    # 'full_blood_count' : FullBloodCount,
+    # 'lipids' : Lipids,
+    'composition' : Composition
+}
+
+def get_builder(name):
+    return BUILDERS.get(name, None)

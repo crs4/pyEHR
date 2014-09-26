@@ -8,11 +8,12 @@ from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.querymanager import QueryManager
 from pyehr.utils.services import get_service_configuration, get_logger
 
-from archetype_builder import ArchetypeBuilder
+import archetype_builder
+from archetype_builder import Composition
 
 class QueryPerformanceTest(object):
 
-    def __init__(self, pyehr_conf_file, archetype_dir, log_file=None, log_level='INFO'):
+    def __init__(self, pyehr_conf_file, archetypes_dir, log_file=None, log_level='INFO'):
         sconf = get_service_configuration(pyehr_conf_file)
         self.db_service = DBServices(**sconf.get_db_configuration())
         self.db_service.set_index_service(**sconf.get_index_configuration())
@@ -20,7 +21,7 @@ class QueryPerformanceTest(object):
         self.query_manager.set_index_service(**sconf.get_index_configuration())
         self.logger = get_logger('query_performance_test',
                                  log_file=log_file, log_level=log_level)
-        self.builder = ArchetypeBuilder(archetype_dir)
+        self.archetypes_dir = archetypes_dir
 
     def get_execution_time(f):
         @wraps(f)
@@ -32,14 +33,51 @@ class QueryPerformanceTest(object):
             return res, execution_time
         return wrapper
 
+    def _build_record(self, max_width, height):
+
+        def _get_random_builder(_builders):
+            builder_idx = randint(0, len(_builders)-1)
+            cls = archetype_builder.get_builder( _builders[builder_idx] )
+            return cls
+
+        if height < 1:
+            raise ValueError('Height must be greater than 0')
+
+        builders = archetype_builder.BUILDERS.keys()
+
+        if height == 1: # if height is zero it creates a leaf archetype (i.e an Observation)
+            # deletes the composition from the possible builders
+            leaf_builders = [b for b in builders if b != 'composition']
+            children = []
+            for i in xrange(max_width):
+                cls = _get_random_builder(leaf_builders)
+                arch = ArchetypeInstance( *cls(self.archetypes_dir).build() )
+                children.append(arch)
+
+        else:
+            width = randint(1, max_width)
+            arch = self._build_record(width, height - 1)
+            children = [arch]
+
+            # creates the other children. They can be Composition or Observation
+            for i in xrange(max_width - 1):
+                cls = _get_random_builder(builders)
+                if cls == Composition:
+                    width = randint(1, max_width)
+                    arch = self._build_record(width, height - 1)
+                else:
+                    arch = ArchetypeInstance( *cls(self.archetypes_dir).build() )
+                children.append(arch)
+
+        return ArchetypeInstance(*Composition(self.archetypes_dir, children).build())
+
     @get_execution_time
     def build_dataset(self, patients, ehrs):
         for x in xrange(0, patients):
             crecs = list()
             p = self.db_service.save_patient(PatientRecord('PATIENT_%05d' % x))
             for y in xrange(0, ehrs):
-                arch = ArchetypeInstance(*self.builder.build_blood_pressure_data(randint(80, 250),
-                                                                                 randint(60, 100)))
+                arch = self._build_record(3, 1)
                 crecs.append(ClinicalRecord(arch))
             self.db_service.save_ehr_records(crecs, p)
 
@@ -50,8 +88,7 @@ class QueryPerformanceTest(object):
     @get_execution_time
     def execute_select_all_query(self):
         query = """
-        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
+        SELECT e/ehr_id/value AS id
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         """
