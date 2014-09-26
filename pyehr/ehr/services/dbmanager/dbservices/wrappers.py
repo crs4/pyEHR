@@ -255,7 +255,7 @@ class ArchetypeInstance(object):
             data = list()
             for x in record_data:
                 if isinstance(x, ArchetypeInstance):
-                    data.append(v.to_json)
+                    data.append(x.to_json())
                 elif isinstance(x, dict):
                     data.append(encode_dict_data(x))
                 elif isinstance(x, list):
