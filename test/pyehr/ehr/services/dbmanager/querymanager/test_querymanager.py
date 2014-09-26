@@ -59,6 +59,11 @@ class TestQueryManager(unittest.TestCase):
                 {'value': self._get_quantity(pulse, 'mm[Hg]')}
         return archetype_id, bp_doc
 
+    def _get_encounter_data(self, archetypes):
+        archetype_id = 'openEHR-EHR-COMPOSITION.encounter.v1'
+        enc_doc = {'context': {'event_context': {'other_context': {'at0001': [{'items': {'at0002': archetypes}}]}}}}
+        return archetype_id, enc_doc
+
     def _build_patients_batch(self, num_patients, num_ehr, systolic_range=None, dyastolic_range=None):
         records_details = dict()
         for x in xrange(0, num_patients):
@@ -74,6 +79,24 @@ class TestQueryManager(unittest.TestCase):
             self.patients.append(p)
         return records_details
 
+    def _build_patients_batch_mixed(self, num_patients, num_ehr, systolic_range=None, dyastolic_range=None):
+        records_details = dict()
+        for x in xrange(0, num_patients):
+            p = self.dbs.save_patient(PatientRecord('PATIENT_%02d' % x))
+            crecs = list()
+            for y in xrange(0, num_ehr):
+                systolic = randint(*systolic_range) if systolic_range else None
+                dyastolic = randint(*dyastolic_range) if dyastolic_range else None
+                bp_arch = ArchetypeInstance(*self._get_blood_pressure_data(systolic, dyastolic))
+                if randint(0, 2) == 1:
+                    crecs.append(ClinicalRecord(ArchetypeInstance(*self._get_encounter_data([bp_arch]))))
+                    records_details.setdefault(p.record_id, []).append({'systolic': systolic, 'dyastolic': dyastolic})
+                else:
+                    crecs.append(ClinicalRecord(bp_arch))
+            _, p, _ = self.dbs.save_ehr_records(crecs, p)
+            self.patients.append(p)
+        return records_details
+
     def test_simple_select_query(self):
         query = """
         SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
@@ -82,6 +105,22 @@ class TestQueryManager(unittest.TestCase):
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         """
         batch_details = self._build_patients_batch(10, 10, (50, 100), (50, 100))
+        results = self.qmanager.execute_aql_query(query)
+        details_results = list()
+        for k, v in batch_details.iteritems():
+            details_results.extend(v)
+        res = list(results.results)
+        self.assertEqual(sorted(details_results), sorted(res))
+
+    def test_deep_select_query(self):
+        query = """
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
+        FROM Ehr e
+        CONTAINS Composition c[openEHR-EHR-COMPOSITION.encounter.v1]
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        """
+        batch_details = self._build_patients_batch_mixed(10, 10, (50, 100), (50, 100))
         results = self.qmanager.execute_aql_query(query)
         details_results = list()
         for k, v in batch_details.iteritems():
@@ -102,6 +141,26 @@ class TestQueryManager(unittest.TestCase):
         results = self.qmanager.execute_aql_query(query)
         details_results = list()
         for k, v in batch_details.iteritems():
+            for x in v:
+                if x['systolic'] >= 180 or x['dyastolic'] >= 110:
+                    details_results.append(x)
+        res = list(results.results)
+        self.assertEqual(sorted(details_results), sorted(res))
+
+    def test_deep_where_query(self):
+        query = """
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
+        FROM Ehr e
+        CONTAINS Composition c[openEHR-EHR-COMPOSITION.encounter.v1]
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
+        """
+        batch_details = self._build_patients_batch_mixed(10, 10, (0, 250), (0, 200))
+        results = self.qmanager.execute_aql_query(query)
+        details_results = list()
+        for k,v in batch_details.iteritems():
             for x in v:
                 if x['systolic'] >= 180 or x['dyastolic'] >= 110:
                     details_results.append(x)
@@ -129,7 +188,7 @@ class TestQueryManager(unittest.TestCase):
         WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
         OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
         """
-        batch_details = self._build_patients_batch(10, 10, (0,250), (0,200))
+        batch_details = self._build_patients_batch(10, 10, (0, 250), (0, 200))
         results = self.qmanager.execute_aql_query(query)
         details_results = set()
         for k, v in batch_details.iteritems():
@@ -146,6 +205,7 @@ def suite():
     suite.addTest(TestQueryManager('test_simple_where_query'))
     suite.addTest(TestQueryManager('test_simple_parametric_query'))
     suite.addTest(TestQueryManager('test_simple_patients_selection'))
+    suite.addTest(TestQueryManager('test_deep_select_query'))
     return suite
 
 if __name__ == '__main__':
