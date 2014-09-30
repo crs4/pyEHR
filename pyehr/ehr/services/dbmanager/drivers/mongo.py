@@ -680,11 +680,11 @@ class MongoDriver(DriverInterface):
         for key, value in query_result.iteritems():
             if isinstance(value, dict):
                 for k, v in self._split_results(value):
-                    yield '%s.%s' % (key, k), v
+                    yield '{}.{}'.format(key, k), v
             elif isinstance(value, list):
                 for element in value:
                     for k, v in self._split_results(element):
-                        yield '%s.%s' % (key, k), v
+                        yield '{}.{}'.format(key, k), v
             else:
                 yield key, value
 
@@ -738,28 +738,25 @@ class MongoDriver(DriverInterface):
             return sel_hash.hexdigest()
 
         query_mappings = list()
-        for x in self.build_queries(query_model, patients_repository, ehr_repository, query_params):
+        queries, location_query = self.build_queries(query_model, patients_repository, ehr_repository, query_params)
+        for x in queries:
             if x not in query_mappings:
                 query_mappings.append(x)
         # reduce number of queries based on the selection filter
         selection_mappings = dict()
         filter_mappings = dict()
-        structure_ids = set()
         for qm in query_mappings:
             selection_key = get_selection_hash(qm['query'][1])
             if selection_key not in selection_mappings:
                 selection_mappings[selection_key] = {'selection_filter': qm['query'][1],
                                                      'aliases': qm['results_aliases']}
             q = qm['query'][0]
-            structure_ids.add(tuple(q.pop('ehr_structure_id')['$in']))
             filter_mappings.setdefault(selection_key, []).append(q)
-        assert len(structure_ids) == 1
-        structure_ids = list(structure_ids.pop())
         total_results = ResultSet()
         for sk, sm in selection_mappings.iteritems():
-            results = self._run_aql_query({'$or': filter_mappings[sk],
-                                           'ehr_structure_id': {'$in': structure_ids}},
-                                          sm['selection_filter'], aliases=sm['aliases'],
+            q = {'$or': filter_mappings[sk]}
+            q.update(location_query)
+            results = self._run_aql_query(q, sm['selection_filter'], aliases=sm['aliases'],
                                           collection=ehr_repository)
             total_results.extend(results)
         return total_results
