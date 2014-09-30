@@ -1,6 +1,8 @@
 import time, sys, argparse
 from random import randint
 from functools import wraps
+import numpy as np
+import itertools as it
 
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord,\
     PatientRecord, ArchetypeInstance
@@ -10,6 +12,7 @@ from pyehr.utils.services import get_service_configuration, get_logger
 
 import archetype_builder
 from archetype_builder import Composition
+
 
 class QueryPerformanceTest(object):
 
@@ -76,10 +79,18 @@ class QueryPerformanceTest(object):
         for x in xrange(0, patients):
             crecs = list()
             p = self.db_service.save_patient(PatientRecord('PATIENT_%05d' % x))
-            for y in xrange(0, ehrs):
-                arch = self._build_record(3, 1)
+            self.logger.debug('Saved patient PATIENT_%05d' % x)
+            for max_depth, max_width in it.izip([int(i) for i in np.random.normal(6, 1, ehrs)],
+                                                [int(i) for i in np.random.uniform(1, 10, ehrs)]):
+                if max_depth < 1:
+                    max_depth = 1
+                if max_depth > 11:
+                    max_depth = 11
+                arch = self._build_record(max_depth, max_width)
                 crecs.append(ClinicalRecord(arch))
+            self.logger.debug('Done building EHR %d records' % ehrs)
             self.db_service.save_ehr_records(crecs, p)
+            self.logger.debug ('EHRs saved')
 
     def execute_query(self, query, params=None):
         results = self.query_manager.execute_aql_query(query, params)
@@ -88,7 +99,7 @@ class QueryPerformanceTest(object):
     @get_execution_time
     def execute_select_all_query(self):
         query = """
-        SELECT e/ehr_id/value AS id
+        SELECT e/ehr_id/value AS patient_identifier
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         """
@@ -141,9 +152,11 @@ class QueryPerformanceTest(object):
 
     @get_execution_time
     def cleanup(self):
-        patients = self.db_service.get_patients()
-        for p in patients:
-            self.db_service.delete_patient(p, cascade_delete=True)
+        drf = self.db_service._get_drivers_factory(self.db_service.ehr_repository)
+        with drf.get_driver() as driver:
+            driver.collection.remove()
+            driver.select_collection(self.db_service.patients_repository)
+            driver.collection.remove()
         self.db_service.index_service.connect()
         self.db_service.index_service.session.execute('drop database %s' %
                                                       self.db_service.index_service.db)
@@ -180,7 +193,7 @@ def get_parser():
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
-    parser.add_argument('--archetype_dir', type=str, required=True,
+    parser.add_argument('--archetype-dir', type=str, required=True,
                         help='The directory containing archetype in json format')
     return parser
 

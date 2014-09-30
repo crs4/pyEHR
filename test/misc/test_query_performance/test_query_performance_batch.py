@@ -11,6 +11,8 @@ def get_parser():
                         help='The CSV file with the description of the batchs')
     parser.add_argument('--output-file', type=str, required=True,
                         help='The file that will contain the results')
+    parser.add_argument('--archetype-dir', type=str, required=True,
+                        help='The directory containing archetype in json format')
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
@@ -34,8 +36,8 @@ def get_output_writer(out_file):
     return writer, ofile
 
 
-def run_test(patients_size, ehr_size, conf_file, logfile, loglevel):
-    qpt = QueryPerformanceTest(conf_file, logfile, loglevel)
+def run_test(patients_size, ehr_size, conf_file, archetypes_dir, logfile, loglevel):
+    qpt = QueryPerformanceTest(conf_file, archetypes_dir, logfile, loglevel)
     build_dataset_time, select_all_time, select_all_patient_time, filtered_query_time,\
     filtered_patient_time, patient_count_time, cleanup_time = qpt.run(patients_size, ehr_size)
     return {
@@ -56,7 +58,8 @@ def main(argv):
     out_file_writer, out_file = get_output_writer(args.output_file)
     for batch in batches:
         results = run_test(int(batch['patients']), int(batch['ehrs_for_patient']),
-                           args.conf_file, args.log_file, args.log_level)
+                           args.conf_file, args.archetype_dir,
+                           args.log_file, args.log_level)
         results.update(batch)
         out_file_writer.writerow(results)
     out_file.close()
