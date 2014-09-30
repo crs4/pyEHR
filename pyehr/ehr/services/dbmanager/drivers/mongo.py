@@ -8,6 +8,8 @@ import pymongo
 import pymongo.errors
 import time
 from itertools import izip
+from hashlib import md5
+import json
 
 
 class MongoDriver(DriverInterface):
@@ -731,8 +733,6 @@ class MongoDriver(DriverInterface):
                  containing results for the given query
         """
         def get_selection_hash(selection):
-            from hashlib import md5
-            import json
             sel_hash = md5()
             sel_hash.update(json.dumps(selection))
             return sel_hash.hexdigest()
@@ -744,15 +744,21 @@ class MongoDriver(DriverInterface):
         # reduce number of queries based on the selection filter
         selection_mappings = dict()
         filter_mappings = dict()
+        structure_ids = set()
         for qm in query_mappings:
             selection_key = get_selection_hash(qm['query'][1])
             if selection_key not in selection_mappings:
                 selection_mappings[selection_key] = {'selection_filter': qm['query'][1],
                                                      'aliases': qm['results_aliases']}
-            filter_mappings.setdefault(selection_key, []).append(qm['query'][0])
+            q = qm['query'][0]
+            structure_ids.add(tuple(q.pop('ehr_structure_id')['$in']))
+            filter_mappings.setdefault(selection_key, []).append(q)
+        assert len(structure_ids) == 1
+        structure_ids = list(structure_ids.pop())
         total_results = ResultSet()
         for sk, sm in selection_mappings.iteritems():
-            results = self._run_aql_query({'$or': filter_mappings[sk]},
+            results = self._run_aql_query({'$or': filter_mappings[sk],
+                                           'ehr_structure_id': {'$in': structure_ids}},
                                           sm['selection_filter'], aliases=sm['aliases'],
                                           collection=ehr_repository)
             total_results.extend(results)
