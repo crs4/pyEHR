@@ -644,6 +644,8 @@ class MongoDriver(DriverInterface):
         else:
             raise MissiongLocationExpressionError("Query must have a location expression")
         structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
+        if len(structure_ids) == 0:
+            return None, None, None
         query.update({'ehr_structure_id': {'$in': structure_ids}})
         return query, aliases_mapping, ehr_alias
 

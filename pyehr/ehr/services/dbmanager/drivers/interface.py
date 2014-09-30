@@ -257,6 +257,8 @@ class DriverInterface(object):
         location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
                                                                                  patients_repository,
                                                                                  ehr_repository)
+        if not location_query:
+            return []
         if condition:
             condition_results = self._calculate_condition_expression(condition, aliases)
             for condition_query, mappings in condition_results:
