@@ -730,11 +730,30 @@ class MongoDriver(DriverInterface):
         :return: a :class:`pyehr.ehr.services.dbmanager.querymanager.query.ResultSet` object
                  containing results for the given query
         """
-        query_mappings = self.build_queries(query_model, patients_repository, ehr_repository,
-                                            query_params)
-        total_results = ResultSet()
+        def get_selection_hash(selection):
+            from hashlib import md5
+            import json
+            sel_hash = md5()
+            sel_hash.update(json.dumps(selection))
+            return sel_hash.hexdigest()
+
+        query_mappings = list()
+        for x in self.build_queries(query_model, patients_repository, ehr_repository, query_params):
+            if x not in query_mappings:
+                query_mappings.append(x)
+        # reduce number of queries based on the selection filter
+        selection_mappings = dict()
+        filter_mappings = dict()
         for qm in query_mappings:
-            results = self._run_aql_query(*qm['query'], aliases=qm['results_aliases'],
+            selection_key = get_selection_hash(qm['query'][1])
+            if selection_key not in selection_mappings:
+                selection_mappings[selection_key] = {'selection_filter': qm['query'][1],
+                                                     'aliases': qm['results_aliases']}
+            filter_mappings.setdefault(selection_key, []).append(qm['query'][0])
+        total_results = ResultSet()
+        for sk, sm in selection_mappings.iteritems():
+            results = self._run_aql_query({'$or': filter_mappings[sk]},
+                                          sm['selection_filter'], aliases=sm['aliases'],
                                           collection=ehr_repository)
             total_results.extend(results)
         return total_results
