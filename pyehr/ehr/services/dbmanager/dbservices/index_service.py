@@ -83,7 +83,9 @@ class IndexService(object):
             for x in sorted(dlist, key=list_sort_key):
                 if isinstance(x, dict):
                     if is_archetype(x):
-                        archetypes.append(IndexService.get_structure(x, parent_key))
+                        structure = IndexService.get_structure(x, parent_key)
+                        if etree.tostring(structure) not in [etree.tostring(a) for a in archetypes]:
+                            archetypes.append(structure)
                     else:
                         a_from_dict = get_structure_from_dict(x, parent_key)
                         if len(a_from_dict) > 0:
