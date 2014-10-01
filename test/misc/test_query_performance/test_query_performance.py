@@ -165,19 +165,24 @@ class QueryPerformanceTest(object):
     def run(self, patients_size, ehr_size):
         self.logger.info('Creating dataset. %d patients and %d EHRs for patient' % (patients_size,
                                                                                     ehr_size))
-        _, build_dataset_time = self.build_dataset(patients_size, ehr_size)
-        self.logger.info('Running "SELECT ALL" query')
-        _, select_all_time = self.execute_select_all_query()
-        self.logger.info('Running "SELECT ALL" filtered by patient query')
-        _, select_all_patient_time = self.execute_select_all_patient_query()
-        self.logger.info('Running filtered query')
-        _, filtered_query_time = self.execute_filtered_query()
-        self.logger.info('Running filtered with patient filter')
-        _, filtered_patient_time = self.execute_patient_filtered_query()
-        self.logger.info('Running patient_count_query')
-        _, patient_count_time = self.execute_patient_count_query()
-        self.logger.info('Everything done, running DB cleanup')
-        _, cleanup_time = self.cleanup()
+        try:
+            _, build_dataset_time = self.build_dataset(patients_size, ehr_size)
+            self.logger.info('Running "SELECT ALL" query')
+            _, select_all_time = self.execute_select_all_query()
+            self.logger.info('Running "SELECT ALL" filtered by patient query')
+            _, select_all_patient_time = self.execute_select_all_patient_query()
+            self.logger.info('Running filtered query')
+            _, filtered_query_time = self.execute_filtered_query()
+            self.logger.info('Running filtered with patient filter')
+            _, filtered_patient_time = self.execute_patient_filtered_query()
+            self.logger.info('Running patient_count_query')
+            _, patient_count_time = self.execute_patient_count_query()
+        except Exception, e:
+            self.logger.critical('AN ERROR HAS OCCURRED: %s' % e)
+            raise e
+        finally:
+            self.logger.info('Running DB cleanup')
+            _, cleanup_time = self.cleanup()
         return build_dataset_time, select_all_time, select_all_patient_time, filtered_query_time,\
                filtered_patient_time, patient_count_time, cleanup_time
 
