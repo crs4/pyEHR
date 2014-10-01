@@ -79,7 +79,7 @@ class QueryPerformanceTest(object):
         for x in xrange(0, patients):
             crecs = list()
             p = self.db_service.save_patient(PatientRecord('PATIENT_%05d' % x))
-            self.logger.debug('Saved patient PATIENT_%05d' % x)
+            self.logger.debug('Saved patient PATIENT_%05d', x)
             for max_depth, max_width in it.izip([int(i) for i in np.random.normal(6, 1, ehrs)],
                                                 [int(i) for i in np.random.uniform(1, 10, ehrs)]):
                 if max_depth < 1:
@@ -88,9 +88,13 @@ class QueryPerformanceTest(object):
                     max_depth = 11
                 arch = self._build_record(max_depth, max_width)
                 crecs.append(ClinicalRecord(arch))
-            self.logger.debug('Done building EHR %d records' % ehrs)
+            self.logger.debug('Done building EHR %d records', ehrs)
             self.db_service.save_ehr_records(crecs, p)
-            self.logger.debug ('EHRs saved')
+            self.logger.debug('EHRs saved')
+        drf = self.db_service._get_drivers_factory(self.db_service.ehr_repository)
+        with drf.get_driver() as driver:
+            self.logger.info('*** Produced %d different structures ***',
+                             len(driver.collection.distinct('ehr_structure_id')))
 
     def execute_query(self, query, params=None):
         results = self.query_manager.execute_aql_query(query, params)
