@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
-from random import randint
+from random import randint, uniform
 
 from pyehr.utils import decode_dict, cleanup_json
 
@@ -314,14 +314,14 @@ class FullBloodCount(ArchetypeBuilder):
                  laboratory_result_id=None, result_datetime=None):
         archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-full_blood_count.v1'
         self.test_name = test_name or None
-        self.haemoglobin = haemoglobin or None
-        self.mchc = mchc or None
-        self.mcv = mcv or None
-        self.mch = mch or None
-        self.lymphocytes = lymphocytes or None
-        self.basophils = basophils or None
-        self.monocytes = monocytes or None
-        self.eosinophils = eosinophils or None
+        self.haemoglobin = haemoglobin or randint(10, 40)
+        self.mchc = mchc or randint(25, 50)
+        self.mcv = mcv or randint(80, 100)
+        self.mch = mch or randint(30, 40)
+        self.lymphocytes = lymphocytes or '%.2f' % uniform(2, 5)
+        self.basophils = basophils or '%.2f' % uniform(1, 3)
+        self.monocytes = monocytes or '%.2f' % uniform(0, 1.5)
+        self.eosinophils = eosinophils or randint(3, 7)
         self.multimedia_representation = multimedia_representation or None
         self.laboratory_result_id = laboratory_result_id or None
         self.result_datetime = result_datetime or None
@@ -342,6 +342,9 @@ class FullBloodCount(ArchetypeBuilder):
         if self.mcv:
             fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.8'] = \
                 {'value' : self._get_quantity(self.mcv, 'fl')}
+        if self.mch:
+            fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.9'] = \
+                {'value' : self._get_quantity(self.mcv, 'pg')}
         if self.lymphocytes:
             fbc_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.14'][0]['items']['at0078.16]'] = \
                 {'value' : self._get_quantity(self.lymphocytes, '10*9/l')}
@@ -371,15 +374,15 @@ class Lipids(ArchetypeBuilder):
 
         archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-lipids.v1'
 
-        self.test_name = test_name
-        self.specimen_detail = specimen_detail
-        self.total_cholesterol = total_cholesterol
-        self.tryglicerides = tryglicerides
-        self.hdl = hdl
-        self.ldl = ldl
-        self.hdl_ldl_ratio = hdl_ldl_ratio
-        self.laboratory_result_id = laboratory_result_id
-        self.result_datetime = result_datetime
+        self.test_name = test_name or None
+        self.specimen_detail = specimen_detail or None
+        self.total_cholesterol = total_cholesterol or randint(150, 300)
+        self.tryglicerides = tryglicerides or randint(140, 550)
+        self.hdl = hdl or randint(50, 120)
+        self.ldl = ldl or randint(50, 120)
+        self.hdl_ldl_ratio = hdl_ldl_ratio or {'numerator' : randint(1,4), 'denominator' : randint(1,4)}
+        self.laboratory_result_id = laboratory_result_id or None
+        self.result_datetime = result_datetime or None
 
         super(Lipids, self).__init__(archetype_id, archetype_dir)
 
@@ -407,12 +410,26 @@ class Lipids(ArchetypeBuilder):
             lpd_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.1'] = \
                 {'value' : self._get_dv_proportion(self.hdl_ldl_ratio, 1)}
         if self.laboratory_result_id:
-            lpd_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(laboratory_result_id)}
+            lpd_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(self.laboratory_result_id)}
         if self.result_datetime:
             lpd_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(self.result_datetime)}
         return self.archetype_id, self._clean_archetype(lpd_doc)
 
 
+class LiverFunction(ArchetypeBuilder):
+    def __init__(self, archetype_dir, test_name=None, alp=None, total_bilirubin=None, direct_bilirubin=None, indirect_bilirubin=None, alt=None, \
+                 ast=None, ggt=None, albumin=None, total_protein=None, laboratory_result_id = None, result_datetime= None ):
+        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-liver_function.v1'
+
+        self.test_name = test_name or None
+        self.alp = alp or randint(45, 30)
+        self.total_bilirubin = total_bilirubin or randint(1, 25)
+        self.direct_bilirubin = direct_bilirubin or randint (1, 9)
+        self.indirect_bilirubin = indirect_bilirubin or randint(10, 20)
+        self.alt = alt or randint(5, 50)
+        self.ast = ast or randint(10, 50)
+        self.albumin = albumin or randint(30, 55)
+        self.total_protein = total_protein or randint(40, 65)
 class Composition(ArchetypeBuilder):
     def __init__(self, archetype_dir, children):
         archetype_id = 'openEHR-EHR-COMPOSITION.encounter.v1'
@@ -429,8 +446,8 @@ class Composition(ArchetypeBuilder):
 BUILDERS = {
     'blood_pressure' : BloodPressure,
     'blood_glucose' : BloodGlucose,
-    # 'full_blood_count' : FullBloodCount,
-    # 'lipids' : Lipids,
+    'full_blood_count' : FullBloodCount,
+    'lipids' : Lipids,
     'composition' : Composition
 }
 
