@@ -28,15 +28,15 @@ def build_structure(max_depth, max_width):
     return {'composition': get_random_subtree(max_depth-1, max_width)}
 
 
-def build_structures(json_output_file, structures_count):
+def build_structures(json_output_file, structures_count, mean_depth, max_width):
     structures = []
-    for max_depth, max_width in it.izip([int(i) for i in np.random.normal(6, 1, structures_count)],
-                                        [int(i) for i in np.random.uniform(1, 10, structures_count)]):
-        if max_depth < 1:
-            max_depth = 1
-        elif max_depth > 11:
-            max_depth = 11
-        structures.append(build_structure(max_depth, max_width))
+    for depth, width in it.izip([int(i) for i in np.random.normal(mean_depth, 1, structures_count)],
+                                [int(i) for i in np.random.uniform(1, max_width, structures_count)]):
+        if depth < 1:
+            depth = 1
+        elif depth > mean_depth + (mean_depth-1):
+            depth = mean_depth + (mean_depth-1)
+        structures.append(build_structure(depth, width))
     with open(json_output_file, 'w') as f:
         f.write(json.dumps(structures))
 

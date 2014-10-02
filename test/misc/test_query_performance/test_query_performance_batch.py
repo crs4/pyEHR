@@ -28,7 +28,11 @@ def get_test_description(batch_file):
     with open(batch_file) as f:
         reader = csv.DictReader(f, delimiter='\t')
         batches = [row for row in reader]
-    return batches
+    batch_descriptions = dict()
+    for b in batches:
+        batch_descriptions.setdefault((int(b['mean_depth']), int(b['max_width']), int(b['structures'])),
+            []).append((int(b['patients']), int(b['ehrs_for_patient'])))
+    return batch_descriptions
 
 
 def get_output_writer(out_file):
@@ -60,19 +64,25 @@ def main(argv):
     parser = get_parser()
     args = parser.parse_args(argv)
     for cycle in xrange(0, args.run_cycles):
-        str_out_file = os.path.join(args.structures_description_dir,
-                                    'structures_cycle_%d.json' % cycle)
-        build_structures(str_out_file, 50)
-        batches = get_test_description(args.batch_description_file)
-        out_file_writer, out_file = get_output_writer('%s_%d.tsv' %
-                                                      (args.output_file_basename, cycle))
-        for batch in batches:
-            results = run_test(int(batch['patients']), int(batch['ehrs_for_patient']),
-                               args.conf_file, args.archetype_dir, str_out_file,
-                               args.log_file, args.log_level)
-            results.update(batch)
-            out_file_writer.writerow(results)
-        out_file.close()
+        cycle_description = get_test_description(args.batch_description_file)
+        for str_def, batches in cycle_description.iteritems():
+            depth = str_def[0]
+            width = str_def[1]
+            str_count = str_def[2]
+            str_out_file = os.path.join(args.structures_description_dir,
+                                        'd-%d_w-%d_str-%d_cycle-%d.json' % (depth, width,
+                                                                            str_count, cycle))
+            build_structures(str_out_file, str_count, depth, width)
+            out_file_writer, out_file = get_output_writer('%s_d-%d_w-%d_%d-str_cycle-%d.tsv' %
+                                                          (args.output_file_basename, depth,
+                                                           width, str_count, cycle))
+            for batch in sorted(batches):
+                results = run_test(batch[0], batch[1], args.conf_file,
+                                   args.archetype_dir, str_out_file,
+                                   args.log_file, args.log_level)
+                results.update({'patients': batch[0], 'ehrs_for_patient': batch[1]})
+                out_file_writer.writerow(results)
+            out_file.close()
 
 
 if __name__ == '__main__':
