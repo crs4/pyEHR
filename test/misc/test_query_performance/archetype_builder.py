@@ -386,6 +386,7 @@ class Lipids(ArchetypeBuilder):
 
         super(Lipids, self).__init__(archetype_id, archetype_dir)
 
+
     def build(self):
         lpd_doc = self._load_file()
 
@@ -422,14 +423,62 @@ class LiverFunction(ArchetypeBuilder):
         archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-liver_function.v1'
 
         self.test_name = test_name or None
-        self.alp = alp or randint(45, 30)
+        self.alp = alp or randint(30, 45)
         self.total_bilirubin = total_bilirubin or randint(1, 25)
         self.direct_bilirubin = direct_bilirubin or randint (1, 9)
         self.indirect_bilirubin = indirect_bilirubin or randint(10, 20)
         self.alt = alt or randint(5, 50)
         self.ast = ast or randint(10, 50)
+        self.ggt = ggt or randint(10, 50)
         self.albumin = albumin or randint(30, 55)
         self.total_protein = total_protein or randint(40, 65)
+        self.laboratory_result_id = laboratory_result_id or None
+        self.result_datetime = result_datetime or None
+
+        super(LiverFunction, self).__init__(archetype_id, archetype_dir)
+
+    def build(self):
+
+        lvf_doc = self._load_file()
+
+        if self.test_name:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
+                {'value' : self._get_dv_text(self.test_name)}
+        if self.alp:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.2'] =\
+                {'value' : self._get_quantity(self.alp, "U/l")}
+        if self.total_bilirubin:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.4'] =\
+                {'value' : self._get_quantity(self.total_bilirubin, "µmol/l")}
+        if self.direct_bilirubin:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.11'] =\
+                {'value' : self._get_quantity(self.direct_bilirubin, "µmol/l")}
+        if self.indirect_bilirubin:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.9'] =\
+                {'value' : self._get_quantity(self.indirect_bilirubin, "µmol/l")}
+        if self.alt:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.1'] =\
+                {'value' : self._get_quantity(self.alt, "U/l")}
+        if self.ast:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.3'] = \
+                {'value' : self._get_quantity(self.ast, "U/l")}
+        if self.ggt:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.3'] = \
+                {'value' : self._get_quantity(self.ggt, "U/l")}
+        if self.albumin:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.7'] = \
+                {'value' : self._get_quantity(self.albumin, "gm/l")}
+        if self.total_protein:
+            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.10'] = \
+                {'value' : self._get_quantity(self.total_protein, "gm/l")}
+        if self.laboratory_result_id:
+            lvf_doc['protocol']['at0004'][0]['items']['at0068'] = {'value' : self._get_dv_text(self.laboratory_result_id)}
+        if self.result_datetime:
+            lvf_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(self.result_datetime)}
+        return self.archetype_id, self._clean_archetype(lvf_doc)
+
+
+
 class Composition(ArchetypeBuilder):
     def __init__(self, archetype_dir, children):
         archetype_id = 'openEHR-EHR-COMPOSITION.encounter.v1'
@@ -448,6 +497,7 @@ BUILDERS = {
     'blood_glucose' : BloodGlucose,
     'full_blood_count' : FullBloodCount,
     'lipids' : Lipids,
+    'liver_function': LiverFunction,
     'composition' : Composition
 }
 
