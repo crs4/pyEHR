@@ -75,91 +75,91 @@ class ArchetypeBuilder(object):
     def build(self):
         raise NotImplementedError()
 
-    def build_liver_function_data(self, test_name=None, alp=None, total_bilirubin=None, direct_bilirubin=None, indirect_bilirubin=None, alt=None, \
-                                  ast=None, ggt=None, albumin=None, total_protein=None, laboratory_result_id = None, result_datetime= None) :
-        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-liver_function.v1'
-        lvf_doc = self._load_file(archetype_id)
-        try:
-            lvf_doc = lvf_doc['archetype_details']
-        except KeyError:
-            raise Exception("Invalid archetype file: %s" % archetype_id)
-        if test_name:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
-                {'value' : self._get_dv_text(test_name)}
-        if alp:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.2'] =\
-                {'value' : self._get_quantity(alp, "U/l")}
-        if total_bilirubin:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.4'] =\
-                {'value' : self._get_quantity(total_bilirubin, "µmol/l")}
-        if direct_bilirubin:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.11'] =\
-                {'value' : self._get_quantity(direct_bilirubin, "µmol/l")}
-        if indirect_bilirubin:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.9'] =\
-                {'value' : self._get_quantity(indirect_bilirubin, "µmol/l")}
-        if alt:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.1'] =\
-                {'value' : self._get_quantity(alt, "U/l")}
-        if ast:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.3'] = \
-                {'value' : self._get_quantity(ast, "U/l")}
-        if ggt:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.3'] = \
-                {'value' : self._get_quantity(ggt, "U/l")}
-        if albumin:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.7'] = \
-                {'value' : self._get_quantity(albumin, "gm/l")}
-        if total_protein:
-            lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.10'] = \
-                {'value' : self._get_quantity(total_protein, "gm/l")}
-        if laboratory_result_id:
-            lvf_doc['protocol']['at0004'][0]['items']['at0068'] = {'value' : self._get_dv_text(laboratory_result_id)}
-        if result_datetime:
-            lvf_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(result_datetime)}
-        return archetype_id, self._clean_archetype(lvf_doc)
+    # def build_liver_function_data(self, test_name=None, alp=None, total_bilirubin=None, direct_bilirubin=None, indirect_bilirubin=None, alt=None, \
+    #                               ast=None, ggt=None, albumin=None, total_protein=None, laboratory_result_id = None, result_datetime= None) :
+    #     archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-liver_function.v1'
+    #     lvf_doc = self._load_file(archetype_id)
+    #     try:
+    #         lvf_doc = lvf_doc['archetype_details']
+    #     except KeyError:
+    #         raise Exception("Invalid archetype file: %s" % archetype_id)
+    #     if test_name:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
+    #             {'value' : self._get_dv_text(test_name)}
+    #     if alp:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.2'] =\
+    #             {'value' : self._get_quantity(alp, "U/l")}
+    #     if total_bilirubin:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.4'] =\
+    #             {'value' : self._get_quantity(total_bilirubin, "µmol/l")}
+    #     if direct_bilirubin:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.11'] =\
+    #             {'value' : self._get_quantity(direct_bilirubin, "µmol/l")}
+    #     if indirect_bilirubin:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.9'] =\
+    #             {'value' : self._get_quantity(indirect_bilirubin, "µmol/l")}
+    #     if alt:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.1'] =\
+    #             {'value' : self._get_quantity(alt, "U/l")}
+    #     if ast:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.3'] = \
+    #             {'value' : self._get_quantity(ast, "U/l")}
+    #     if ggt:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.3'] = \
+    #             {'value' : self._get_quantity(ggt, "U/l")}
+    #     if albumin:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.7'] = \
+    #             {'value' : self._get_quantity(albumin, "gm/l")}
+    #     if total_protein:
+    #         lvf_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['0078.10'] = \
+    #             {'value' : self._get_quantity(total_protein, "gm/l")}
+    #     if laboratory_result_id:
+    #         lvf_doc['protocol']['at0004'][0]['items']['at0068'] = {'value' : self._get_dv_text(laboratory_result_id)}
+    #     if result_datetime:
+    #         lvf_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(result_datetime)}
+    #     return archetype_id, self._clean_archetype(lvf_doc)
 
-    def build_thyroid_data(self, test_name=None, tsh=None, ft3= None, total_t3=None, ft4=None, total_t4=None, ft3_index=None, fti=None, \
-                           placer_id=None, filler_id=None, laboratory_result_id=None, result_datetime=None):
-        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-thyroid.v1'
-        thy_doc = self._load_file(archetype_id)
-        try:
-            thy_doc = thy_doc['archetype_details']
-        except KeyError:
-            raise Exception("Invalid archetype file: %s" % archetype_id)
-        if test_name:
-            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
-                {'value' : self._get_dv_text(test_name)}
-        if tsh:
-            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.2'] = \
-                {'value' : self._get_quantity(tsh, 'mIU/l')}
-        if ft3:
-            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.7'] = \
-                {'value' : self._get_quantity(ft3, 'pmol/l')}
-        if total_t3:
-            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.8'] = \
-                {'value' : self._get_quantity(total_t3, 'pmol/l')}
-        if ft4:
-            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.3'] = \
-                {'value' : self._get_quantity(ft3, 'pmol/l')}
-        if total_t4:
-            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.4'] = \
-                {'value' : self._get_quantity(ft3, 'pmol/l')}
-        if ft3_index:
-             thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.9'] = \
-                 {'value' : self._get_dv_proportion(ft3_index, 1)}
-        if fti:
-            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.6'] = \
-                 {'value' : self._get_dv_proportion(fti, 1)}
-        if placer_id:
-            thy_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0062'] = {'value' : placer_id}
-        if filler_id:
-            thy_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0063'] = {'value' : filler_id}
-        if laboratory_result_id:
-            thy_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(laboratory_result_id)}
-        if result_datetime:
-            thy_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(result_datetime)}
-        return archetype_id, self._clean_archetype(thy_doc)
+    # def build_thyroid_data(self, test_name=None, tsh=None, ft3= None, total_t3=None, ft4=None, total_t4=None, ft3_index=None, fti=None, \
+    #                        placer_id=None, filler_id=None, laboratory_result_id=None, result_datetime=None):
+    #     archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-thyroid.v1'
+    #     thy_doc = self._load_file(archetype_id)
+    #     try:
+    #         thy_doc = thy_doc['archetype_details']
+    #     except KeyError:
+    #         raise Exception("Invalid archetype file: %s" % archetype_id)
+    #     if test_name:
+    #         thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
+    #             {'value' : self._get_dv_text(test_name)}
+    #     if tsh:
+    #         thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.2'] = \
+    #             {'value' : self._get_quantity(tsh, 'mIU/l')}
+    #     if ft3:
+    #         thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.7'] = \
+    #             {'value' : self._get_quantity(ft3, 'pmol/l')}
+    #     if total_t3:
+    #         thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.8'] = \
+    #             {'value' : self._get_quantity(total_t3, 'pmol/l')}
+    #     if ft4:
+    #         thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.3'] = \
+    #             {'value' : self._get_quantity(ft3, 'pmol/l')}
+    #     if total_t4:
+    #         thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.4'] = \
+    #             {'value' : self._get_quantity(ft3, 'pmol/l')}
+    #     if ft3_index:
+    #          thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.9'] = \
+    #              {'value' : self._get_dv_proportion(ft3_index, 1)}
+    #     if fti:
+    #         thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.6'] = \
+    #              {'value' : self._get_dv_proportion(fti, 1)}
+    #     if placer_id:
+    #         thy_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0062'] = {'value' : placer_id}
+    #     if filler_id:
+    #         thy_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0063'] = {'value' : filler_id}
+    #     if laboratory_result_id:
+    #         thy_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(laboratory_result_id)}
+    #     if result_datetime:
+    #         thy_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(result_datetime)}
+    #     return archetype_id, self._clean_archetype(thy_doc)
 
     def build_uae_data(self, test_name=None, sodum=None, potassium=None, chloride=None, bicarbonate=None, urea=None, creatinine=None, \
                        sp_ratio=None, laboratory_result_id=None, result_datetime=None):
@@ -477,6 +477,63 @@ class LiverFunction(ArchetypeBuilder):
             lvf_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(self.result_datetime)}
         return self.archetype_id, self._clean_archetype(lvf_doc)
 
+class Thyroid(ArchetypeBuilder):
+    def __init__(self, archetype_dir,test_name=None, tsh=None, ft3= None, total_t3=None, ft4=None, total_t4=None, ft3_index=None, fti=None, \
+                 placer_id=None, filler_id=None, laboratory_result_id=None, result_datetime=None ):
+        archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-thyroid.v1'
+        self.test_name = test_name or None
+        self.tsh = tsh or '%.2f' %uniform(0, 4.5)
+        self.ft3 = ft3 or '%.2f' %uniform(3,7)
+        self.total_t3 = total_t3 or '%.2f' %uniform(3,7)
+        self.ft4 = ft4 or '%.2f' %uniform(3,20)
+        self.total_t4 = total_t4 or '%.2f' %uniform(3,20)
+        self.ft3_index = ft3_index or {'numerator' : randint(1,4), 'denominator' : randint(1,4)}
+        self.fti = fti or {'numerator' : randint(1,4), 'denominator' : randint(1,4)}
+        self.placer_id = placer_id or None
+        self.filler_id = filler_id or None
+        self.laboratory_result_id = laboratory_result_id or None
+        self.result_datetime = result_datetime or None
+
+        super(Thyroid, self).__init__(archetype_id, archetype_dir)
+
+    def build(self):
+
+        thy_doc = self._load_file()
+        if self.test_name:
+            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0005'] =\
+                {'value' : self._get_dv_text(self.test_name)}
+        if self.tsh:
+            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.2'] = \
+                {'value' : self._get_quantity(self.tsh, 'mIU/l')}
+        if self.ft3:
+            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.7'] = \
+                {'value' : self._get_quantity(self.ft3, 'pmol/l')}
+        if self.total_t3:
+            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.8'] = \
+                {'value' : self._get_quantity(self.total_t3, 'pmol/l')}
+        if self.ft4:
+            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.3'] = \
+                {'value' : self._get_quantity(self.ft3, 'pmol/l')}
+        if self.total_t4:
+            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.4'] = \
+                {'value' : self._get_quantity(self.ft3, 'pmol/l')}
+        if self.ft3_index:
+             thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.9'] = \
+                 {'value' : self._get_dv_proportion(self.ft3_index, 1)}
+        if self.fti:
+            thy_doc['data']['at0001'][0]['events']['at0002']['data']['at0003'][0]['items']['at0078.6'] = \
+                 {'value' : self._get_dv_proportion(self.fti, 1)}
+        if self.placer_id:
+            thy_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0062'] = {'value' : self.placer_id}
+        if self.filler_id:
+            thy_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0063'] = {'value' : self.filler_id}
+        if self.laboratory_result_id:
+            thy_doc['protocol']['at0004'][0]['items']['at0013'][0]['items']['at0068'] = {'value' : self._get_dv_text(self.laboratory_result_id)}
+        if self.result_datetime:
+            thy_doc['protocol']['at0004'][0]['items']['at0075'] = {'value' : self._get_dv_date_time(self.result_datetime)}
+        return self.archetype_id, self._clean_archetype(thy_doc)
+
+
 
 
 class Composition(ArchetypeBuilder):
@@ -498,6 +555,7 @@ BUILDERS = {
     'full_blood_count' : FullBloodCount,
     'lipids' : Lipids,
     'liver_function': LiverFunction,
+    'thyroid' : Thyroid,
     'composition' : Composition
 }
 
