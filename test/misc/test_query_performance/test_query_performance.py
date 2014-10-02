@@ -1,22 +1,19 @@
-import time, sys, argparse
+import time, sys, argparse, json
 from random import randint
 from functools import wraps
-import numpy as np
-import itertools as it
 
-from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord,\
-    PatientRecord, ArchetypeInstance
+from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord, PatientRecord
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.querymanager import QueryManager
 from pyehr.utils.services import get_service_configuration, get_logger
 
-import archetype_builder
-from archetype_builder import Composition
+from structures_builder import build_record
 
 
 class QueryPerformanceTest(object):
 
-    def __init__(self, pyehr_conf_file, archetypes_dir, log_file=None, log_level='INFO'):
+    def __init__(self, pyehr_conf_file, archetypes_dir, structures_description_file,
+                 log_file=None, log_level='INFO'):
         sconf = get_service_configuration(pyehr_conf_file)
         self.db_service = DBServices(**sconf.get_db_configuration())
         self.db_service.set_index_service(**sconf.get_index_configuration())
@@ -25,6 +22,7 @@ class QueryPerformanceTest(object):
         self.logger = get_logger('query_performance_test',
                                  log_file=log_file, log_level=log_level)
         self.archetypes_dir = archetypes_dir
+        self.structures_file = structures_description_file
 
     def get_execution_time(f):
         @wraps(f)
@@ -36,59 +34,19 @@ class QueryPerformanceTest(object):
             return res, execution_time
         return wrapper
 
-    def _build_record(self, max_width, height):
-
-        def _get_random_builder(_builders):
-            builder_idx = randint(0, len(_builders)-1)
-            cls = archetype_builder.get_builder( _builders[builder_idx] )
-            return cls
-
-        if height < 1:
-            raise ValueError('Height must be greater than 0')
-
-        builders = archetype_builder.BUILDERS.keys()
-
-        if height == 1: # if height is zero it creates a leaf archetype (i.e an Observation)
-            # deletes the composition from the possible builders
-            leaf_builders = [b for b in builders if b != 'composition']
-            children = []
-            for i in xrange(max_width):
-                cls = _get_random_builder(leaf_builders)
-                arch = ArchetypeInstance( *cls(self.archetypes_dir).build() )
-                children.append(arch)
-
-        else:
-            width = randint(1, max_width)
-            arch = self._build_record(width, height - 1)
-            children = [arch]
-
-            # creates the other children. They can be Composition or Observation
-            for i in xrange(max_width - 1):
-                cls = _get_random_builder(builders)
-                if cls == Composition:
-                    width = randint(1, max_width)
-                    arch = self._build_record(width, height - 1)
-                else:
-                    arch = ArchetypeInstance( *cls(self.archetypes_dir).build() )
-                children.append(arch)
-
-        return ArchetypeInstance(*Composition(self.archetypes_dir, children).build())
-
     @get_execution_time
     def build_dataset(self, patients, ehrs):
+        with open(self.structures_file) as f:
+            structures = json.loads(f.read())
         for x in xrange(0, patients):
             crecs = list()
             p = self.db_service.save_patient(PatientRecord('PATIENT_%05d' % x))
             self.logger.debug('Saved patient PATIENT_%05d', x)
-            for max_depth, max_width in it.izip([int(i) for i in np.random.normal(6, 1, ehrs)],
-                                                [int(i) for i in np.random.uniform(1, 10, ehrs)]):
-                if max_depth < 1:
-                    max_depth = 1
-                if max_depth > 11:
-                    max_depth = 11
-                arch = self._build_record(max_depth, max_width)
+            for i in xrange(ehrs):
+                st = structures[randint(0, len(structures)-1)]
+                arch = build_record(st, self.archetypes_dir)
                 crecs.append(ClinicalRecord(arch))
-            self.logger.debug('Done building EHR %d records', ehrs)
+            self.logger.debug('Done building %d EHRs', ehrs)
             self.db_service.save_ehr_records(crecs, p)
             self.logger.debug('EHRs saved')
         drf = self.db_service._get_drivers_factory(self.db_service.ehr_repository)
@@ -181,14 +139,11 @@ class QueryPerformanceTest(object):
             _, filtered_patient_time = self.execute_patient_filtered_query()
             self.logger.info('Running patient_count_query')
             _, patient_count_time = self.execute_patient_count_query()
-        except Exception, e:
-            self.logger.critical('AN ERROR HAS OCCURRED: %s' % e)
-            raise e
         finally:
             self.logger.info('Running DB cleanup')
             _, cleanup_time = self.cleanup()
-        return build_dataset_time, select_all_time, select_all_patient_time, filtered_query_time,\
-               filtered_patient_time, patient_count_time, cleanup_time
+        return select_all_time, select_all_patient_time, filtered_query_time,\
+               filtered_patient_time, patient_count_time
 
 
 def get_parser():
@@ -204,13 +159,16 @@ def get_parser():
                         help='LOG level (default INFO)')
     parser.add_argument('--archetype-dir', type=str, required=True,
                         help='The directory containing archetype in json format')
+    parser.add_argument('--structures-description-file', type=str, required=True,
+                        help='JSON file with the description of the structures that will be used to produce the EHRs')
     return parser
 
 
 def main(argv):
     parser = get_parser()
     args = parser.parse_args(argv)
-    qpt = QueryPerformanceTest(args.conf_file, args.archetype_dir, args.log_file, args.log_level)
+    qpt = QueryPerformanceTest(args.conf_file, args.archetype_dir, args.structures_description_file,
+                               args.log_file, args.log_level)
     qpt.logger.info('--- STARTING TESTS ---')
     qpt.run(args.patients_size, args.ehrs_size)
     qpt.logger.info('--- DONE WITH TESTS ---')

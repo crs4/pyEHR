@@ -8,10 +8,6 @@ def get_parser():
                         help='input CSV file')
     parser.add_argument('--output-file', type=str, required=True,
                         help='output file for bokeh')
-    parser.add_argument('--exclude-creation-time', action='store_true',
-                        help='Exclude creation time from chart')
-    parser.add_argument('--exclude-cleanup-time', action='store_true',
-                        help='Exclude cleanup time from chart')
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
@@ -33,20 +29,13 @@ def main(argv):
         cleanup_data = list()
         for row in reader:
             x_axis_data.append(int(row['patients']) * int(row['ehrs_for_patient']))
-            build_dataset_data.append(float(row['build_dataset_time']))
             select_all_data.append(float(row['select_all_time']))
             select_all_patient_data.append(float(row['select_all_patient_time']))
             filtered_query_data.append(float(row['filtered_query_time']))
             filtered_patient_data.append(float(row['filtered_patient_time']))
             patient_count_data.append(float(row['patient_count_time']))
-            cleanup_data.append(float(row['cleanup_time']))
     output_file(args.output_file)
     hold()
-    if not args.exclude_creation_time:
-        build_dataset_line = line(x_axis_data, build_dataset_data, color='black',
-                                  line_dash='dashed')
-        build_dataset_scatter = scatter(x_axis_data, build_dataset_data, color='black',
-                                        legend='dataset creation time', size=4)
     select_all_line = line(x_axis_data, select_all_data, color='blue',
                            line_dash='dashed')
     select_all_scatter = scatter(x_axis_data, select_all_data, color='blue',
@@ -67,11 +56,6 @@ def main(argv):
                               line_dash='dashed')
     patient_count_scatter = scatter(x_axis_data, patient_count_data, color='navy',
                                     size=4, legend='PATIENT COUNT query time')
-    if not args.exclude_cleanup_time:
-        cleanup_line = line(x_axis_data, cleanup_data, color='yellow',
-                            line_dash='dashed')
-        cleanup_scatter = scatter(x_axis_data, cleanup_data, color='yellow',
-                                  size=4, legend='dataset cleanup time')
     xaxis().axis_label = 'Dataset size'
     yaxis().axis_label = 'Execution time in seconds'
     curplot().title = 'pyEHR performance chart'
