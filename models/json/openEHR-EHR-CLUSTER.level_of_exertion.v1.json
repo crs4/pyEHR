@@ -1,0 +1,56 @@
+{
+    "archetype_class" : "openEHR-EHR-CLUSTER.level_of_exertion.v1",
+    "archetype_details" : {
+        "definition" : {
+            "at0000" : [
+                {
+                    "items" : {
+                        "at0010" : [
+                            {
+                                "items" : {
+                                    "at0016" : {
+                                        "value" : {
+                                            "value" : "dummy text"
+                                        }
+                                    },
+                                    "at0011" : {
+                                        "value" : {
+                                            "value" : "at0012",
+                                            "defining_code" : {
+
+                                                "terminology_id" : {
+                                                    "value" : "terminology dummy value"
+                                                },
+                                                "code_string" : "dummy code string"
+                                            }
+
+                                        }
+                                    },
+                                    "at005": {
+                                        "value": {
+                                            "magnitude" : 0.0,
+                                            "units" : "J/min"
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "at0009" : {
+                            "value" : {
+                                "value" : "at0006",
+                                "defining_code" : {
+
+                                    "terminology_id" : {
+                                        "value" : "terminology dummy value"
+                                    },
+                                    "code_string" : "dummy code string"
+                                }
+
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

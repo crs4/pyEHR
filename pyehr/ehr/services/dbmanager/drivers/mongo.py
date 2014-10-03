@@ -8,6 +8,8 @@ import pymongo
 import pymongo.errors
 import time
 from itertools import izip
+from hashlib import md5
+import json
 
 
 class MongoDriver(DriverInterface):
@@ -644,6 +646,8 @@ class MongoDriver(DriverInterface):
         else:
             raise MissiongLocationExpressionError("Query must have a location expression")
         structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
+        if len(structure_ids) == 0:
+            return None, None, None
         query.update({'ehr_structure_id': {'$in': structure_ids}})
         return query, aliases_mapping, ehr_alias
 
@@ -676,11 +680,11 @@ class MongoDriver(DriverInterface):
         for key, value in query_result.iteritems():
             if isinstance(value, dict):
                 for k, v in self._split_results(value):
-                    yield '%s.%s' % (key, k), v
+                    yield '{}.{}'.format(key, k), v
             elif isinstance(value, list):
                 for element in value:
                     for k, v in self._split_results(element):
-                        yield '%s.%s' % (key, k), v
+                        yield '{}.{}'.format(key, k), v
             else:
                 yield key, value
 
@@ -728,11 +732,31 @@ class MongoDriver(DriverInterface):
         :return: a :class:`pyehr.ehr.services.dbmanager.querymanager.query.ResultSet` object
                  containing results for the given query
         """
-        query_mappings = self.build_queries(query_model, patients_repository, ehr_repository,
-                                            query_params)
-        total_results = ResultSet()
+        def get_selection_hash(selection):
+            sel_hash = md5()
+            sel_hash.update(json.dumps(selection))
+            return sel_hash.hexdigest()
+
+        query_mappings = list()
+        queries, location_query = self.build_queries(query_model, patients_repository, ehr_repository, query_params)
+        for x in queries:
+            if x not in query_mappings:
+                query_mappings.append(x)
+        # reduce number of queries based on the selection filter
+        selection_mappings = dict()
+        filter_mappings = dict()
         for qm in query_mappings:
-            results = self._run_aql_query(*qm['query'], aliases=qm['results_aliases'],
+            selection_key = get_selection_hash(qm['query'][1])
+            if selection_key not in selection_mappings:
+                selection_mappings[selection_key] = {'selection_filter': qm['query'][1],
+                                                     'aliases': qm['results_aliases']}
+            q = qm['query'][0]
+            filter_mappings.setdefault(selection_key, []).append(q)
+        total_results = ResultSet()
+        for sk, sm in selection_mappings.iteritems():
+            q = {'$or': filter_mappings[sk]}
+            q.update(location_query)
+            results = self._run_aql_query(q, sm['selection_filter'], aliases=sm['aliases'],
                                           collection=ehr_repository)
             total_results.extend(results)
         return total_results

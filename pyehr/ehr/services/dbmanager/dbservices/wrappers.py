@@ -338,6 +338,6 @@ class ArchetypeInstance(object):
                     archetype_data[k] = decode_list_data(v)
                 else:
                     archetype_data[k] = v
-            return ArchetypeInstance(json_data['archetype_class'], cleanup_json(archetype_data))
+            return ArchetypeInstance(json_data['archetype_class'], archetype_data)
         except MultipleInvalid:
             raise InvalidJsonStructureError('JSON record\'s structure is not compatible with ArchetypeInstance object')

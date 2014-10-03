@@ -1,0 +1,81 @@
+{
+    "archetype_class" : "openEHR-EHR-OBSERVATION.urinalysis.v1",
+    "archetype_details" : {
+        "data" : {
+            "at0001" : [
+                {
+                    "events" : {
+                        "at0002" : {
+                            "data" : {
+                                "at0003" : [
+                                    {
+                                        "items" : {
+                                            "at0050": {
+                                                "value" : null
+
+                                            },
+                                            "at0095": {
+                                                "value" : null
+
+                                            },
+                                            "at0062": {
+                                                "value" : null
+
+                                            },
+                                            "at0037": {
+                                                "value" : null
+                                            },
+                                            "at00151": {
+                                                "value" : null
+
+                                            },
+                                            "at0032": {
+                                                "value" : null
+
+                                            },
+                                            "at0056": {
+                                                "value" : null
+
+                                            },
+                                            "at0043": {
+                                                "value" : null
+
+                                            },
+                                            "at0068": {
+                                                "value" : null
+
+                                            },
+                                            "at0030" : {
+                                                "value" : {
+                                                    "value" : null
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "protocol" : {
+            "at0079" : [
+                {
+                    "items" : {
+                        "at0180": [
+                            {
+                                "archetype_class" : null,
+                                "archetype_details" : null
+
+
+                            }
+
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

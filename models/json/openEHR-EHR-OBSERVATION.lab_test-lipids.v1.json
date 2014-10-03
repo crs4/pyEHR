@@ -1,0 +1,165 @@
+{
+    "archetype_class" : "openEHR-EHR-OBSERVATION.lab_test-lipids.v1",
+    "archetype_details" : {
+        "data" : {
+            "at0001" : [
+                {
+                    "events" :
+                    {
+                        "at0002": {
+                            "data" : {
+                                "at0003" : [
+                                    {
+                                        "items" :
+                                        {
+                                            "at0005" : {
+                                                "value" : {
+                                                    "value" : null
+                                                }
+                                            },
+                                            "at0077" : {
+                                                "value" : {
+                                                    "value" : null
+                                                }
+                                            },
+                                            "at0073" : {
+                                                "value" : {
+                                                    "value" : null,
+                                                    "defining_code" : {
+                                                        "terminology_id" : {
+                                                            "value" : null
+                                                        },
+                                                        "code_string" : null
+                                                    }
+
+                                                }
+                                            },
+                                            "at0065" : [
+                                                {
+                                                    "archetype_class" : null,
+                                                    "archetype_details" : null
+
+
+                                                }
+
+                                            ],
+                                            "at0078.5" : {
+                                                "value" : {
+                                                    "magnitude" : null,
+                                                    "units" : null
+                                                }
+                                            },
+                                            "at0078.4" : {
+                                                "value" : {
+                                                    "magnitude" : null,
+                                                    "units" : null
+                                                }
+
+
+                                            },
+                                            "at0078.3" : {
+                                                "value" : {
+                                                    "magnitude" : null,
+                                                    "units" : null
+                                                }
+
+
+                                            },
+                                            "at0078.2" : {
+                                                "value" : {
+                                                    "magnitude" : null,
+                                                    "units" : null
+                                                }
+                                            },
+                                            "at0078.1" : [
+                                                {
+                                                    "value" : {
+                                                        "numerator" : null,
+                                                        "denominator" : null,
+                                                        "type" : {
+                                                            "value" : null
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "at0089" : [
+                                                {
+                                                    "archetype_class" : null,
+                                                    "archetype_details" : null
+                                                }
+                                            ],
+                                            "at0057" : {
+                                                "value" : {
+                                                    "value" : null
+                                                }
+                                            },
+                                            "at0010" : [
+                                                {
+                                                    "value" : {
+                                                        "media_type" : null,
+                                                        "size" : null
+                                                    }
+                                                }
+                                            ]
+                                        }
+
+                                    }
+                                ]
+                            }
+                        }
+                    }
+
+
+                }
+
+            ]
+        },
+        "protocol" : {
+            "at0004" : [
+                {
+                    "items"  :
+                    {
+                        "at0013" : [
+                            {
+                                "items" :
+                                {
+                                    "at0062" : {
+                                        "value" : {
+                                            "value" : null
+                                        }
+                                    },
+                                    "at0063" : {
+                                        "value" : {
+                                            "value" : null
+                                        }
+                                    },
+                                    "at0068" : {
+                                        "value" : {
+                                            "value" : null
+                                        }
+                                    },
+                                    "at0017" : [
+                                        {
+                                            "archetype_class" : null,
+                                            "archetype_details" : null
+                                        }
+                                    ]
+                                }
+
+                            }
+                        ],
+                        "at0075" : {
+                            "value" : {
+                                "dv_date_time" : null
+                            }
+                        }
+                    }
+
+                }
+            ]
+
+        }
+
+
+    }
+}

@@ -1,0 +1,213 @@
+{
+    "archetype_class": "openEHR-EHR-OBSERVATION.blood_pressure.v1",
+    "archetype_details": {
+        "data": {
+            "at0001": [
+                {
+                    "events": [
+                        {
+                            "at0006": {
+                                "data": {
+                                    "at0003": [
+                                        {
+                                            "items": {
+                                                "at0004": {
+                                                    "value": {
+                                                        "magnitude" : null,
+                                                        "units" : null
+                                                    }
+                                                },
+                                                "at0005": {
+                                                    "value": {
+                                                        "magnitude" : null,
+                                                        "units" : null
+                                                    }
+                                                },
+                                                "at1006": {
+                                                    "value": {
+                                                        "magnitude" : null,
+                                                        "units" : null
+                                                    }
+                                                },
+                                                "at1007": {
+                                                    "value": {
+                                                        "magnitude" : null,
+                                                        "units" : null
+                                                    }
+                                                },
+                                                "at0033": {
+                                                    "value": {
+                                                        "value" : null
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                "state": {
+                                    "at0007": [
+                                        {
+                                            "items": {
+                                                "at0008": {
+                                                    "value" : {
+                                                        "value" : null,
+                                                        "defining_code" : {
+
+                                                            "terminology_id" : {
+                                                                "value" : null
+                                                            },
+                                                            "code_string" : null
+                                                        }
+
+                                                    }
+                                                },
+                                                "at1052": {
+                                                    "value": {
+                                                        "value" : null
+                                                    }
+                                                },
+                                                "at1030": [
+                                                    {
+                                                        "archetype_class" : null,
+                                                        "archetype_details" : null
+                                                    }
+
+                                                ],
+                                                "at1043": {
+                                                    "value" : {
+                                                        "value" : null,
+                                                        "defining_code" : {
+                                                            "terminology_id" : {
+                                                                "value" : null
+                                                            },
+                                                            "code_string" : null
+                                                        }
+
+                                                    }
+
+                                                },
+                                                "at1005": {
+                                                    "value" : {
+                                                        "magnitude" : null,
+                                                        "units" : null
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            "at1042": {
+                                "math_function" : {
+                                    "value" : {
+                                        "value" : null,
+                                        "defining_code" : {
+                                            "terminology_id" : {
+                                                "value" : null
+                                            },
+                                            "code_string" : null
+                                        }
+                                    }
+                                },
+                                "width" : {
+                                    "value" : null
+                                },
+                                "data" : {
+                                    "use_node_item_tree" : null
+                                },
+                                "state" : {
+                                    "use_node_item_tree" : null
+                                }
+
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "protocol": {
+            "at0011": [
+                {
+                    "items": {
+                        "at0013": {
+                            "math_function" : {
+                                "value" : {
+                                    "value" : null,
+                                    "defining_code" : {
+                                        "terminology_id" : {
+                                            "value" : null
+                                        },
+                                        "code_string" : null
+                                    }
+                                }
+                            }
+                        },
+                        "at1033": [
+                            {
+                                "items": {
+                                    "at0014": {
+                                        "math_function" : {
+                                            "value" : {
+                                                "value" : null,
+                                                "defining_code" : {
+                                                    "terminology_id" : {
+                                                        "value" : null
+                                                    },
+                                                    "code_string" : null
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "at1034": {
+                                        "value" : {
+                                            "value": null
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "at1035": {
+                            "math_function" : {
+                                "value" : {
+                                    "value" : null,
+                                    "defining_code" : {
+                                        "terminology_id" : {
+                                            "value" : null
+                                        },
+                                        "code_string" : null
+                                    }
+                                }
+                            }
+                        },
+                        "at1038": {
+                            "value": {
+                                "value" : null
+                            }
+                        },
+                        "at1010": {
+                            "math_function" : {
+                                "value" : {
+                                    "value" : null,
+                                    "defining_code" : {
+                                        "terminology_id" : {
+                                            "value" : null
+                                        },
+                                        "code_string" : null
+                                    }
+                                }
+                            }
+                        },
+                        "at1025": [
+                            {
+                                "archetype_class" : null,
+                                "archetype_details" : {}
+                            }
+
+                        ]
+
+                    }
+                }
+            ]
+        }
+    }
+}

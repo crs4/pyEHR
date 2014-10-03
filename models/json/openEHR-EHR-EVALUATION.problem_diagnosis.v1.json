@@ -1,0 +1,154 @@
+{
+    "archetype_class" : "openEHR-EHR-EVALUATION.problem_diagnosis.v1",
+    "archetype_details" : {
+        "data" : {
+            "at0001" : [
+                {
+                    "items": {
+                        "at0002" : {
+                            "value" : {
+                                "value" : null
+                            }
+                        },
+                        "at0009" : {
+                            "value" : {
+                                "value" : null
+                            }
+                        },
+                        "at0005" : {
+                            "value" : {
+                                "value" : null,
+                                "defining_code" : {
+                                    "terminology_id" : {
+                                        "value" : null
+                                    },
+                                    "code_string" : null
+                                }
+
+                            }
+                        },
+                        "at0003" : {
+                            "value" : {
+                                "dv_date_time" : null
+                            }
+                        },
+                        "at0004" : {
+                            "value" : {
+                                "value" : null
+                            }
+                        },
+                        "at0012" : {
+                            "value" : {
+                                "value" : null
+                            }
+                        },
+                        "at0039" : {
+                            "archetype_class" : null,
+                            "archetype_details" : null
+                        },
+                        "at0018" : [
+                            {
+                                "items" : {
+                                    "at0019" : {
+                                        "value" : {
+                                            "magnitude" : null,
+                                            "units" : null
+                                        }
+                                    },
+                                    "at0020" : {
+                                        "value" : {
+                                            "dv_date_time" : null
+                                        }
+                                    },
+                                    "at0025" : {
+                                        "value" : {
+                                            "magnitude" : null
+                                        }
+                                    },
+                                    "at0022" : {
+                                        "value" : {
+                                            "value" : null
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "at0027" : [
+                            {
+                                "items" : {
+                                    "at0029" : {
+                                        "value" : {
+                                            "value" : null,
+                                            "defining_code" : {
+                                                "terminology_id" : {
+                                                    "value" : null
+                                                },
+                                                "code_string" : null
+                                            }
+
+                                        }
+                                    },
+                                    "at0028" : {
+                                        "value" : {
+                                            "value" : {
+                                                "value" : null
+                                            },
+                                            "value" : null
+                                        }
+                                    },
+                                    "at0044" : {
+                                        "value" : {
+                                            "value" : null
+                                        }
+                                    }
+
+                                }
+                            }
+                        ],
+                        "at0030" : {
+                            "value" : {
+                                "dv_date" : null
+                            }
+                        },
+                        "at0031" : {
+                            "value" : {
+                                "value" : null
+                            }
+                        },
+                        "at0042" : {
+                            "archetype_class" : null,
+                            "archetype_details" : null
+                        },
+                        "at0043" : [
+                            {
+                                "archetype_class" : null,
+                                "archetype_details" : null
+                            }
+                        ]
+
+
+                    }
+                }
+            ]
+        },
+        "protocol" : {
+            "at0032" : [
+                {
+                    "items" : {
+                        "at0035" : {
+                            "value" : {
+                                "value" : null
+                            }
+                        },
+                        "at0046" : [
+                            {
+                                "archetype_class" : null,
+                                "archetype_details" : null
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

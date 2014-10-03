@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from pyehr.ehr.services.dbmanager.errors import *
 import re
-from copy import deepcopy
 from itertools import izip
+
 
 class DriverInterface(object):
     """
@@ -257,12 +257,13 @@ class DriverInterface(object):
         location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
                                                                                  patients_repository,
                                                                                  ehr_repository)
+        if not location_query:
+            return []
         if condition:
             condition_results = self._calculate_condition_expression(condition, aliases)
             for condition_query, mappings in condition_results:
                 selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
                                                                                          ehr_alias)
-                condition_query.update(location_query)
                 queries.append(
                     {
                         'query': (condition_query, selection_filter),
@@ -273,18 +274,18 @@ class DriverInterface(object):
             paths = self._build_paths(aliases)
             for a in izip(*paths.values()):
                 for p in [dict(izip(paths.keys(), a))]:
-                    loc_q = deepcopy(location_query)
+                    q = dict()
                     for k in aliases.keys():
-                        loc_q.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
+                        q.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
                     selection_filter, results_aliases = self._calculate_selection_expression(selection, p,
                                                                                              ehr_alias)
                     queries.append(
                         {
-                            'query': (loc_q, selection_filter),
+                            'query': (q, selection_filter),
                             'results_aliases': results_aliases
                         }
                     )
-        return queries
+        return queries, location_query
 
     @abstractmethod
     def execute_query(self, query_model, patients_repository, ehr_repository,

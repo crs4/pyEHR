@@ -1,0 +1,238 @@
+{
+    "archetype_class" : "openEHR-EHR-OBSERVATION.lab_test-blood_glucose.v1",
+    "archetype_details" : {
+        "data" : {
+            "at0001" : [
+                {
+                    "events" : {
+                        "at0002" : {
+                            "data" : {
+                                "at0003" : [
+                                    {
+                                        "items" : {
+                                            "at0005" : {
+                                                "value" : {
+                                                    "value" : null
+                                                }
+                                            },
+                                            "at0077" : {
+                                                "value" : {
+                                                    "value" : null
+                                                }
+                                            },
+                                            "at0073" : {
+                                                "value" : {
+                                                    "value" : null,
+                                                    "defining_code" : {
+                                                        "terminology_id" : {
+                                                            "value" : null
+                                                        },
+                                                        "code_string" : null
+                                                    }
+
+                                                }
+                                            },
+                                            "at0065" : [
+                                                {
+                                                    "archetype_class" : null,
+                                                    "archetype_details" : null
+
+
+                                                }
+
+                                            ],
+                                            "at0078.2" : {
+                                                "value" : {
+                                                    "magnitude" : null,
+                                                    "units" : null
+                                                }
+                                            },
+                                            "at0078" : [
+                                                {
+                                                    "archetype_class" : null,
+                                                    "archetype_details" : null
+
+
+                                                }
+
+                                            ],
+                                            "at0057" : {
+                                                "value" : {
+                                                    "value" : null
+                                                }
+                                            },
+                                            "at0010" : [
+                                                {
+                                                    "value" : {
+                                                        "media_type" : null,
+                                                        "size" : null
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            },
+                            "state" : {
+                                "at0.89" : [
+                                    {
+                                        "items" : {
+                                            "at0.90" : [
+                                                {
+                                                    "items" : {
+                                                        "at0.91" : {
+                                                            "value" : {
+                                                                "value" : null,
+                                                                "defining_code" : {
+                                                                    "terminology_id" : {
+                                                                        "value" : null
+                                                                    },
+                                                                    "code_string" : null
+                                                                }
+
+                                                            }
+                                                        },
+                                                        "at0.96" : {
+                                                            "value" : null
+                                                        },
+                                                        "at0.97" : {
+                                                            "value" : {
+                                                                "value" : null
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "at0.98" : [
+                                                {
+                                                    "items" : {
+                                                        "at0.100" : {
+                                                            "value" : {
+                                                                "magnitude" : null,
+                                                                "units" : null
+                                                            }
+                                                        },
+                                                        "at0.101" : {
+                                                            "value" : {
+                                                                "value" : null,
+                                                                "defining_code" : {
+                                                                    "terminology_id" : {
+                                                                        "value" : null
+                                                                    },
+                                                                    "code_string" : null
+                                                                }
+
+                                                            }
+                                                        },
+                                                        "at0.99" : {
+                                                            "value" : {
+                                                                "value" : null,
+                                                                "defining_code" : {
+                                                                    "terminology_id" : {
+                                                                        "value" : null
+                                                                    },
+                                                                    "code_string" : null
+                                                                }
+
+                                                            }
+                                                        },
+                                                        "use_node_element" : null
+                                                    }
+                                                }
+                                            ],
+                                            "at0.107" : [
+                                                {
+                                                    "items" : {
+                                                        "at0.110" : {
+                                                            "value" : {
+                                                                "magnitude" : null,
+                                                                "units" : null
+                                                            }
+                                                        },
+                                                        "at0.111" : {
+                                                            "value" : {
+                                                                "value" : null,
+                                                                "defining_code" : {
+                                                                    "terminology_id" : {
+                                                                        "value" : null
+                                                                    },
+                                                                    "code_string" : null
+                                                                }
+
+                                                            }
+                                                        },
+                                                        "use_node_element" : null,
+                                                        "use_node_element" : null
+                                                    }
+                                                }
+                                            ],
+                                            "at.108" : [
+                                                {
+                                                    "items" : {
+                                                        "a.109" : {
+                                                            "value" : {
+                                                                "value" : null
+                                                            }
+                                                        },
+                                                        "use_node_element" : null,
+                                                        "use_node_element" : null
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "protocol" : {
+            "at0004" : [
+                {
+                    "items" : {
+                        "at0013" : [
+                            {
+                                "items" : {
+                                    "at0062" : {
+                                        "value" : {
+                                            "value" : null
+                                        }
+                                    },
+                                    "at0063" : {
+                                        "value" : {
+                                            "value" : null
+                                        }
+                                    },
+                                    "at0068" : {
+                                        "value" : {
+                                            "value" : null
+                                        }
+                                    },
+                                    "at0017" : [
+                                        {
+                                            "archetype_class" : null,
+                                            "archetype_details" : null
+
+
+                                        }
+
+
+                                    ]
+
+                                }
+                            }
+                        ],
+                        "at0075" : {
+                            "value" : {
+                                "dv_date_time" : null
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

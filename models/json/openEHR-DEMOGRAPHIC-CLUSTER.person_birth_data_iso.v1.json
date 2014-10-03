@@ -1,0 +1,62 @@
+{
+    "archetype_class" : "openEHR-DEMOGRAPHIC-CLUSTER.person_birth_data_iso.v1",
+    "archetype_details" : {
+        "at0000" : [
+            {
+                "items" : {
+                    "at0001" : {
+                        "value" : {
+                            "dv_date" : null
+                        }
+                    },
+                    "at0002" : {
+                        "value" : {
+                            "value" : null,
+                            "defining_code" : {
+                                "terminology_id" : {
+                                    "value" : null
+                                },
+                                "code_string" : null
+                            }
+
+                        }
+                    },
+                    "at0003" : {
+                        "value" : {
+                            "value" : null,
+                            "defining_code" : {
+                                "terminology_id" : {
+                                    "value" : null
+                                },
+                                "code_string" : null
+                            }
+
+                        }
+                    },
+                    "at0004" : {
+                        "value" : {
+                            "value" : null,
+                            "defining_code" : {
+                                "terminology_id" : {
+                                    "value" : null
+                                },
+                                "code_string" : null
+                            }
+
+                        }
+                    },
+                    "at0005" : {
+                        "value" : null
+                    },
+                    "at0006" : {
+                        "archetype_class" : null,
+                        "archetype_details" : null
+                    }
+
+
+                }
+            }
+
+        ]
+    }
+}
