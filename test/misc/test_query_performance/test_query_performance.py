@@ -1,4 +1,4 @@
-import time, sys, argparse, json
+import time, sys, argparse, json, os
 from random import randint
 from functools import wraps
 
@@ -28,6 +28,26 @@ class QueryPerformanceTest(object):
         self.query_manager.set_index_service(**index_conf)
         self.archetypes_dir = archetypes_dir
         self.structures_file = structures_description_file
+        self.setup_sharding()
+
+    def setup_sharding(self):
+        def build_shard_collection_command(db, coll, shard_keys):
+            return "sh.shardCollection('%s.%s', %r)" % (db, coll, shard_keys)
+
+        self.logger.info('Enabling sharding for database %s', self.db_service.database)
+        # Automatically setup MongoDB sharding for used database
+        base_command = "mongo %s --eval" % self.db_service.host
+        add_to_shard_command = "%s \"%s\"" % (base_command, "sh.enableSharding('%s')" % self.db_service.database)
+        shard_patients_coll = "%s \"%s\"" % (base_command, build_shard_collection_command(self.db_service.database,
+                                                                                          self.db_service.patients_repository,
+                                                                                          {"_id": "hashed"}))
+        shard_ehrs_coll = "%s \"%s\"" % (base_command, build_shard_collection_command(self.db_service.database,
+                                                                                      self.db_service.ehr_repository,
+                                                                                      {'ehr_structure_id': 1, 'patient_id': 1}))
+        for cmd in [add_to_shard_command, shard_patients_coll, shard_ehrs_coll]:
+            self.logger.debug(cmd)
+            os.system(cmd)
+        self.logger.info('Sharding configured')
 
     def get_execution_time(f):
         @wraps(f)
