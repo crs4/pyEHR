@@ -86,6 +86,7 @@ def main(argv):
                                args.log_file, args.log_level,
                                clean_dataset=True, db_name_prefix=str_def_label)
             results.update({'patients': batch[0], 'ehrs_for_patient': batch[1]})
+            out_file_writer.writerow(results)
             for batch in sorted(batches)[1:]:
                 results = run_test(batch[0], batch[1], args.conf_file,
                                    args.archetype_dir, str_out_file,
