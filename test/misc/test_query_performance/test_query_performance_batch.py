@@ -46,11 +46,12 @@ def get_output_writer(out_file):
 
 
 def run_test(patients_size, ehr_size, conf_file, archetypes_dir, ehr_structures_file,
-             logfile, loglevel):
+             logfile, loglevel, clean_dataset=False, db_name_prefix=None):
     qpt = QueryPerformanceTest(conf_file, archetypes_dir, ehr_structures_file,
-                               logfile, loglevel)
+                               logfile, loglevel, db_name_prefix)
     select_all_time, select_all_patient_time, filtered_query_time,\
-    filtered_patient_time, patient_count_time = qpt.run(patients_size, ehr_size)
+    filtered_patient_time, patient_count_time = qpt.run(patients_size, ehr_size,
+                                                        clean_dataset)
     return {
         'select_all_time': select_all_time,
         'select_all_patient_time': select_all_patient_time,
@@ -69,17 +70,24 @@ def main(argv):
             depth = str_def[0]
             width = str_def[1]
             str_count = str_def[2]
+            str_def_label = 'd-%d_w-%d_str-%d' % (depth, width, str_count)
             str_out_file = os.path.join(args.structures_description_dir,
-                                        'd-%d_w-%d_str-%d_cycle-%d.json' % (depth, width,
-                                                                            str_count, cycle))
+                                        '%s_cycle-%d.json' % (str_def_label, cycle))
             build_structures(str_out_file, str_count, depth, width)
-            out_file_writer, out_file = get_output_writer('%s_d-%d_w-%d_%d-str_cycle-%d.tsv' %
-                                                          (args.output_file_basename, depth,
-                                                           width, str_count, cycle))
-            for batch in sorted(batches):
+            out_file_writer, out_file = get_output_writer('%s_%s_cycle-%d.tsv' %
+                                                          (args.output_file_basename,
+                                                           str_def_label, cycle))
+            batch = sorted(batches)[0]
+            results = run_test(batch[0], batch[1], args.conf_file,
+                               args.archetype_dir, str_out_file,
+                               args.log_file, args.log_level,
+                               clean_dataset=True, db_name_prefix=str_def_label)
+            results.update({'patients': batch[0], 'ehrs_for_patient': batch[1]})
+            for batch in sorted(batches)[1:]:
                 results = run_test(batch[0], batch[1], args.conf_file,
                                    args.archetype_dir, str_out_file,
-                                   args.log_file, args.log_level)
+                                   args.log_file, args.log_level,
+                                   db_name_prefix=str_def_label)
                 results.update({'patients': batch[0], 'ehrs_for_patient': batch[1]})
                 out_file_writer.writerow(results)
             out_file.close()
