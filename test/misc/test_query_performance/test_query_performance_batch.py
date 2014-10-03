@@ -12,6 +12,8 @@ def get_parser():
                         help='The CSV file with the description of the batchs')
     parser.add_argument('--structures-description-dir', type=str, default='/tmp',
                         help='The directory where EHRs description files are going to be stored')
+    parser.add_argument('--output-files-dir', type=str, required=True,
+                        help='The directory where output files will be stored')
     parser.add_argument('--output-file-basename', type=str, required=True,
                         help='The basename of the file that will contain the results')
     parser.add_argument('--archetype-dir', type=str, required=True,
@@ -35,8 +37,8 @@ def get_test_description(batch_file):
     return batch_descriptions
 
 
-def get_output_writer(out_file):
-    ofile = open(out_file, 'w')
+def get_output_writer(out_file, out_dir):
+    ofile = open(os.path.join(out_dir, out_file), 'w')
     writer = csv.DictWriter(ofile, ['patients', 'ehrs_for_patient',
                                     'select_all_time', 'select_all_patient_time',
                                     'filtered_query_time', 'filtered_patient_time',
@@ -76,7 +78,8 @@ def main(argv):
             build_structures(str_out_file, str_count, depth, width)
             out_file_writer, out_file = get_output_writer('%s_%s_cycle-%d.tsv' %
                                                           (args.output_file_basename,
-                                                           str_def_label, cycle))
+                                                           str_def_label, cycle),
+                                                          args.output_files_dir)
             batch = sorted(batches)[0]
             results = run_test(batch[0], batch[1], args.conf_file,
                                args.archetype_dir, str_out_file,
