@@ -1,11 +1,13 @@
-import sys, argparse, csv
+import sys, argparse, csv, os, numpy
 from bokeh.plotting import *
 
 
 def get_parser():
     parser = argparse.ArgumentParser('Plot data created with test_query_performance_batch.py')
-    parser.add_argument('--input-file', type=str, required=True,
-                        help='input CSV file')
+    parser.add_argument('--input-files-dir', type=str, required=True,
+                        help='the directory containing the input CSV files')
+    parser.add_argument('--input-files-basename', type=str, required=True,
+                        help='basename that will be used to search input files containing data to be plotted')
     parser.add_argument('--output-file', type=str, required=True,
                         help='output file for bokeh')
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
@@ -14,48 +16,61 @@ def get_parser():
     return parser
 
 
+def get_files(files_dir, files_basename):
+    return [os.path.join(files_dir, f) for f in os.listdir(files_dir)
+            if f.startswith(files_basename)]
+
+
+def extract_data(files):
+    data = dict()
+    for f in files:
+        print 'opening %s' % f
+        with open(f) as in_file:
+            reader = csv.DictReader(in_file, delimiter='\t')
+            for row in reader:
+                times = {
+                    'select_all_time': float(row['select_all_time']),
+                    'select_all_patient_time': float(row['select_all_patient_time']),
+                    'filtered_query_time': float(row['filtered_query_time']),
+                    'filtered_patient_time': float(row['filtered_patient_time']),
+                    'patient_count_time': float(row['patient_count_time'])
+                }
+                data.setdefault(int(row['patients'])*int(row['ehrs_for_patient']), []).append(times)
+    return data
+
+
+def plot_column(data, column_label, color, legend):
+    """
+    Plot values of a single column, mean value and dashed line
+    """
+    measures_x_axis = list()
+    measures_y_axis = list()
+    mean_values = list()
+    for dataset_size, measures in sorted(data.iteritems()):
+        print 'Calculating values for data_size %d' % dataset_size
+        for measure in measures:
+            measures_x_axis.append(dataset_size)
+            measures_y_axis.append(measure[column_label])
+        mean_values.append(numpy.mean([m[column_label] for m in measures]))
+    print mean_values
+    scatter(measures_x_axis, measures_y_axis, color=color, alpha=0.3, legend=legend)
+    scatter(sorted(data.keys()), mean_values, color=color, alpha=1, size=6, legend=legend)
+    line(sorted(data.keys()), mean_values, color=color, legend=legend, line_dash='dashed')
+
+
 def main(argv):
     parser = get_parser()
     args = parser.parse_args(argv)
-    with open(args.input_file) as in_file:
-        reader = csv.DictReader(in_file, delimiter='\t')
-        x_axis_data = list()
-        build_dataset_data = list()
-        select_all_data = list()
-        select_all_patient_data = list()
-        filtered_query_data = list()
-        filtered_patient_data = list()
-        patient_count_data = list()
-        cleanup_data = list()
-        for row in reader:
-            x_axis_data.append(int(row['patients']) * int(row['ehrs_for_patient']))
-            select_all_data.append(float(row['select_all_time']))
-            select_all_patient_data.append(float(row['select_all_patient_time']))
-            filtered_query_data.append(float(row['filtered_query_time']))
-            filtered_patient_data.append(float(row['filtered_patient_time']))
-            patient_count_data.append(float(row['patient_count_time']))
+    files = get_files(args.input_files_dir, args.input_files_basename)
+    data = extract_data(files)
+    # start plotting
     output_file(args.output_file)
     hold()
-    select_all_line = line(x_axis_data, select_all_data, color='blue',
-                           line_dash='dashed')
-    select_all_scatter = scatter(x_axis_data, select_all_data, color='blue',
-                                 size=4, legend='SELECT ALL query time')
-    select_all_patient_line = line(x_axis_data, select_all_patient_data, color='red',
-                                   line_dash='dashed')
-    select_all_patient_scatter = scatter(x_axis_data, select_all_patient_data, color='red',
-                                         size=4, legend='SELECT ALL for single patient query time')
-    filtered_query_line = line(x_axis_data, filtered_query_data, color='green',
-                               line_dash='dashed')
-    filtered_query_scatter = scatter(x_axis_data, filtered_query_data, color='green',
-                                     size=4, legend='FILTERED QUERY query time')
-    filtered_patient_line = line(x_axis_data, filtered_patient_data, color='orange',
-                                 line_dash='dashed')
-    filtered_patient_scatter = scatter(x_axis_data, filtered_patient_data, color='orange',
-                                       size=4, legend='FILTERED QUERY for single patient query time')
-    patient_count_line = line(x_axis_data, patient_count_data, color='navy',
-                              line_dash='dashed')
-    patient_count_scatter = scatter(x_axis_data, patient_count_data, color='navy',
-                                    size=4, legend='PATIENT COUNT query time')
+    plot_column(data, 'select_all_time', 'blue', 'SELECT ALL query time')
+    plot_column(data, 'select_all_patient_time', 'red', 'SELECT ALL for single patient query time')
+    plot_column(data, 'filtered_query_time', 'orange', 'FILTERED QUERY query time')
+    plot_column(data, 'filtered_patient_time', 'green', 'FILTERED QUERY for single patient query time')
+    plot_column(data, 'patient_count_time', 'navy', 'PATIENT COUNT query time')
     xaxis().axis_label = 'Dataset size'
     yaxis().axis_label = 'Execution time in seconds'
     curplot().title = 'pyEHR performance chart'
