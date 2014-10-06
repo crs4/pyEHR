@@ -10,6 +10,8 @@ def get_parser():
                         help='basename that will be used to search input files containing data to be plotted')
     parser.add_argument('--output-file', type=str, required=True,
                         help='output file for bokeh')
+    parser.add_argument('--plot-height', type=int, help='Height of the plot (in pixels)')
+    parser.add_argument('--plot-width', type=int, help='Width of the plot (in pixels)')
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
@@ -39,7 +41,7 @@ def extract_data(files):
     return data
 
 
-def plot_column(data, column_label, color, legend):
+def plot_column(data, column_label, color, legend, width=None, height=None):
     """
     Plot values of a single column, mean value and dashed line
     """
@@ -53,8 +55,9 @@ def plot_column(data, column_label, color, legend):
             measures_y_axis.append(measure[column_label])
         mean_values.append(numpy.mean([m[column_label] for m in measures]))
     print mean_values
-    scatter(measures_x_axis, measures_y_axis, color=color, alpha=0.3, legend=legend)
-    scatter(sorted(data.keys()), mean_values, color=color, alpha=1, size=6, legend=legend)
+    scatter(measures_x_axis, measures_y_axis, color=color, alpha=0.3, size=6, legend=legend,
+            plot_width=width, plot_height=height)
+    scatter(sorted(data.keys()), mean_values, color=color, alpha=1, size=8, legend=legend)
     line(sorted(data.keys()), mean_values, color=color, legend=legend, line_dash='dashed')
 
 
@@ -66,14 +69,22 @@ def main(argv):
     # start plotting
     output_file(args.output_file)
     hold()
-    plot_column(data, 'select_all_time', 'blue', 'SELECT ALL query time')
-    plot_column(data, 'select_all_patient_time', 'red', 'SELECT ALL for single patient query time')
-    plot_column(data, 'filtered_query_time', 'orange', 'FILTERED QUERY query time')
-    plot_column(data, 'filtered_patient_time', 'green', 'FILTERED QUERY for single patient query time')
-    plot_column(data, 'patient_count_time', 'navy', 'PATIENT COUNT query time')
-    xaxis().axis_label = 'Dataset size'
-    yaxis().axis_label = 'Execution time in seconds'
-    curplot().title = 'pyEHR performance chart'
+    plot_column(data, 'select_all_time', 'blue', 'PATIENTS ID RETRIEVAL (no filter)',
+                args.plot_width, args.plot_height)
+    plot_column(data, 'select_all_patient_time', 'red',
+                'SYSTOLIC + DYASTOLIC PRESSURE (for single patient)',
+                args.plot_width, args.plot_height)
+    plot_column(data, 'filtered_query_time', 'orange',
+                'SYSTOLIC + DYASTOLIC PRESSURE (all patients, with filter)',
+                args.plot_width, args.plot_height)
+    plot_column(data, 'filtered_patient_time', 'green',
+                'SYSTOLIC + DYASTOLIC PRESSURE (single patient, with filter)',
+                args.plot_width, args.plot_height)
+    plot_column(data, 'patient_count_time', 'navy', 'PATIENTS ID RETRIEVAL (with filter)',
+                args.plot_width, args.plot_height)
+    xaxis().axis_label = 'Clinical Records count'
+    yaxis().axis_label = 'Query execution time (in seconds)'
+    curplot().title = 'pyEHR query performance chart'
     legend().orientation = 'top_left'
     show()
 
