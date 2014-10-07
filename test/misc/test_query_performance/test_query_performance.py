@@ -1,4 +1,4 @@
-import time, sys, argparse, json, os
+import time, sys, argparse, json, os, threading
 from random import randint
 from functools import wraps
 
@@ -10,6 +10,49 @@ from pyehr.utils.services import get_service_configuration, get_logger
 from structures_builder import build_record
 
 
+class DataLoaderThread(threading.Thread):
+    def __init__(self, db_service_conf, index_service_conf,
+                 patients_size, ehrs_size, thread_index, threads_size,
+                 archetypes_dir, record_structures, logger):
+        threading.Thread.__init__(self)
+        self.db_service = DBServices(**db_service_conf)
+        self.db_service.set_index_service(**index_service_conf)
+        self.patients_size = patients_size
+        self.ehrs_size = ehrs_size
+        self.thread_index = thread_index
+        self.threads_size = threads_size
+        self.record_structures = record_structures
+        self.archetypes_dir = archetypes_dir
+        self.logger = logger
+
+    def run(self):
+        self.logger.debug('RUNNING DATASET BUILD THREAD %d of %d', self.thread_index+1,
+                          self.threads_size)
+        for x in xrange(0, self.patients_size):
+            crecs = list()
+            if x % self.threads_size == self.thread_index:
+                p = self.db_service.get_patient('PATIENT_%05d' % x, fetch_ehr_records=False)
+                if p is None:
+                    p = self.db_service.save_patient(PatientRecord('PATIENT_%05d' % x))
+                    self.logger.debug('Saved patient PATIENT_%05d', x)
+                else:
+                    self.logger.debug('Patient PATIENT_%05d already exists, using it', x)
+                for i in xrange(self.ehrs_size - len(p.ehr_records)):
+                    st = self.record_structures[randint(0, len(self.record_structures) - 1)]
+                    arch = build_record(st, self.archetypes_dir)
+                    crecs.append(ClinicalRecord(arch))
+                self.logger.debug('Done building %d EHRs', (self.ehrs_size - len(p.ehr_records)))
+                for chunk in self.records_by_chunk(crecs):
+                    self.db_service.save_ehr_records(chunk, p)
+                self.logger.debug('EHRs saved')
+
+    def records_by_chunk(self, records, batch_size=500):
+        offset = 0
+        while(len(records[offset:])) > 0:
+            yield records[offset:offset+batch_size]
+            offset += batch_size
+
+
 class QueryPerformanceTest(object):
 
     def __init__(self, pyehr_conf_file, archetypes_dir, structures_description_file,
@@ -17,15 +60,15 @@ class QueryPerformanceTest(object):
         self.logger = get_logger('query_performance_test',
                          log_file=log_file, log_level=log_level)
         sconf = get_service_configuration(pyehr_conf_file)
-        db_conf = sconf.get_db_configuration()
-        index_conf = sconf.get_index_configuration()
+        self.db_conf = sconf.get_db_configuration()
+        self.index_conf = sconf.get_index_configuration()
         if db_name_prefix:
-            db_conf['database'] = '%s_%s' % (db_conf['database'], db_name_prefix)
-            index_conf['database'] = '%s_%s' % (index_conf['database'], db_name_prefix)
-        self.db_service = DBServices(**db_conf)
-        self.db_service.set_index_service(**index_conf)
-        self.query_manager = QueryManager(**db_conf)
-        self.query_manager.set_index_service(**index_conf)
+            self.db_conf['database'] = '%s_%s' % (self.db_conf['database'], db_name_prefix)
+            self.index_conf['database'] = '%s_%s' % (self.index_conf['database'], db_name_prefix)
+        self.db_service = DBServices(**self.db_conf)
+        self.db_service.set_index_service(**self.index_conf)
+        self.query_manager = QueryManager(**self.db_conf)
+        self.query_manager.set_index_service(**self.index_conf)
         self.archetypes_dir = archetypes_dir
         self.structures_file = structures_description_file
         self.setup_sharding()
@@ -60,31 +103,18 @@ class QueryPerformanceTest(object):
         return wrapper
 
     @get_execution_time
-    def build_dataset(self, patients, ehrs):
-        def records_by_chunk(records, batch_size=500):
-            offset = 0
-            while len(records[offset:]) > 0:
-                yield records[offset:offset+batch_size]
-                offset += batch_size
-
+    def build_dataset(self, patients, ehrs, threads):
         with open(self.structures_file) as f:
             structures = json.loads(f.read())
-        for x in xrange(0, patients):
-            crecs = list()
-            p = self.db_service.get_patient('PATIENT_%05d' % x, fetch_ehr_records=False)
-            if p is None:
-                p = self.db_service.save_patient(PatientRecord('PATIENT_%05d' % x))
-                self.logger.debug('Saved patient PATIENT_%05d', x)
-            else:
-                self.logger.debug('Patient PATIENT_%05d already exists, using it', x)
-            for i in xrange(ehrs - len(p.ehr_records)):
-                st = structures[randint(0, len(structures)-1)]
-                arch = build_record(st, self.archetypes_dir)
-                crecs.append(ClinicalRecord(arch))
-            self.logger.debug('Done building %d EHRs', (ehrs - len(p.ehr_records)))
-            for chunk in records_by_chunk(crecs):
-                self.db_service.save_ehr_records(chunk, p)
-            self.logger.debug('EHRs saved')
+        build_threads = []
+        for x in xrange(threads):
+            t = DataLoaderThread(self.db_conf, self.index_conf, patients, ehrs, x, threads,
+                                 self.archetypes_dir, structures, self.logger)
+            build_threads.append(t)
+        for t in build_threads:
+            t.start()
+        for t in build_threads:
+            t.join()
         drf = self.db_service._get_drivers_factory(self.db_service.ehr_repository)
         with drf.get_driver() as driver:
             self.logger.info('*** Produced %d different structures ***',
@@ -159,14 +189,15 @@ class QueryPerformanceTest(object):
                                                       self.db_service.index_service.db)
         self.db_service.index_service.disconnect()
 
-    def run(self, patients_size, ehr_size, run_on_clean_dataset=True):
+    def run(self, patients_size, ehr_size, run_on_clean_dataset=True, build_dataset_threads=1):
         if run_on_clean_dataset:
             self.logger.info('Running tests on a cleaned up dataset')
             self.cleanup()
         try:
-            self.logger.info('Creating dataset. %d patients and %d EHRs for patient' % (patients_size,
-                                                                            ehr_size))
-            _, build_dataset_time = self.build_dataset(patients_size, ehr_size)
+            self.logger.info('Creating dataset. %d patients and %d EHRs for patient' %
+                             (patients_size, ehr_size))
+            _, build_dataset_time = self.build_dataset(patients_size, ehr_size,
+                                                       build_dataset_threads)
             self.logger.info('Running "SELECT ALL" query')
             _, select_all_time = self.execute_select_all_query()
             self.logger.info('Running "SELECT ALL" filtered by patient query')
@@ -202,6 +233,8 @@ def get_parser():
                         help='The directory containing archetype in json format')
     parser.add_argument('--structures-description-file', type=str, required=True,
                         help='JSON file with the description of the structures that will be used to produce the EHRs')
+    parser.add_argument('--build-dataset-threads', type=int, default=1,
+                        help='The number of threads that will be used to create the dataset (default 1)')
     return parser
 
 
@@ -211,7 +244,7 @@ def main(argv):
     qpt = QueryPerformanceTest(args.conf_file, args.archetype_dir, args.structures_description_file,
                                args.log_file, args.log_level)
     qpt.logger.info('--- STARTING TESTS ---')
-    qpt.run(args.patients_size, args.ehrs_size, args.cleanup_dataset)
+    qpt.run(args.patients_size, args.ehrs_size, args.cleanup_dataset, args.build_dataset_threads)
     qpt.logger.info('--- DONE WITH TESTS ---')
 
 

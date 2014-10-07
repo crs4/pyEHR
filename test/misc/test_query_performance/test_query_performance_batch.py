@@ -20,6 +20,8 @@ def get_parser():
                         help='The directory containing archetype in json format')
     parser.add_argument('--run-cycles', type=int, default=1,
                         help='The number of cycles the run will be repeated')
+    parser.add_argument('--build-dataset-threads', type=int, default=1,
+                        help='The number of threads that will be used to create the dataset (default 1)')
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
@@ -48,12 +50,12 @@ def get_output_writer(out_file, out_dir):
 
 
 def run_test(patients_size, ehr_size, conf_file, archetypes_dir, ehr_structures_file,
-             logfile, loglevel, clean_dataset=False, db_name_prefix=None):
+             logfile, loglevel, build_dataset_threads=1, clean_dataset=False, db_name_prefix=None):
     qpt = QueryPerformanceTest(conf_file, archetypes_dir, ehr_structures_file,
                                logfile, loglevel, db_name_prefix)
     select_all_time, select_all_patient_time, filtered_query_time,\
     filtered_patient_time, patient_count_time = qpt.run(patients_size, ehr_size,
-                                                        clean_dataset)
+                                                        clean_dataset, build_dataset_threads)
     return {
         'select_all_time': select_all_time,
         'select_all_patient_time': select_all_patient_time,
@@ -84,6 +86,7 @@ def main(argv):
             results = run_test(batch[0], batch[1], args.conf_file,
                                args.archetype_dir, str_out_file,
                                args.log_file, args.log_level,
+                               build_dataset_threads=args.build_dataset_threads,
                                clean_dataset=True, db_name_prefix=str_def_label)
             results.update({'patients': batch[0], 'ehrs_for_patient': batch[1]})
             out_file_writer.writerow(results)
@@ -91,6 +94,7 @@ def main(argv):
                 results = run_test(batch[0], batch[1], args.conf_file,
                                    args.archetype_dir, str_out_file,
                                    args.log_file, args.log_level,
+                                   build_dataset_threads=args.build_dataset_threads,
                                    db_name_prefix=str_def_label)
                 results.update({'patients': batch[0], 'ehrs_for_patient': batch[1]})
                 out_file_writer.writerow(results)
