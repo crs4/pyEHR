@@ -50,7 +50,7 @@ class ResultSet(object):
         raise KeyError('Can\'t map key %s' % key)
 
     def __str__(self):
-        return str(self.get_json())
+        return str(self.to_json())
 
     def extend(self, result_set):
         self.total_results += result_set.total_results
