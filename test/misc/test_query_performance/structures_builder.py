@@ -41,15 +41,21 @@ def build_structures(json_output_file, structures_count, mean_depth, max_width):
         f.write(json.dumps(structures))
 
 
-def build_record(record_description, archetypes_dir):
+def build_record(record_description, archetypes_dir, match):
     if isinstance(record_description, dict):
         for k, v in record_description.iteritems():
             if k != 'composition':
                 raise ValueError('Container type %s unknown' % k)
-            children = [build_record(x, archetypes_dir) for x in v]
+            children = [build_record(x, archetypes_dir, match) for x in v]
             return ArchetypeInstance(*archetype_builder.BUILDERS[k](archetypes_dir, children).build())
     else:
-        return ArchetypeInstance(*archetype_builder.BUILDERS[record_description](archetypes_dir).build())
+        kw = {}
+        if record_description == 'blood_pressure':
+            if match:
+                kw.update({'systolic' : randint(121, 130), 'dyastolic' : randint(80, 90)})
+            else:
+                kw.update({'systolic' : randint(100, 105), 'dyastolic' : randint(60, 75)})
+        return ArchetypeInstance(*archetype_builder.BUILDERS[record_description](archetypes_dir, **kw).build())
 
 
 def _build_record_full_random(max_width, height, archetypes_dir):

@@ -1,7 +1,6 @@
 import time, sys, argparse, json, os, threading
 from random import randint
 from functools import wraps
-
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord, PatientRecord
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.querymanager import QueryManager
@@ -13,7 +12,7 @@ from structures_builder import build_record
 class DataLoaderThread(threading.Thread):
     def __init__(self, db_service_conf, index_service_conf,
                  patients_size, ehrs_size, thread_index, threads_size,
-                 archetypes_dir, record_structures, logger):
+                 archetypes_dir, record_structures, logger, matching_instances):
         threading.Thread.__init__(self)
         self.db_service = DBServices(**db_service_conf)
         self.db_service.set_index_service(**index_service_conf)
@@ -24,6 +23,7 @@ class DataLoaderThread(threading.Thread):
         self.record_structures = record_structures
         self.archetypes_dir = archetypes_dir
         self.logger = logger
+        self.matching_counter = matching_instances
 
     def run(self):
         self.logger.debug('RUNNING DATASET BUILD THREAD %d of %d', self.thread_index+1,
@@ -37,9 +37,15 @@ class DataLoaderThread(threading.Thread):
                     self.logger.debug('Saved patient PATIENT_%05d', x)
                 else:
                     self.logger.debug('Patient PATIENT_%05d already exists, using it', x)
-                for i in xrange(self.ehrs_size - len(p.ehr_records)):
+                num_rec = self.ehrs_size - len(p.ehr_records)
+                if self.matching_counter > 0:
+                    self.matching_counter -= 1
+                    arch = build_record('blood_pressure', self.archetypes_dir, True)
+                    crecs.append(ClinicalRecord(arch))
+                    num_rec -= 1
+                for i in xrange(num_rec):
                     st = self.record_structures[randint(0, len(self.record_structures) - 1)]
-                    arch = build_record(st, self.archetypes_dir)
+                    arch = build_record(st, self.archetypes_dir, False)
                     crecs.append(ClinicalRecord(arch))
                 self.logger.debug('Done building %d EHRs', (self.ehrs_size - len(p.ehr_records)))
                 for chunk in self.records_by_chunk(crecs):
@@ -56,7 +62,7 @@ class DataLoaderThread(threading.Thread):
 class QueryPerformanceTest(object):
 
     def __init__(self, pyehr_conf_file, archetypes_dir, structures_description_file,
-                 log_file=None, log_level='INFO', db_name_prefix=None):
+                 matching_instances, log_file=None, log_level='INFO', db_name_prefix=None):
         self.logger = get_logger('query_performance_test',
                          log_file=log_file, log_level=log_level)
         sconf = get_service_configuration(pyehr_conf_file)
@@ -71,6 +77,7 @@ class QueryPerformanceTest(object):
         self.query_manager.set_index_service(**self.index_conf)
         self.archetypes_dir = archetypes_dir
         self.structures_file = structures_description_file
+        self.matching_instances = matching_instances
         self.setup_sharding()
 
     def setup_sharding(self):
@@ -104,12 +111,25 @@ class QueryPerformanceTest(object):
 
     @get_execution_time
     def build_dataset(self, patients, ehrs, threads):
+        def _get_instances_in_thread(instances, threads):
+            if threads > instances:
+                return [instances]
+            mod = instances % threads
+            if  mod == 0:
+                return [instances/threads for i in range(0, instances/threads)]
+            else:
+                parts = [instances/threads for i in range(0, instances/threads)]
+                parts[0] += mod
+                return parts
+
         with open(self.structures_file) as f:
             structures = json.loads(f.read())
         build_threads = []
-        for x in xrange(threads):
+        parts = _get_instances_in_thread(self.matching_instances, threads)
+        for i, x in enumerate(xrange(threads)):
             t = DataLoaderThread(self.db_conf, self.index_conf, patients, ehrs, x, threads,
-                                 self.archetypes_dir, structures, self.logger)
+                                 self.archetypes_dir, structures, self.logger,
+                                 parts[i])
             build_threads.append(t)
         for t in build_threads:
             t.start()
@@ -123,6 +143,7 @@ class QueryPerformanceTest(object):
     def execute_query(self, query, params=None):
         results = self.query_manager.execute_aql_query(query, params)
         self.logger.info('Retrieved %d records' % results.total_results)
+        return results
 
     @get_execution_time
     def execute_select_all_query(self):
@@ -146,12 +167,12 @@ class QueryPerformanceTest(object):
     @get_execution_time
     def execute_filtered_query(self):
         query = """
-        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude as systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude as dyastolic
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
-        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
-        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 121
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 80
         """
         return self.execute_query(query)
 
@@ -173,8 +194,8 @@ class QueryPerformanceTest(object):
         SELECT e/ehr_id/value AS patient_identifier
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
-        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
-        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 121
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 80
         """
         return self.execute_query(query)
 
@@ -235,6 +256,8 @@ def get_parser():
                         help='JSON file with the description of the structures that will be used to produce the EHRs')
     parser.add_argument('--build-dataset-threads', type=int, default=1,
                         help='The number of threads that will be used to create the dataset (default 1)')
+    parser.add_argument('--matching-instances', type=int, default=100,
+                        help='The number of records that will match the test query')
     return parser
 
 
@@ -242,7 +265,7 @@ def main(argv):
     parser = get_parser()
     args = parser.parse_args(argv)
     qpt = QueryPerformanceTest(args.conf_file, args.archetype_dir, args.structures_description_file,
-                               args.log_file, args.log_level)
+                               args.matching_instances, args.log_file, args.log_level)
     qpt.logger.info('--- STARTING TESTS ---')
     qpt.run(args.patients_size, args.ehrs_size, args.cleanup_dataset, args.build_dataset_threads)
     qpt.logger.info('--- DONE WITH TESTS ---')

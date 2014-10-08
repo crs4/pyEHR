@@ -25,6 +25,8 @@ def get_parser():
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
+    parser.add_argument('--matching-instances', type=int, default=10,
+                        help='The number of records that will match the test query')
     return parser
 
 
@@ -49,10 +51,10 @@ def get_output_writer(out_file, out_dir):
     return writer, ofile
 
 
-def run_test(patients_size, ehr_size, conf_file, archetypes_dir, ehr_structures_file,
+def run_test(patients_size, ehr_size, conf_file, archetypes_dir, ehr_structures_file, matching_instances,
              logfile, loglevel, build_dataset_threads=1, clean_dataset=False, db_name_prefix=None):
-    qpt = QueryPerformanceTest(conf_file, archetypes_dir, ehr_structures_file,
-                               logfile, loglevel, db_name_prefix)
+    qpt = QueryPerformanceTest(conf_file, archetypes_dir, ehr_structures_file, matching_instances,
+                                logfile, loglevel, db_name_prefix)
     select_all_time, select_all_patient_time, filtered_query_time,\
     filtered_patient_time, patient_count_time = qpt.run(patients_size, ehr_size,
                                                         clean_dataset, build_dataset_threads)
@@ -84,7 +86,7 @@ def main(argv):
                                                           args.output_files_dir)
             batch = sorted(batches)[0]
             results = run_test(batch[0], batch[1], args.conf_file,
-                               args.archetype_dir, str_out_file,
+                               args.archetype_dir, str_out_file, args.matching_instances,
                                args.log_file, args.log_level,
                                build_dataset_threads=args.build_dataset_threads,
                                clean_dataset=True, db_name_prefix=str_def_label)
@@ -92,7 +94,7 @@ def main(argv):
             out_file_writer.writerow(results)
             for batch in sorted(batches)[1:]:
                 results = run_test(batch[0], batch[1], args.conf_file,
-                                   args.archetype_dir, str_out_file,
+                                   args.archetype_dir, str_out_file, args.matching_instances,
                                    args.log_file, args.log_level,
                                    build_dataset_threads=args.build_dataset_threads,
                                    db_name_prefix=str_def_label)
