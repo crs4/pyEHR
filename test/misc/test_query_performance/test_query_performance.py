@@ -1,4 +1,4 @@
-import time, sys, argparse, json, os, threading
+import time, sys, argparse, json, os, multiprocessing
 from random import randint
 from functools import wraps
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord, PatientRecord
@@ -9,11 +9,11 @@ from pyehr.utils.services import get_service_configuration, get_logger
 from structures_builder import build_record
 
 
-class DataLoaderThread(threading.Thread):
+class DataLoaderThread(multiprocessing.Process):
     def __init__(self, db_service_conf, index_service_conf,
                  patients_size, ehrs_size, thread_index, threads_size,
                  archetypes_dir, record_structures, logger, matching_instances):
-        threading.Thread.__init__(self)
+        multiprocessing.Process.__init__(self)
         self.db_service = DBServices(**db_service_conf)
         self.db_service.set_index_service(**index_service_conf)
         self.patients_size = patients_size
@@ -115,7 +115,7 @@ class QueryPerformanceTest(object):
             if threads > instances:
                 return [instances]
             mod = instances % threads
-            if  mod == 0:
+            if mod == 0:
                 return [instances/threads for i in range(0, instances/threads)]
             else:
                 parts = [instances/threads for i in range(0, instances/threads)]
@@ -228,7 +228,8 @@ class QueryPerformanceTest(object):
             self.logger.info('Running filtered with patient filter')
             _, filtered_patient_time = self.execute_patient_filtered_query()
             self.logger.info('Running patient_count_query')
-            _, patient_count_time = self.execute_patient_count_query()
+            patient_count_results, patient_count_time = self.execute_patient_count_query()
+            assert len(list(patient_count_results.get_distinct_results('patient_identifier'))) == self.matching_instances
         except Exception, e:
             self.logger.critical('An error has occurred, cleaning up dataset')
             self.cleanup()
