@@ -25,8 +25,6 @@ def get_parser():
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
-    parser.add_argument('--matching-instances', type=int, default=10,
-                        help='The number of records that will match the test query')
     return parser
 
 
@@ -37,7 +35,7 @@ def get_test_description(batch_file):
     batch_descriptions = dict()
     for b in batches:
         batch_descriptions.setdefault((int(b['mean_depth']), int(b['max_width']), int(b['structures'])),
-            []).append((int(b['patients']), int(b['ehrs_for_patient'])))
+            []).append((int(b['patients']), int(b['ehrs_for_patient']), int(b['matching_instances'])))
     return batch_descriptions
 
 
@@ -86,7 +84,7 @@ def main(argv):
                                                           args.output_files_dir)
             batch = sorted(batches)[0]
             results = run_test(batch[0], batch[1], args.conf_file,
-                               args.archetype_dir, str_out_file, args.matching_instances,
+                               args.archetype_dir, str_out_file, batch[2],
                                args.log_file, args.log_level,
                                build_dataset_threads=args.build_dataset_threads,
                                clean_dataset=True, db_name_prefix=str_def_label)
@@ -94,7 +92,7 @@ def main(argv):
             out_file_writer.writerow(results)
             for batch in sorted(batches)[1:]:
                 results = run_test(batch[0], batch[1], args.conf_file,
-                                   args.archetype_dir, str_out_file, args.matching_instances,
+                                   args.archetype_dir, str_out_file, batch[2],
                                    args.log_file, args.log_level,
                                    build_dataset_threads=args.build_dataset_threads,
                                    db_name_prefix=str_def_label)
