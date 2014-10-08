@@ -13,6 +13,8 @@ class DataLoaderThread(threading.Thread):
     def __init__(self, db_service_conf, index_service_conf,
                  patients_size, ehrs_size, thread_index, threads_size,
                  archetypes_dir, record_structures, logger, matching_instances):
+        if matching_instances > patients_size:
+            raise ValueError("Patient size must be greater or equal than matching instances")
         threading.Thread.__init__(self)
         self.db_service = DBServices(**db_service_conf)
         self.db_service.set_index_service(**index_service_conf)
@@ -32,13 +34,16 @@ class DataLoaderThread(threading.Thread):
             crecs = list()
             if x % self.threads_size == self.thread_index:
                 p = self.db_service.get_patient('PATIENT_%05d' % x, fetch_ehr_records=False)
+                create_match = False
                 if p is None:
                     p = self.db_service.save_patient(PatientRecord('PATIENT_%05d' % x))
                     self.logger.debug('Saved patient PATIENT_%05d', x)
+                    create_match = True
                 else:
                     self.logger.debug('Patient PATIENT_%05d already exists, using it', x)
+                    self.matching_counter -= 1
                 num_rec = self.ehrs_size - len(p.ehr_records)
-                if self.matching_counter > 0:
+                if self.matching_counter > 0 and create_match:
                     self.matching_counter -= 1
                     arch = build_record('blood_pressure', self.archetypes_dir, True)
                     crecs.append(ClinicalRecord(arch))
