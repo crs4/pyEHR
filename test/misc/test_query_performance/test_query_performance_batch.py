@@ -23,6 +23,7 @@ def get_parser():
     parser.add_argument('--build-dataset-threads', type=int, default=1,
                         help='The number of threads that will be used to create the dataset (default 1)')
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
+    parser.add_argument('--build-structures', action='store_true', help='Force to build structures')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
     return parser
@@ -35,7 +36,7 @@ def get_test_description(batch_file):
     batch_descriptions = dict()
     for b in batches:
         batch_descriptions.setdefault((int(b['mean_depth']), int(b['max_width']), int(b['structures'])),
-            []).append((int(b['patients']), int(b['ehrs_for_patient']), int(b['matching_instances'])))
+            []).append((int(b['patients']), int(b['ehrs_for_patient']), int(b['matching_instances']), int(b['start_patient_id'])))
     return batch_descriptions
 
 
@@ -50,8 +51,8 @@ def get_output_writer(out_file, out_dir):
 
 
 def run_test(patients_size, ehr_size, conf_file, archetypes_dir, ehr_structures_file, matching_instances,
-             logfile, loglevel, build_dataset_threads=1, clean_dataset=False, db_name_prefix=None):
-    qpt = QueryPerformanceTest(conf_file, archetypes_dir, ehr_structures_file, matching_instances,
+             start_patient_id, logfile, loglevel, build_dataset_threads=1, clean_dataset=False, db_name_prefix=None):
+    qpt = QueryPerformanceTest(conf_file, archetypes_dir, ehr_structures_file, matching_instances, start_patient_id,
                                 logfile, loglevel, db_name_prefix)
     select_all_time, select_all_patient_time, filtered_query_time,\
     filtered_patient_time, patient_count_time = qpt.run(patients_size, ehr_size,
@@ -77,25 +78,26 @@ def main(argv):
             str_def_label = 'd-%d_w-%d_str-%d' % (depth, width, str_count)
             str_out_file = os.path.join(args.structures_description_dir,
                                         '%s_cycle-%d.json' % (str_def_label, cycle))
-            build_structures(str_out_file, str_count, depth, width)
+            if args.build_structures:
+                build_structures(str_out_file, str_count, depth, width)
             out_file_writer, out_file = get_output_writer('%s_%s_cycle-%d.tsv' %
                                                           (args.output_file_basename,
                                                            str_def_label, cycle),
                                                           args.output_files_dir)
             batch = sorted(batches)[0]
             results = run_test(batch[0], batch[1], args.conf_file,
-                               args.archetype_dir, str_out_file, batch[2],
+                               args.archetype_dir, str_out_file, batch[2], batch[3],
                                args.log_file, args.log_level,
                                build_dataset_threads=args.build_dataset_threads,
-                               clean_dataset=True, db_name_prefix=str_def_label)
+                               clean_dataset=False, db_name_prefix=str_def_label)
             results.update({'patients': batch[0], 'ehrs_for_patient': batch[1]})
             out_file_writer.writerow(results)
             for batch in sorted(batches)[1:]:
                 results = run_test(batch[0], batch[1], args.conf_file,
-                                   args.archetype_dir, str_out_file, batch[2],
+                                   args.archetype_dir, str_out_file, batch[2], batch[3],
                                    args.log_file, args.log_level,
                                    build_dataset_threads=args.build_dataset_threads,
-                                   db_name_prefix=str_def_label)
+                                   clean_dataset=False, db_name_prefix=str_def_label)
                 results.update({'patients': batch[0], 'ehrs_for_patient': batch[1]})
                 out_file_writer.writerow(results)
             out_file.close()

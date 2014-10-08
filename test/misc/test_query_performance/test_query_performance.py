@@ -12,7 +12,7 @@ from structures_builder import build_record
 class DataLoaderThread(multiprocessing.Process):
     def __init__(self, db_service_conf, index_service_conf,
                  patients_size, ehrs_size, thread_index, threads_size,
-                 archetypes_dir, record_structures, logger, matching_instances):
+                 archetypes_dir, record_structures, logger, matching_instances, start_patient_id):
         if matching_instances > patients_size:
             raise ValueError("Patient size must be greater or equal than matching instances")
         multiprocessing.Process.__init__(self)
@@ -26,11 +26,12 @@ class DataLoaderThread(multiprocessing.Process):
         self.archetypes_dir = archetypes_dir
         self.logger = logger
         self.matching_counter = matching_instances
+        self.start_patient_id = start_patient_id
 
     def run(self):
         self.logger.debug('RUNNING DATASET BUILD THREAD %d of %d', self.thread_index+1,
                           self.threads_size)
-        for x in xrange(0, self.patients_size):
+        for x in xrange(self.start_patient_id, self.start_patient_id + self.patients_size):
             crecs = list()
             if x % self.threads_size == self.thread_index:
                 p = self.db_service.get_patient('PATIENT_%05d' % x, fetch_ehr_records=False)
@@ -67,7 +68,7 @@ class DataLoaderThread(multiprocessing.Process):
 class QueryPerformanceTest(object):
 
     def __init__(self, pyehr_conf_file, archetypes_dir, structures_description_file,
-                 matching_instances, log_file=None, log_level='INFO', db_name_prefix=None):
+                 matching_instances, start_patient_id, log_file=None, log_level='INFO', db_name_prefix=None):
         self.logger = get_logger('query_performance_test',
                          log_file=log_file, log_level=log_level)
         sconf = get_service_configuration(pyehr_conf_file)
@@ -83,6 +84,7 @@ class QueryPerformanceTest(object):
         self.archetypes_dir = archetypes_dir
         self.structures_file = structures_description_file
         self.matching_instances = matching_instances
+        self.start_patient_id = start_patient_id
         self.setup_sharding()
 
     def setup_sharding(self):
@@ -132,9 +134,13 @@ class QueryPerformanceTest(object):
         build_threads = []
         parts = _get_instances_in_thread(self.matching_instances, threads)
         for i, x in enumerate(xrange(threads)):
+            try:
+                matching_count = parts[i]
+            except IndexError:
+                matching_count = 0
             t = DataLoaderThread(self.db_conf, self.index_conf, patients, ehrs, x, threads,
                                  self.archetypes_dir, structures, self.logger,
-                                 parts[i])
+                                 matching_count, self.start_patient_id)
             build_threads.append(t)
         for t in build_threads:
             t.start()
