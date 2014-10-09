@@ -24,6 +24,7 @@ def get_parser():
                         help='The number of threads that will be used to create the dataset (default 1)')
     parser.add_argument('--log-file', type=str, help='LOG file (default stderr)')
     parser.add_argument('--build-structures', action='store_true', help='Force to build structures')
+    parser.add_argument('--clean-dataset', action='store_true', help='Clean dataset before every cycle')
     parser.add_argument('--log-level', type=str, default='INFO',
                         help='LOG level (default INFO)')
     return parser
@@ -36,7 +37,9 @@ def get_test_description(batch_file):
     batch_descriptions = dict()
     for b in batches:
         batch_descriptions.setdefault((int(b['mean_depth']), int(b['max_width']), int(b['structures'])),
-            []).append((int(b['patients']), int(b['ehrs_for_patient']), int(b['matching_instances']), int(b['start_patient_id'])))
+            []).append((int(b['patients']), int(b['ehrs_for_patient']), int(b['bp_matching_instances']),
+                        int(b['ua_matching_instances']), int(b['intersection_matching_instances']),
+                        int(b['start_patient_id'])))
     return batch_descriptions
 
 
@@ -85,16 +88,26 @@ def main(argv):
                                                            str_def_label, cycle),
                                                           args.output_files_dir)
             batch = sorted(batches)[0]
+            matching_instances = {
+                'blood_pressure': batch[2],
+                'urin_analysis': batch[3],
+                'intersect': batch[4]
+            }
             results = run_test(batch[0], batch[1], args.conf_file,
-                               args.archetype_dir, str_out_file, batch[2], batch[3],
+                               args.archetype_dir, str_out_file, matching_instances, batch[5],
                                args.log_file, args.log_level,
                                build_dataset_threads=args.build_dataset_threads,
-                               clean_dataset=False, db_name_prefix=str_def_label)
+                               clean_dataset=args.clean_dataset, db_name_prefix=str_def_label)
             results.update({'patients': batch[0], 'ehrs_for_patient': batch[1]})
             out_file_writer.writerow(results)
             for batch in sorted(batches)[1:]:
+                matching_instances = {
+                    'blood_pressure': batch[2],
+                    'urin_analysis': batch[3],
+                    'intersect': batch[4]
+                }
                 results = run_test(batch[0], batch[1], args.conf_file,
-                                   args.archetype_dir, str_out_file, batch[2], batch[3],
+                                   args.archetype_dir, str_out_file, matching_instances, batch[5],
                                    args.log_file, args.log_level,
                                    build_dataset_threads=args.build_dataset_threads,
                                    clean_dataset=False, db_name_prefix=str_def_label)

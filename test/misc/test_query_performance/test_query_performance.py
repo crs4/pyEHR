@@ -4,17 +4,16 @@ from functools import wraps
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord, PatientRecord
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.querymanager import QueryManager
+from pyehr.ehr.services.dbmanager.querymanager.queries_runner import QueriesRunner
 from pyehr.utils.services import get_service_configuration, get_logger
 
-from structures_builder import build_record
+from structures_builder import build_record, contains_archetype
 
 
 class DataLoaderThread(multiprocessing.Process):
     def __init__(self, db_service_conf, index_service_conf,
                  patients_size, ehrs_size, thread_index, threads_size,
                  archetypes_dir, record_structures, logger, matching_instances, start_patient_id):
-        if matching_instances > patients_size:
-            raise ValueError("Patient size must be greater or equal than matching instances")
         multiprocessing.Process.__init__(self)
         self.db_service = DBServices(**db_service_conf)
         self.db_service.set_index_service(**index_service_conf)
@@ -31,6 +30,11 @@ class DataLoaderThread(multiprocessing.Process):
     def run(self):
         self.logger.debug('RUNNING DATASET BUILD THREAD %d of %d', self.thread_index+1,
                           self.threads_size)
+        selected_structures = dict()
+        for label in ['blood_pressure', 'urin_analysis']:
+            for structure in self.record_structures:
+                if contains_archetype(structure, label):
+                    selected_structures.setdefault(label, []).append(structure)
         for x in xrange(self.start_patient_id, self.start_patient_id + self.patients_size):
             crecs = list()
             if x % self.threads_size == self.thread_index:
@@ -42,11 +46,33 @@ class DataLoaderThread(multiprocessing.Process):
                     create_match = True
                 else:
                     self.logger.debug('Patient PATIENT_%05d already exists, using it', x)
-                    self.matching_counter -= 1
+                    self.matching_counter['intersect'] -= 1
+                    self.matching_counter['blood_pressure'] -= 1
+                    self.matching_counter['urin_analysis'] -= 1
                 num_rec = self.ehrs_size - len(p.ehr_records)
-                if self.matching_counter > 0 and create_match:
-                    self.matching_counter -= 1
-                    arch = build_record('blood_pressure', self.archetypes_dir, True)
+                if self.matching_counter['intersect'] > 0 and create_match:
+                    self.matching_counter['blood_pressure'] -= 1
+                    st = selected_structures['blood_pressure'][randint(0, len(selected_structures['blood_pressure']) - 1)]
+                    arch = build_record(st, self.archetypes_dir, True, 'blood_pressure')
+                    crecs.append(ClinicalRecord(arch))
+                    self.matching_counter['urin_analysis'] -= 1
+                    st = selected_structures['urin_analysis'][randint(0, len(selected_structures['urin_analysis']) - 1)]
+                    arch = build_record(st, self.archetypes_dir, True, 'urin_analysis')
+                    crecs.append(ClinicalRecord(arch))
+                    self.matching_counter['intersect'] -= 1
+                    num_rec -= 2
+                    create_match = False
+                if self.matching_counter['blood_pressure'] > 0 and create_match:
+                    self.matching_counter['blood_pressure'] -= 1
+                    st = selected_structures['blood_pressure'][randint(0, len(selected_structures['blood_pressure']) - 1)]
+                    arch = build_record(st, self.archetypes_dir, True, 'blood_pressure')
+                    crecs.append(ClinicalRecord(arch))
+                    num_rec -= 1
+                    create_match = False
+                if self.matching_counter['urin_analysis'] > 0 and create_match:
+                    self.matching_counter['urin_analysis'] -= 1
+                    st = selected_structures['urin_analysis'][randint(0, len(selected_structures['urin_analysis']) - 1)]
+                    arch = build_record(st, self.archetypes_dir, True, 'urin_analysis')
                     crecs.append(ClinicalRecord(arch))
                     num_rec -= 1
                 for i in xrange(num_rec):
@@ -81,6 +107,7 @@ class QueryPerformanceTest(object):
         self.db_service.set_index_service(**self.index_conf)
         self.query_manager = QueryManager(**self.db_conf)
         self.query_manager.set_index_service(**self.index_conf)
+        self.queries_runner = QueriesRunner(self.db_conf, self.index_conf)
         self.archetypes_dir = archetypes_dir
         self.structures_file = structures_description_file
         self.matching_instances = matching_instances
@@ -126,16 +153,23 @@ class QueryPerformanceTest(object):
                 return [instances/threads for i in range(0, instances/threads)]
             else:
                 parts = [instances/threads for i in range(0, instances/threads)]
-                parts[0] += mod
+                for x in xrange(0, mod):
+                    parts[x] += 1
                 return parts
 
         with open(self.structures_file) as f:
             structures = json.loads(f.read())
         build_threads = []
-        parts = _get_instances_in_thread(self.matching_instances, threads)
+        bp_parts = _get_instances_in_thread(self.matching_instances['blood_pressure'], threads)
+        ua_parts = _get_instances_in_thread(self.matching_instances['urin_analysis'], threads)
+        i_parts = _get_instances_in_thread(self.matching_instances['intersect'], threads)
         for i, x in enumerate(xrange(threads)):
             try:
-                matching_count = parts[i]
+                matching_count = {
+                    'blood_pressure': bp_parts[i],
+                    'urin_analysis': ua_parts[i],
+                    'intersect': i_parts[i]
+                }
             except IndexError:
                 matching_count = 0
             t = DataLoaderThread(self.db_conf, self.index_conf, patients, ehrs, x, threads,
@@ -154,6 +188,14 @@ class QueryPerformanceTest(object):
     def execute_query(self, query, params=None):
         results = self.query_manager.execute_aql_query(query, params)
         self.logger.info('Retrieved %d records' % results.total_results)
+        return results
+
+    def execute_queries_intersection(self, queries, intersection_field_label):
+        for label, query in queries.iteritems():
+            self.queries_runner.add_query(label, query)
+        self.queries_runner.execute_queries()
+        results = self.queries_runner.get_intersection(intersection_field_label, *queries.keys())
+        self.logger.info('Retrieved %d records' % len(results))
         return results
 
     @get_execution_time
@@ -200,15 +242,52 @@ class QueryPerformanceTest(object):
         return self.execute_query(query, {'ehrUid': 'PATIENT_%05d' % patient_index})
 
     @get_execution_time
-    def execute_patient_count_query(self):
+    def blood_pressure_execute_patient_count_query(self):
         query = """
         SELECT e/ehr_id/value AS patient_identifier
         FROM Ehr e
+        CONTAINS Composition c[openEHR-EHR-COMPOSITION.encounter.v1]
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 121
-        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 80
+        AND o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 80
         """
         return self.execute_query(query)
+
+    @get_execution_time
+    def urine_analysis_execute_patient_count_query(self):
+        query = """
+        SELECT e/ehr_id/value AS patient_identifier
+        FROM Ehr e
+        CONTAINS Composition c[openEHR-EHR-COMPOSITION.encounter.v1]
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.urinalysis.v1]
+        WHERE o/data[at0001]/events[at0002]/data[at0003]/items[at0050]/value = at0120
+        AND o/data[at0001]/events[at0002]/data[at0003]/items[at0095]/value = at0101
+        """
+        return self.execute_query(query)
+
+    @get_execution_time
+    def blood_pressure_urine_analysis_intersection(self):
+        bp_query = """
+        SELECT e/ehr_id/value AS patient_identifier
+        FROM Ehr e
+        CONTAINS Composition c[openEHR-EHR-COMPOSITION.encounter.v1]
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 121
+        AND o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 80
+        """
+        ua_query = """
+        SELECT e/ehr_id/value AS patient_identifier
+        FROM Ehr e
+        CONTAINS Composition c[openEHR-EHR-COMPOSITION.encounter.v1]
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.urinalysis.v1]
+        WHERE o/data[at0001]/events[at0002]/data[at0003]/items[at0050]/value = at0120
+        AND o/data[at0001]/events[at0002]/data[at0003]/items[at0095]/value = at0101
+        """
+        queries = {
+            'blood_pressure': bp_query,
+            'urine_analysis': ua_query
+        }
+        return self.execute_queries_intersection(queries, 'patient_identifier')
 
     def cleanup(self):
         drf = self.db_service._get_drivers_factory(self.db_service.ehr_repository)
@@ -222,6 +301,10 @@ class QueryPerformanceTest(object):
         self.db_service.index_service.disconnect()
 
     def run(self, patients_size, ehr_size, run_on_clean_dataset=True, build_dataset_threads=1):
+        min_records = self.matching_instances['blood_pressure'] + self.matching_instances['urin_analysis']\
+                      - self.matching_instances['intersect']
+        if min_records > patients_size:
+            raise ValueError("Patient size must be greater or equal than matching instances")
         if run_on_clean_dataset:
             self.logger.info('Running tests on a cleaned up dataset')
             self.cleanup()
@@ -239,17 +322,23 @@ class QueryPerformanceTest(object):
             self.logger.info('Running filtered with patient filter')
             _, filtered_patient_time = self.execute_patient_filtered_query()
             self.logger.info('Running patient_count_query')
-            patient_count_results, patient_count_time = self.execute_patient_count_query()
-            assert len(list(patient_count_results.get_distinct_results('patient_identifier'))) == self.matching_instances
+            bp_patient_count_results, bp_patient_count_time = self.blood_pressure_execute_patient_count_query()
+            assert len(list(bp_patient_count_results.get_distinct_results('patient_identifier'))) == \
+                self.matching_instances['blood_pressure']
+            ua_patient_count_results, ua_patient_count_time = self.urine_analysis_execute_patient_count_query()
+            assert len(list(ua_patient_count_results.get_distinct_results('patient_identifier'))) == \
+                self.matching_instances['urin_analysis']
+            intersection_count, intersection_time = self.blood_pressure_urine_analysis_intersection()
+            assert len(intersection_count) == self.matching_instances['intersect']
         except AssertionError, ae:
             self.logger.critical('Query count dont\'t matches expected results')
             raise ae
-        except Exception, e:
-            self.logger.critical('An error has occurred, cleaning up dataset')
-            self.cleanup()
-            raise e
+        # except Exception, e:
+        #     self.logger.critical('An error has occurred, cleaning up dataset')
+        #     self.cleanup()
+        #     raise e
         return select_all_time, select_all_patient_time, filtered_query_time,\
-               filtered_patient_time, patient_count_time
+               filtered_patient_time, bp_patient_count_time
 
 
 def get_parser():
@@ -271,16 +360,25 @@ def get_parser():
                         help='JSON file with the description of the structures that will be used to produce the EHRs')
     parser.add_argument('--build-dataset-threads', type=int, default=1,
                         help='The number of threads that will be used to create the dataset (default 1)')
-    parser.add_argument('--matching-instances', type=int, default=100,
-                        help='The number of records that will match the test query')
+    parser.add_argument('--bp-matching-instances', type=int, default=100,
+                        help='The number of Blood Pressure records that will match the test query')
+    parser.add_argument('--au-matching-instances', type=int, default=100,
+                        help='The number of Urine Analysys records that will match the test query')
+    parser.add_argument('--i-matching-instances', type=int, default=100,
+                        help='The number of records that will match both Blood Pressure and Urine Analysis queries')
     return parser
 
 
 def main(argv):
     parser = get_parser()
     args = parser.parse_args(argv)
+    matching_instances = {
+        'blood_pressure': args.bp_matching_instances,
+        'urin_analysis': args.ua_matching_instances,
+        'intersect': args.i_matching_instances
+    }
     qpt = QueryPerformanceTest(args.conf_file, args.archetype_dir, args.structures_description_file,
-                               args.matching_instances, args.log_file, args.log_level)
+                               matching_instances, args.log_file, args.log_level)
     qpt.logger.info('--- STARTING TESTS ---')
     qpt.run(args.patients_size, args.ehrs_size, args.cleanup_dataset, args.build_dataset_threads)
     qpt.logger.info('--- DONE WITH TESTS ---')
