@@ -241,6 +241,9 @@ class QueryPerformanceTest(object):
             self.logger.info('Running patient_count_query')
             patient_count_results, patient_count_time = self.execute_patient_count_query()
             assert len(list(patient_count_results.get_distinct_results('patient_identifier'))) == self.matching_instances
+        except AssertionError, ae:
+            self.logger.critical('Query count dont\'t matches expected results')
+            raise ae
         except Exception, e:
             self.logger.critical('An error has occurred, cleaning up dataset')
             self.cleanup()
