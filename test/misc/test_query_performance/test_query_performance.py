@@ -171,7 +171,11 @@ class QueryPerformanceTest(object):
                     'intersect': i_parts[i]
                 }
             except IndexError:
-                matching_count = 0
+                matching_count = {
+                    'blood_pressure': 0,
+                    'urin_analysis': 0,
+                    'intersect': 0
+                }
             t = DataLoaderThread(self.db_conf, self.index_conf, patients, ehrs, x, threads,
                                  self.archetypes_dir, structures, self.logger,
                                  matching_count, self.start_patient_id)
