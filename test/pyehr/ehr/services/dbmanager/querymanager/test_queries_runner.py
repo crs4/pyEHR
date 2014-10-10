@@ -169,12 +169,60 @@ class TestQueriesRunner(unittest.TestCase):
                                             'dyastolic_query')
         self.assertEqual(sorted(union_expected_results), sorted(res))
 
+    def test_cleanup(self):
+        self._build_patients_batch(50, 10, systolic_range=(100, 250), dyastolic_range=(100, 250))
+        sys_query = """
+        SELECT e/ehr_id/value AS patient_identifier
+        FROM Ehr e
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        """
+        dya_query = """
+        SELECT e/ehr_id/value AS patient_identifier
+        FROM Ehr e
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 120
+        """
+        self.queries_runner.add_query('systolic_query', sys_query)
+        self.queries_runner.add_query('dyastolic_query', dya_query)
+        self.assertEqual(self.queries_runner.queries_count, 2)
+        self.assertEqual(self.queries_runner.results_count, 0)
+        self.queries_runner.execute_queries()
+        self.assertEqual(self.queries_runner.results_count, 2)
+        self.queries_runner.cleanup()
+        self.assertEqual(self.queries_runner.queries_count, 0)
+        self.assertEqual(self.queries_runner.results_count, 0)
+
+    def test_remove_query(self):
+        self._build_patients_batch(50, 10, systolic_range=(100, 250), dyastolic_range=(100, 250))
+        sys_query = """
+        SELECT e/ehr_id/value AS patient_identifier
+        FROM Ehr e
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        """
+        dya_query = """
+        SELECT e/ehr_id/value AS patient_identifier
+        FROM Ehr e
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 120
+        """
+        self.queries_runner.add_query('systolic_query', sys_query)
+        self.queries_runner.add_query('dyastolic_query', dya_query)
+        self.queries_runner.execute_queries()
+        self.queries_runner.remove_query('systolic_query')
+        self.assertIsNone(self.queries_runner.get_result_set('systolic_query'))
+        with self.assertRaises(KeyError) as context:
+            self.queries_runner.remove_query('systolic_query')
+
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestQueriesRunner('test_multiple_queries'))
     suite.addTest(TestQueriesRunner('test_intersection'))
     suite.addTest(TestQueriesRunner('test_union'))
+    suite.addTest(TestQueriesRunner('test_cleanup'))
+    suite.addTest(TestQueriesRunner('test_remove_query'))
     return suite
 
 if __name__ == '__main__':

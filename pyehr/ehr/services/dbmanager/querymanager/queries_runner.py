@@ -39,6 +39,14 @@ class QueriesRunner(object):
         else:
             self.logger = get_logger('queries_runner')
 
+    @property
+    def queries_count(self):
+        return len(self.queries)
+
+    @property
+    def results_count(self):
+        return len(self.queries_results)
+
     def add_query(self, query_label, aql_query):
         if not query_label in self.queries:
             self.queries[query_label] = aql_query
@@ -61,6 +69,20 @@ class QueriesRunner(object):
             q_element = results_queue.get()
             self.queries_results.update({q_element['query']: q_element['results']})
         self.logger.debug('Results collected')
+
+    def cleanup(self):
+        self.queries = dict()
+        self.queries_results = dict()
+
+    def remove_query(self, query_label):
+        try:
+            del(self.queries[query_label])
+        except KeyError:
+            raise KeyError('There is no query labeled %s' % query_label)
+        try:
+            del(self.queries_results[query_label])
+        except KeyError:
+            pass
 
     def get_result_set(self, query_label):
         return self.queries_results.get(query_label)
