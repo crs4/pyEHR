@@ -31,11 +31,9 @@ def extract_data(files):
             reader = csv.DictReader(in_file, delimiter='\t')
             for row in reader:
                 times = {
-                    'select_all_time': float(row['select_all_time']),
-                    'select_all_patient_time': float(row['select_all_patient_time']),
-                    'filtered_query_time': float(row['filtered_query_time']),
-                    'filtered_patient_time': float(row['filtered_patient_time']),
-                    'patient_count_time': float(row['patient_count_time'])
+                    'bp_patient_time': float(row['bp_patient_time']),
+                    'ua_patient_time': float(row['ua_patient_time']),
+                    'intersection_time': float(row['intersection_time']),
                 }
                 data.setdefault(int(row['patients'])*int(row['ehrs_for_patient']), []).append(times)
     return data
@@ -69,18 +67,11 @@ def main(argv):
     # start plotting
     output_file(args.output_file)
     hold()
-    plot_column(data, 'select_all_time', 'blue', 'PATIENTS ID RETRIEVAL (no filter)',
+    plot_column(data, 'bp_patient_time', 'navy', 'Query 1 (filtered patient ID retrieval)',
                 args.plot_width, args.plot_height)
-    plot_column(data, 'select_all_patient_time', 'red',
-                'SYSTOLIC + DYASTOLIC PRESSURE (for single patient)',
+    plot_column(data, 'ua_patient_time', 'red', 'Query 2 (filtered patient ID retrieval)',
                 args.plot_width, args.plot_height)
-    plot_column(data, 'filtered_query_time', 'orange',
-                'SYSTOLIC + DYASTOLIC PRESSURE (all patients, with filter)',
-                args.plot_width, args.plot_height)
-    plot_column(data, 'filtered_patient_time', 'green',
-                'SYSTOLIC + DYASTOLIC PRESSURE (single patient, with filter)',
-                args.plot_width, args.plot_height)
-    plot_column(data, 'patient_count_time', 'navy', 'PATIENTS ID RETRIEVAL (with filter)',
+    plot_column(data, 'intersection_time', 'green', 'Query 1 and Query 2 intersection',
                 args.plot_width, args.plot_height)
     xaxis().axis_label = 'Clinical Records count'
     yaxis().axis_label = 'Query execution time (in seconds)'
