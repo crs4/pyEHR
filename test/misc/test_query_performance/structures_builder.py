@@ -9,34 +9,44 @@ from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance
 from archetype_builder import Composition
 
 
-def get_random_subtree(max_depth, max_width):
+def get_composition_label(labels):
+    return 'composition.%s' % labels[randint(0, len(labels) - 1)]
+
+
+def get_random_subtree(max_depth, max_width, composition_labels):
     if max_depth == 0:
         leafs = [a for a in archetype_builder.BUILDERS.keys() if a != 'composition']
         children = [leafs[x] for x in np.random.randint(0, len(leafs), max_width)]
     else:
         # always go deeper with the first child node in order to achieve max_depth in at least one case
-        children = [{'composition': get_random_subtree(max_depth-1, randint(1, max_width))}]
+        children = [{get_composition_label(composition_labels):
+                         get_random_subtree(max_depth-1, randint(1, max_width),
+                                            composition_labels)}]
         for i in xrange(max_width-1):
-            ch = archetype_builder.BUILDERS.keys()[randint(0, len(archetype_builder.BUILDERS)-1)]
-            if ch == 'composition':
-                ch = {'composition': get_random_subtree(max_depth-1, randint(1, max_width))}
+            nodes = archetype_builder.BUILDERS.keys()
+            ch = nodes[randint(0, len(archetype_builder.BUILDERS)-1)]
+            if ch.startswith('composition'):
+                ch = {get_composition_label(composition_labels):
+                          get_random_subtree(max_depth-1, randint(1, max_width),
+                                             composition_labels)}
             children.append(ch)
     return children
 
 
-def build_structure(max_depth, max_width):
-    return {'composition': get_random_subtree(max_depth-1, max_width)}
+def build_structure(max_depth, max_width, labels):
+    return {get_composition_label(labels): get_random_subtree(max_depth-1, max_width, labels)}
 
 
 def build_structures(json_output_file, structures_count, mean_depth, max_width):
     structures = []
+    labels = get_labels()
     for depth, width in it.izip([int(i) for i in np.random.normal(mean_depth, 1, structures_count)],
                                 [int(i) for i in np.random.uniform(1, max_width, structures_count)]):
         if depth < 1:
             depth = 1
         elif depth > mean_depth + (mean_depth-1):
             depth = mean_depth + (mean_depth-1)
-        structures.append(build_structure(depth, width))
+        structures.append(build_structure(depth, width, labels))
     with open(json_output_file, 'w') as f:
         f.write(json.dumps(structures))
 
@@ -44,10 +54,12 @@ def build_structures(json_output_file, structures_count, mean_depth, max_width):
 def build_record(record_description, archetypes_dir, match, record_to_match=None):
     if isinstance(record_description, dict):
         for k, v in record_description.iteritems():
-            if k != 'composition':
+            if not k.startswith('composition'):
                 raise ValueError('Container type %s unknown' % k)
             children = [build_record(x, archetypes_dir, match, record_to_match) for x in v]
-            return ArchetypeInstance(*archetype_builder.BUILDERS[k](archetypes_dir, children).build())
+            composition_label = k.split('.')[1]
+            return ArchetypeInstance(*archetype_builder.BUILDERS['composition'](archetypes_dir, children,
+                                                                                composition_label).build())
     else:
         kw = {}
         if record_description == 'blood_pressure':
@@ -69,19 +81,27 @@ def build_record(record_description, archetypes_dir, match, record_to_match=None
 
 
 def contains_archetype(structure_description, archetype_label):
+    element_label = archetype_label[0]
     if isinstance(structure_description, dict):
         for k, v in structure_description.iteritems():
-            if k != 'composition':
+            if not k.startswith('composition'):
                 raise ValueError('Container type %s unknown' % k)
+            if k == element_label:
+                to_be_checked = archetype_label[1:]
+            else:
+                to_be_checked = archetype_label
             for child in v:
-                if contains_archetype(child, archetype_label):
-                    return True
-        return False
+                matched, leaf = contains_archetype(child, to_be_checked)
+                if matched:
+                    return True, leaf
     else:
-        if structure_description == archetype_label:
-            return True
-        else:
-            return False
+        if structure_description == element_label:
+            return True, element_label
+    return False, None
+
+
+def get_labels(labels_set_size=20):
+    return ['lbl-%05d' % x for x in xrange(0, labels_set_size)]
 
 
 def _build_record_full_random(max_width, height, archetypes_dir):

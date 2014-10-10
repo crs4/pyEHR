@@ -469,16 +469,30 @@ class UrinAnalysis(ArchetypeBuilder):
 
 
 class Composition(ArchetypeBuilder):
-    def __init__(self, archetype_dir, children):
-        archetype_id = 'openEHR-EHR-COMPOSITION.encounter.v1'
+    def __init__(self, archetype_dir, children, label):
+        archetype_id = 'openEHR-EHR-COMPOSITION.encounter.v1.%s' % label
+        self.archetype_file_name = 'openEHR-EHR-COMPOSITION.encounter.v1'
         super(Composition, self).__init__(archetype_id, archetype_dir)
         self.children = children
 
     def build(self):
         doc = self._load_file()
         doc['context']['event_context']['other_context']['at0001'][0]['items']['at0002'] = self.children
+        return self.archetype_id, doc
 
-        return self.archetype_id, doc #self._clean_archetype(doc)
+    def _load_file(self):
+        path = '/'.join([self.archetype_dir, self.archetype_file_name])
+        with open("%s.json" % path) as f:
+            doc = json.loads(f.read())
+
+        try:
+            doc = doc['archetype_details']
+        except KeyError:
+            raise Exception("Invalid archetype file: %s" % self.archetype_id)
+        else:
+            doc = decode_dict(doc)
+
+        return doc
 
 
 BUILDERS = {
@@ -492,6 +506,7 @@ BUILDERS = {
     'urin_analysis' : UrinAnalysis,
     'composition' : Composition
 }
+
 
 def get_builder(name):
     return BUILDERS.get(name, None)

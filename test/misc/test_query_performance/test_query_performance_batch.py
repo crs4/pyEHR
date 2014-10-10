@@ -45,10 +45,8 @@ def get_test_description(batch_file):
 
 def get_output_writer(out_file, out_dir):
     ofile = open(os.path.join(out_dir, out_file), 'w')
-    writer = csv.DictWriter(ofile, ['patients', 'ehrs_for_patient',
-                                    'select_all_time', 'select_all_patient_time',
-                                    'filtered_query_time', 'filtered_patient_time',
-                                    'patient_count_time'], delimiter='\t')
+    writer = csv.DictWriter(ofile, ['patients', 'ehrs_for_patient','bp_patient_time',
+                                    'ua_patient_time', 'intersection_time'], delimiter='\t')
     writer.writeheader()
     return writer, ofile
 
@@ -57,15 +55,12 @@ def run_test(patients_size, ehr_size, conf_file, archetypes_dir, ehr_structures_
              start_patient_id, logfile, loglevel, build_dataset_threads=1, clean_dataset=False, db_name_prefix=None):
     qpt = QueryPerformanceTest(conf_file, archetypes_dir, ehr_structures_file, matching_instances, start_patient_id,
                                 logfile, loglevel, db_name_prefix)
-    select_all_time, select_all_patient_time, filtered_query_time,\
-    filtered_patient_time, patient_count_time = qpt.run(patients_size, ehr_size,
+    bp_patient_count_time, ua_patient_count_time, intersection_time = qpt.run(patients_size, ehr_size,
                                                         clean_dataset, build_dataset_threads)
     return {
-        'select_all_time': select_all_time,
-        'select_all_patient_time': select_all_patient_time,
-        'filtered_query_time': filtered_query_time,
-        'filtered_patient_time': filtered_patient_time,
-        'patient_count_time': patient_count_time,
+        'bp_patient_time': bp_patient_count_time,
+        'ua_patient_time': ua_patient_count_time,
+        'intersection_time': intersection_time
     }
 
 
