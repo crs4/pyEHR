@@ -258,7 +258,7 @@ class DriverInterface(object):
                                                                                  patients_repository,
                                                                                  ehr_repository)
         if not location_query:
-            return []
+            return queries, []
         if condition:
             condition_results = self._calculate_condition_expression(condition, aliases)
             for condition_query, mappings in condition_results:
