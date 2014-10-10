@@ -29,7 +29,7 @@ class TestIndexPerformance(object):
         archetype = ArchetypeInstance(xml_doc.get('class'), {})
         for i, child in enumerate(xml_doc.iterchildren()):
             if randint(0, 1) == 1:
-                archetype.data['at%04d' % i] = self.build_record(child)
+                archetype.archetype_details['at%04d' % i] = self.build_record(child)
         return archetype
 
     def update_counter(self, archetype, hits_counter):
@@ -38,7 +38,7 @@ class TestIndexPerformance(object):
             n.set('hits_count', '%d' % (int(n.get('hits_count')) + 1))
         else:
             n.set('hits_count', "1")
-        for v in archetype.data.itervalues():
+        for v in archetype.archetype_details.itervalues():
             if isinstance(v, ArchetypeInstance):
                 self.update_counter(v, hits_counter)
 
@@ -87,7 +87,7 @@ class TestIndexPerformance(object):
             self.logger.info('-- Executing query')
             aql = self.build_aql_query(p)
             qm = parser.parse(aql)
-            indices = self.dbs.index_service.get_matching_ids(qm.location.containers)
+            indices, _ = self.dbs.index_service.map_aql_contains(qm.location.containers)
             # hardwired on MongoDB
             q = {'ehr_structure_id': {'$in': indices}}
             drf = self.dbs._get_drivers_factory(self.dbs.ehr_repository)
