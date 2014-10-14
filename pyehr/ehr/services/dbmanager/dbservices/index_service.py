@@ -5,6 +5,7 @@ from pyehr.utils.services import get_logger
 from pyehr.libs.python import BaseXClient
 from socket import error as serror
 from pyehr.ehr.services.dbmanager.errors import IndexServiceConnectionError
+import time
 
 
 class IndexService(object):
@@ -219,7 +220,10 @@ class IndexService(object):
         if not self.session:
             self.connect()
         query = self._build_xpath_query(aql_containers)
+        begin_time = time.time()
         res = self._execute_query(query)
+        end_time = time.time() - begin_time
+        self.logger.debug('AQL CONTAINMENT mapped in %f seconds' % end_time)
         self.disconnect()
         structure_ids = self._get_matching_ids(res)
         path_mappings = dict()

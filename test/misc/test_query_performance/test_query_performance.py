@@ -115,6 +115,7 @@ class QueryPerformanceTest(object):
         self.db_service.set_index_service(**self.index_conf)
         self.query_manager = QueryManager(**self.db_conf)
         self.query_manager.set_index_service(**self.index_conf)
+        self.query_manager.index_service.logger = self.logger
         self.queries_runner = QueriesRunner(self.db_conf, self.index_conf)
         self.archetypes_dir = archetypes_dir
         self.structures_file = structures_description_file
