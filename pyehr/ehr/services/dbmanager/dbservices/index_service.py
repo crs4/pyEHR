@@ -26,7 +26,10 @@ class IndexService(object):
                               self.port)
             raise IndexServiceConnectionError('Unable to connect to Index service at %s:%d' %
                                               (self.host, self.port))
-        self.session.execute('check %s' % self.db)
+        try:
+            self.session.execute('open %s' % self.db)
+        except:
+            self.session.execute('create db %s' % self.db)
 
     def disconnect(self):
         self.session.close()
@@ -120,18 +123,18 @@ class IndexService(object):
         record_hash.update(etree.tostring(record))
         return record_hash.hexdigest()
 
-    def _build_new_record(self, record):
+    def _build_new_record(self, record, record_id=None):
         record_root = etree.Element('archetype_structure')
         record_root.append(record)
         record_hash = self._get_record_hash(record)
-        record_id = uuid4().hex
+        record_id = record_id or uuid4().hex
         record_root.append(etree.Element('references_counter', {'hits': '1'}))
         record_root.append(etree.Element('structure_id', {'str_hash': record_hash,
                                                           'uid': record_id}))
         return record_root, record_id
 
-    def create_entry(self, record):
-        record, structure_key = self._build_new_record(record)
+    def create_entry(self, record, record_id=None):
+        record, structure_key = self._build_new_record(record, record_id)
         if not self.session:
             self.connect()
         self.session.add('path_index', etree.tostring(record))
