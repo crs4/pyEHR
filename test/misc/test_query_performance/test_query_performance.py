@@ -159,9 +159,9 @@ class QueryPerformanceTest(object):
                 return [instances]
             mod = instances % threads
             if mod == 0:
-                return [instances/threads for i in range(0, instances/threads)]
+                return [instances/threads for i in xrange(0, threads)]
             else:
-                parts = [instances/threads for i in range(0, instances/threads)]
+                parts = [instances/threads for i in xrange(0, threads)]
                 for x in xrange(0, mod):
                     parts[x] += 1
                 return parts
