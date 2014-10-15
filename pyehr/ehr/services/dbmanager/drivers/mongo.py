@@ -207,7 +207,8 @@ class MongoDriver(DriverInterface):
                 creation_time=record['creation_time'],
                 last_update=record['last_update'],
                 active=record['active'],
-                record_id=record.get('_id')
+                record_id=record.get('_id'),
+                structure_id=record.get('ehr_structure_id')
             )
             if 'patient_id' in record:
                 crec._set_patient_id(record['patient_id'])
@@ -221,7 +222,8 @@ class MongoDriver(DriverInterface):
                 record_id=record.get('_id'),
                 last_update=record.get('last_update'),
                 active=record.get('active'),
-                ehr_data=arch
+                ehr_data=arch,
+                structure_id=record.get('ehr_structure_id')
             )
             if 'patient_id' in record:
                 crec._set_patient_id(record['patient_id'])

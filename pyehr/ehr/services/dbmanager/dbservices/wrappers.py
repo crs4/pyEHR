@@ -139,11 +139,12 @@ class ClinicalRecord(Record):
     """
 
     def __init__(self, ehr_data, creation_time=None, last_update=None,
-                 active=True, record_id=None):
+                 active=True, record_id=None, structure_id=None):
         super(ClinicalRecord, self).__init__(creation_time or time.time(),
                                              last_update, active, record_id)
         self.ehr_data = ehr_data
         self.patient_id = None
+        self.structure_id = structure_id
 
     def reset(self):
         self.new_record_id()
