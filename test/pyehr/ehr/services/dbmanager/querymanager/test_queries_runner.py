@@ -116,8 +116,11 @@ class TestQueriesRunner(unittest.TestCase):
         self.assertEqual(sorted(dya_expected_results), sorted(res.results))
 
     def test_intersection(self):
-        intersection_details = self._build_patients_batch(50, 10, systolic_range=(100, 250),
-                                                          dyastolic_range=(100, 250))
+        intersection_details = self._build_patients_batch(50, 10, systolic_range=(1, 250),
+                                                          dyastolic_range=(1, 250))
+        for p, values in intersection_details.iteritems():
+            print '*** %s ***' % p,
+            print values
         sys_query = """
         SELECT e/ehr_id/value AS patient_identifier
         FROM Ehr e
@@ -135,16 +138,22 @@ class TestQueriesRunner(unittest.TestCase):
         self.queries_runner.execute_queries()
         intersect_expected_results = set()
         for k, v in intersection_details.iteritems():
+            systolic = False
+            dyastolic = False
             for x in v:
-                if x['systolic'] >= 180 and x['dyastolic'] >= 120:
-                    intersect_expected_results.add(k)
+                if x['systolic'] >= 180:
+                    systolic = True
+                if x['dyastolic'] >= 120:
+                    dyastolic = True
+            if systolic and dyastolic:
+                intersect_expected_results.add(k)
         res = self.queries_runner.get_intersection('patient_identifier', 'systolic_query',
                                                    'dyastolic_query')
         self.assertEqual(sorted(intersect_expected_results), sorted(res))
 
     def test_union(self):
-        union_details = self._build_patients_batch(50, 10, systolic_range=(100, 250),
-                                                   dyastolic_range=(100, 250))
+        union_details = self._build_patients_batch(50, 10, systolic_range=(1, 250),
+                                                   dyastolic_range=(1, 250))
         sys_query = """
         SELECT e/ehr_id/value AS patient_identifier
         FROM Ehr e
