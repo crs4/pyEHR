@@ -29,10 +29,17 @@ class TestDBService(unittest.TestCase):
             request['creation_time'] = creation_time
         return request
 
-    def _build_add_ehr_request(self, patient_id='JOHN_DOE', ehr_record=None):
+    def _build_add_ehr_request(self, patient_id='JOHN_DOE', ehr_record=None, active=None,
+                               creation_time=None, record_id=None):
         request = {'patient_id': patient_id}
         if ehr_record:
             request['ehr_record'] = json.dumps(ehr_record)
+        if active:
+            request['active'] = active
+        if creation_time:
+            request['creation_time'] = creation_time
+        if record_id:
+            request['record_id'] = record_id
         return request
 
     def _build_delete_patient_request(self, patient_id='JOHN_DOE', cascade_delete=None):
@@ -165,7 +172,7 @@ class TestDBService(unittest.TestCase):
         patient_details = self._build_add_patient_request(patient_id='TEST_PATIENT')
         r, c = self._send_request(add_patient_path, patient_details)
         self.assertEqual(r.status, 200)
-        # EHR creatrion, check mandatory fields
+        # EHR creation, check mandatory fields
         r, c = self._send_request(add_ehr_path, {})
         self.assertEqual(r.status, 400)
         ehr_add_request = self._build_add_ehr_request(patient_id='TEST_PATIENT')
@@ -173,10 +180,8 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(r.status, 400)
         # check for bad EHR JSON document (i.e. missing mandatory field in JSON document)
         ehr_record_details = {
-            'ehr_data': {
-                'archetype_details': {
-                    'k1': 'v1', 'k2': 'v2'
-                }
+            'archetype_details': {
+                'k1': 'v1', 'k2': 'v2'
             }
         }
         ehr_add_request = self._build_add_ehr_request(patient_id='TEST_PATIENT',
@@ -184,9 +189,7 @@ class TestDBService(unittest.TestCase):
         r, c = self._send_request(add_ehr_path, ehr_add_request)
         self.assertEqual(r.status, 500)
         # fix EHR record details
-        ehr_record_details['ehr_data']['archetype_class'] = 'openEHR.TEST-EVALUATION.v1'
-        ehr_record_details['creation_time'] = time.time()
-        ehr_record_details['active'] = True
+        ehr_record_details['archetype_class'] = 'openEHR.TEST-EVALUATION.v1'
         # check for non existing patient ID
         ehr_add_request = self._build_add_ehr_request(ehr_record=ehr_record_details)
         r, c = self._send_request(add_ehr_path, ehr_add_request)
@@ -201,9 +204,9 @@ class TestDBService(unittest.TestCase):
         c = decode_dict(json.loads(c))
         self.assertTrue(c['SUCCESS'])
         self.assertEqual(c['RECORD']['ehr_data']['archetype_class'],
-                         ehr_record_details['ehr_data']['archetype_class'])
+                         ehr_record_details['archetype_class'])
         self.assertEqual(c['RECORD']['ehr_data'],
-                         ehr_record_details['ehr_data'])
+                         ehr_record_details)
         self.assertTrue(c['RECORD']['active'])
         # delete EHR record
         delete_ehr_details = self._build_delete_ehr_request(patient_id=patient_details['patient_id'],
@@ -245,10 +248,8 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(r.status, 200)
         # ... and add an EHR record
         ehr_record = {
-            'ehr_data': {
-                'archetype_class': 'openEHR.TEST-EVALUATION.v1',
-                'archetype_details': {'k1': 'v1', 'k2': 'v2'}
-            }
+            'archetype_class': 'openEHR.TEST-EVALUATION.v1',
+            'archetype_details': {'k1': 'v1', 'k2': 'v2'}
         }
         ehr_add_request = self._build_add_ehr_request(patient_id='TEST_PATIENT',
                                                       ehr_record=ehr_record)
@@ -276,10 +277,8 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(r.status, 200)
         # add an EHR record
         ehr_record = {
-            'ehr_data': {
-                'archetype_class': 'openEHR.TEST-EVALUATION.v1',
-                'archetype_details': {'k1': 'v1', 'k2': 'v2'}
-            }
+            'archetype_class': 'openEHR.TEST-EVALUATION.v1',
+            'archetype_details': {'k1': 'v1', 'k2': 'v2'}
         }
         ehr_add_request = self._build_add_ehr_request(patient_id='TEST_PATIENT',
                                                       ehr_record=ehr_record)

@@ -7,7 +7,8 @@ from pyehr.utils import get_logger
 from pyehr.utils.services import get_service_configuration, check_pid_file,\
     create_pid, destroy_pid
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
-from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
+from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
+    ClinicalRecord, ArchetypeInstance
 import pyehr.ehr.services.dbmanager.errors as pyehr_errors
 
 
@@ -135,7 +136,14 @@ class DBService(object):
             self.logger.debug('EHR data: %r', ehr_record_conf)
             if not ehr_record_conf:
                 self._missing_mandatory_field('ehr_record')
-            ehr_record = ClinicalRecord.from_json(json.loads(ehr_record_conf))
+            active = params.get('active')
+            if active is None:
+                active = True
+            creation_time = params.get('creation_time')
+            record_id = params.get('record_id')
+            arch_details = ArchetypeInstance.from_json(json.loads(ehr_record_conf))
+            ehr_record = ClinicalRecord(arch_details, creation_time=creation_time,
+                                        active=active, record_id=record_id)
             patient_record = self.dbs.get_patient(patient_id)
             if not patient_record:
                 # TODO: check if an error is a better solution here

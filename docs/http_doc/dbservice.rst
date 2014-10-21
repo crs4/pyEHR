@@ -317,7 +317,11 @@ API Methods
    Add an EHR to an existing patient record.
 
    :query patient_id: ID of the patient record
-   :query ehr_record: EHR as a JSON dictionary. EHR example provided below.
+   :query ehr_record: Archetype as a JSON dictionary, example provided below.
+   :query record_id: (optional) the ID that will be given to this EHR record.
+   :query creation_time: (optional) the creation timestamp for the record.
+   :query active: (optional) True if the record must be saved as active (default),
+                  False otherwise
    :resheader Content-Type: application/json
    :statuscode 200: record hidden succesfully or no patient with given ID
                     found (in this case a response with `SUCCESS` set to false
@@ -328,21 +332,16 @@ API Methods
 
    **EHR JSON example**:
 
-   Mandatory fields for an EHR are **archetype** and **ehr_data**.
+   Mandatory fields for an Archetype record are **archetype_class** and **archetype_details**.
 
    .. sourcecode:: json
 
       {
-        "ehr_data": {
-          "archetype_class": "openEHR.TEST-EVALUATION.v1",
+        "archetype_class": "openEHR.TEST-EVALUATION.v1",
           "archetype_details": {
             "at0001": "val1",
             "at0002": "val2"
-          }
-        },
-        "active": true,
-        "creation_time": 1399902042.311941,
-        "record_id": "c1a5b6e68bb34b6baca21c683037e255"
+        }
       }
 
    **Success response**:
