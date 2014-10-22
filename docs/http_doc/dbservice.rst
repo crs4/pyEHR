@@ -338,9 +338,9 @@ API Methods
 
       {
         "archetype_class": "openEHR.TEST-EVALUATION.v1",
-          "archetype_details": {
-            "at0001": "val1",
-            "at0002": "val2"
+        "archetype_details": {
+          "at0001": "val1",
+          "at0002": "val2"
         }
       }
 
