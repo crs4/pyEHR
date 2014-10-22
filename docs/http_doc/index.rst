@@ -6,3 +6,4 @@ REST API reference
    :maxdepth: 2
 
    dbservice
+   queryservice
