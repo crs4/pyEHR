@@ -96,7 +96,7 @@ API Methods
    :query cascade_delete: (optional) if True delete connected EHRs as well, if False
                           delete patient data only if no EHRs are connected, otherwise
                           return an error. Default value is `False`.
-   :resheader Conent-Type: application/json
+   :resheader Content-Type: application/json
    :statuscode 200: record deleted succesfully or no patient with given ID found (in this
                     case a response with `SUCCESS` set to false will be returned)
    :statuscode 400: no `patient_id` provided
@@ -330,7 +330,7 @@ API Methods
    :statuscode 500: server error, error's details are specified in the
                     return response
 
-   **EHR JSON example**:
+   **Archetype JSON example**:
 
    Mandatory fields for an Archetype record are **archetype_class** and **archetype_details**.
 
@@ -517,6 +517,7 @@ API Methods
    :query patients_data: a JSON document with patients and EHRs data. For each patient, the
                          method will accept the same structure of the `batch/save/patient/`
                          method, patients must be enclosed within a list.
+   :resheader Content-Type: application/json
    :statuscode 200: operation completed, saved records and the one that raised and error will
                     be specified in the return response
    :statuscode 400: missing mandatory field `patients_data`
