@@ -1,5 +1,5 @@
 from ConfigParser import SafeConfigParser, NoOptionError
-from pyehr.utils import get_logger
+from pyehr.utils import get_logger, LOG_FORMAT, LOG_DATEFMT
 import logging, os, sys
 from logging.handlers import RotatingFileHandler
 
@@ -102,15 +102,19 @@ def get_service_configuration(configuration_file, logger=None):
         return None
 
 
-def get_rotating_file_logger(log_file, log_level, logger_label,
+def get_rotating_file_logger(logger_label, log_file, log_level='INFO',
                              max_bytes=100*1024*1024, backup_count=3):
-    log_format='%(asctime)s|%(levelname)-8s|%(message)s',
-    log_datefmt='%Y-%m-%d %H:%M:%S'
     logger = logging.getLogger(logger_label)
-    logger.setLevel(getattr(logging, log_level))
+    if not isinstance(log_level, int):
+        try:
+            log_level = getattr(logging, log_level)
+        except AttributeError:
+            raise ValueError('unsupported literal log level: %s' % log_level)
+    logger.setLevel(log_level)
+    # clear existing handlers
+    logger.handlers = []
     handler = RotatingFileHandler(log_file, max_bytes, backup_count)
-    handler.setLevel(getattr(logging, log_level))
-    formatter = logging.Formatter(log_format, datefmt=log_datefmt)
+    formatter = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATEFMT)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     return logger
