@@ -1,5 +1,6 @@
 from pyehr.ehr.services.dbmanager.errors import InvalidFieldError
 
+
 class ResultColumnDef(object):
 
     def __init__(self, alias=None, path=None):
@@ -36,12 +37,14 @@ class ResultSet(object):
         self.columns = []
         self.rows = []
 
-    def to_json(self):
-        return {
+    def to_json(self, add_columns_json=False):
+        json_res = {
             'results_count': self.total_results,
-            'columns': [c.to_json() for c in self.columns],
             'results': list(self.results)
         }
+        if add_columns_json:
+            json_res['columns'] = [c.to_json() for c in self.columns]
+        return json_res
 
     def _get_alias(self, key):
         for col in self.columns:
