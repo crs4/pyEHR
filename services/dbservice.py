@@ -5,7 +5,7 @@ from bottle import post, get, run, response, request, abort, HTTPError
 
 from pyehr.utils import get_logger
 from pyehr.utils.services import get_service_configuration, check_pid_file,\
-    create_pid, destroy_pid
+    create_pid, destroy_pid, get_rotating_file_logger
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
     ClinicalRecord, ArchetypeInstance
@@ -15,8 +15,13 @@ import pyehr.ehr.services.dbmanager.errors as pyehr_errors
 class DBService(object):
 
     def __init__(self, driver, host, database, patients_repository=None,
-                 ehr_repository=None, port=None, user=None, passwd=None):
-        self.logger = get_logger('db_service_daemon')
+                 ehr_repository=None, port=None, user=None, passwd=None,
+                 log_file=None, log_level='INFO'):
+        if not log_file:
+            self.logger = get_logger('db_service_daemon', log_level=log_level)
+        else:
+            self.logger = get_rotating_file_logger('db_service_daemon', log_file,
+                                                   log_level=log_level)
         self.dbs = DBServices(driver, host, database, patients_repository,
                               ehr_repository, port, user, passwd, self.logger)
         #######################################################
@@ -438,6 +443,9 @@ def get_parser():
                         help='Enable web server DEBUG mode')
     parser.add_argument('--pid-file', type=str, help='PID file for the dbservice daemon',
                         default='/tmp/pyehr_dbservice.pid')
+    parser.add_argument('--log-file', type=str, help='LOG file (default=stderr)')
+    parser.add_argument('--log-level', type=str, default='INFO',
+                        help='LOG level (default=INFO)')
     return parser
 
 
@@ -450,7 +458,8 @@ def main(argv):
         msg = 'It was impossible to load configuration, exit'
         logger.critical(msg)
         sys.exit(msg)
-    dbs = DBService(**conf.get_db_configuration())
+    dbs = DBService(log_file=args.log_file, log_level=args.log_level,
+                    **conf.get_db_configuration())
     dbs.add_index_service(**conf.get_index_configuration())
     check_pid_file(args.pid_file, logger)
     create_pid(args.pid_file)

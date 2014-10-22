@@ -8,5 +8,6 @@
 SERVICE_DIR=/opt/pyEHR/services
 PID_FILE=/tmp/pyehr_queryservice.pid
 SERVICE_CONF=/opt/pyEHR/conf/queryservice.conf
+LOG_FILE=/tmp/pyehr_queryservice.log
 
-nohup python $SERVICE_DIR/queryservice.py --config $SERVICE_CONF --pid-file $PID_FILE
+nohup python ${SERVICE_DIR}/queryservice.py --config ${SERVICE_CONF} --pid-file ${PID_FILE} --log-file ${LOG_FILE}
