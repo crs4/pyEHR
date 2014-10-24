@@ -401,7 +401,6 @@ class DBService(object):
         patients_data = params.get('patients_data')
         if patients_data is None:
             self._missing_mandatory_field('patients_data')
-        print patients_data
         response_body = {
             'SUCCESS': True,
             'SAVED': [],
