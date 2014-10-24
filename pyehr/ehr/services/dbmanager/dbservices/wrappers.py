@@ -139,12 +139,14 @@ class ClinicalRecord(Record):
     """
 
     def __init__(self, ehr_data, creation_time=None, last_update=None,
-                 active=True, record_id=None, structure_id=None):
+                 active=True, record_id=None, structure_id=None,
+                 version=1):
         super(ClinicalRecord, self).__init__(creation_time or time.time(),
                                              last_update, active, record_id)
         self.ehr_data = ehr_data
         self.patient_id = None
         self.structure_id = structure_id
+        self.version = version
 
     def reset(self):
         self.new_record_id()
@@ -152,6 +154,7 @@ class ClinicalRecord(Record):
         
     def new_record_id(self):
         super(ClinicalRecord, self).new_record_id()
+        self.version = 1
 
     def unbind_from_patient(self):
         self.patient_id = None
@@ -174,7 +177,7 @@ class ClinicalRecord(Record):
         :return: a JSON dictionary
         :rtype: dictionary
         """
-        attrs = ['creation_time', 'last_update', 'active']
+        attrs = ['creation_time', 'last_update', 'active', 'version']
         json = dict()
         for a in attrs:
             json[a] = getattr(self, a)
@@ -187,6 +190,9 @@ class ClinicalRecord(Record):
 
     @staticmethod
     def from_json(json_data):
+        def validate_record_id(record_id):
+            if not isinstance(record_id, str) and not isinstance(record_id, dict):
+                raise ValueError('%s is not a valid clinical record ID' % record_id)
         """
         Create a :class:`ClinicalRecord` object from the given JSON dictionary
 
@@ -200,8 +206,9 @@ class ClinicalRecord(Record):
             'creation_time': float,
             'last_update': float,
             'active': bool,
-            'record_id': str,
-            'patient_id': str
+            'record_id': validate_record_id,
+            'patient_id': str,
+            'version': int
         })
         try:
             json_data = decode_dict(json_data)

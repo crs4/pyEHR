@@ -136,7 +136,8 @@ class MongoDriver(DriverInterface):
             'creation_time': clinical_record.creation_time,
             'last_update': clinical_record.last_update,
             'active': clinical_record.active,
-            'ehr_data': ehr_data
+            'ehr_data': ehr_data,
+            '_version': clinical_record.version
         }
         if clinical_record.record_id:
             encoded_record['_id'] = clinical_record.record_id
@@ -208,7 +209,8 @@ class MongoDriver(DriverInterface):
                 last_update=record['last_update'],
                 active=record['active'],
                 record_id=record.get('_id'),
-                structure_id=record.get('ehr_structure_id')
+                structure_id=record.get('ehr_structure_id'),
+                version=record['_version']
             )
             if 'patient_id' in record:
                 crec._set_patient_id(record['patient_id'])
@@ -223,7 +225,8 @@ class MongoDriver(DriverInterface):
                 last_update=record.get('last_update'),
                 active=record.get('active'),
                 ehr_data=arch,
-                structure_id=record.get('ehr_structure_id')
+                structure_id=record.get('ehr_structure_id'),
+                version=record.get('_version')
             )
             if 'patient_id' in record:
                 crec._set_patient_id(record['patient_id'])
