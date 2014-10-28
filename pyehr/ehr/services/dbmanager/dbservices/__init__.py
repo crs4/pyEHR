@@ -4,7 +4,6 @@ from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError
 from pyehr.ehr.services.dbmanager.dbservices.version_manager import VersionManager
-import time
 
 
 class DBServices(object):
