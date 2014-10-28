@@ -13,7 +13,8 @@ import pyehr.ehr.services.dbmanager.errors as pyehr_errors
 class QueryService():
 
     def __init__(self, driver, host, database, patients_repository=None,
-                 ehr_repository=None, port=None, user=None, passwd=None,
+                 ehr_repository=None, ehr_versioning_repository=None,
+                 port=None, user=None, passwd=None,
                  log_file=None, log_level='INFO'):
         if not log_file:
             self.logger = get_logger('query_service_daemon')
@@ -21,7 +22,8 @@ class QueryService():
             self.logger = get_rotating_file_logger('query_service_daemon', log_file,
                                                    log_level=log_level)
         self.qmanager = QueryManager(driver, host, database, patients_repository,
-                                     ehr_repository, port, user, passwd, self.logger)
+                                     ehr_repository, ehr_versioning_repository,
+                                     port, user, passwd, self.logger)
         ###############################################
         # Web Service methods
         ###############################################
