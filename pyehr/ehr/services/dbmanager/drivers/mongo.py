@@ -294,8 +294,8 @@ class MongoDriver(DriverInterface):
         Retrieve a record using its ID
 
         :param record_id: the ID of the record
-        :return: the record of None if no match was found for the given record
-        :rtype: dictionary or None
+        :return: the record or None if no match was found
+        :rtype: dict or None
         """
         self._check_connection()
         res = self.collection.find_one({'_id': record_id})
@@ -303,6 +303,23 @@ class MongoDriver(DriverInterface):
             return decode_dict(res)
         else:
             return res
+
+    def get_record_by_version(self, record_id, version):
+        """
+        Retrieve a record using its ID and version number
+
+        :param record_id: the ID of the record
+        :param version: the version number of the record
+        :type version: int
+        :return: the record or None if no match was found
+        :rtype: dict or None
+        """
+        res = self.get_records_by_query({'_id': record_id, '_version': version})
+        assert len(res) <= 1
+        try:
+            return res[0]
+        except IndexError:
+            return None
 
     def get_all_records(self):
         """
@@ -352,11 +369,38 @@ class MongoDriver(DriverInterface):
         res = self.collection.remove(record_id)
         self.logger.debug('deleted %d documents', res[u'n'])
 
+    def delete_later_versions(self, record_id, version_to_keep=0):
+        """
+        Delete versions newer than version_to_keep for the given record ID.
+
+        :param record_id: ID of the record
+        :param version_to_keep: the older version that will be preserved, if 0
+                                delete all versions for the given record ID
+        :type version_to_keep: int
+        :return: the number of deleted records
+        :rtype: int
+        """
+        return self.delete_records_by_query({'_id._id': record_id,
+                                             '_version': {'$gt': version_to_keep}})
+
+    def delete_records_by_query(self, query):
+        """
+        Delete all records that match the given query
+
+        :param query: the query used to select records that will be deleted
+        :type query: dict
+        :return: the number of deleted records
+        :rtype: int
+        """
+        self._check_connection()
+        res = self.collection.remove(query)
+        return res[u'n']
+
     def _update_record(self, record_id, update_condition):
         """
         Update an existing record
 
-        :param_record_id: record's ID
+        :param record_id: record's ID
         :param update_condition: the update condition (in MongoDB syntax)
         :type update_condition: dictionary
         """
@@ -383,7 +427,12 @@ class MongoDriver(DriverInterface):
         self.logger.debug('Update statement is %r', update_statement)
         return update_statement, last_update
 
-    def update_field(self, record_id, field_label, field_value, update_timestamp_label=None):
+    def _increase_version(self, update_statement):
+        update_statement.setdefault('$inc', {})['_version'] = 1
+        return update_statement
+
+    def update_field(self, record_id, field_label, field_value, update_timestamp_label=None,
+                     increase_version=False):
         """
         Update record's field *field* with given value
 
@@ -391,10 +440,13 @@ class MongoDriver(DriverInterface):
         :param field_label: field's label
         :type field_label: string
         :param field_value: new value for the selected field
-        :param update_timestamp_label: the label of the *last_update* field of the record if the last update timestamp
-          must be recorded or None
+        :param update_timestamp_label: the label of the *last_update* field of the record
+                                       if the last update timestamp must be recorded or None
         :type update_timestamp_label: field label or None
-        :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
+        :param increase_version: if True, increase record's version number by 1
+        :type increase_version: bool
+        :return: the timestamp of the last update as saved in the DB or None
+                 (if *update_timestamp_label* was None)
         """
         update_statement = {'$set': {field_label: field_value}}
         if update_timestamp_label:
@@ -402,10 +454,38 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
+        if increase_version:
+            update_statement = self._increase_version(update_statement)
         self._update_record(record_id, update_statement)
         return last_update
 
-    def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+    def replace_record(self, record_id, new_record, update_timestamp_label=None):
+        """
+        Replace record with *record_id* with the given *new_record*
+
+        :param record_id: the ID of the record that will be replaced with the new one
+        :param new_record: the new record
+        :type new_record: dict
+        :param update_timestamp_label: the label of the *last_update* field of the record
+                                       if the last update timestamp must be recorded or None
+        :type update_timestamp_label: field label or None
+        :return: the timestamp of the last update as saved in the DB or None
+                 (if *update_timestamp_label* was None)
+        """
+        self._check_connection()
+        last_update = None
+        if update_timestamp_label:
+            last_update = time.time()
+            new_record[update_timestamp_label] = last_update
+        try:
+            new_record.pop('_id')
+        except KeyError:
+            pass
+        self._update_record(record_id, new_record)
+        return last_update
+
+    def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None,
+                    increase_version=False):
         """
         Append a value to a list within a document
 
@@ -424,10 +504,13 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
+        if increase_version:
+            update_statement = self._increase_version(update_statement)
         self._update_record(record_id, update_statement)
         return last_update
 
-    def extend_list(self, record_id, list_label, items, update_timestamp_label=None):
+    def extend_list(self, record_id, list_label, items, update_timestamp_label=None,
+                    increase_version=False):
         """
         Extend a document's list with the list provided
 
@@ -446,10 +529,13 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
+        if increase_version:
+            update_statement = self._increase_version(update_statement)
         self._update_record(record_id, update_statement)
         return last_update
 
-    def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+    def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None,
+                         increase_version=False):
         """
         Remove a value from a list within a document
 
@@ -468,6 +554,8 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
+        if increase_version:
+            update_statement = self._increase_version(update_statement)
         self._update_record(record_id, update_statement)
         return last_update
 
