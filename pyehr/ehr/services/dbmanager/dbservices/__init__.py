@@ -345,12 +345,6 @@ class DBServices(object):
             driver.delete_record(ehr_record.record_id)
             return None
 
-    def _update_record_timestamp(self, update_condition):
-        last_update = time.time()
-        update_condition.setdefault('$set', {})['last_update'] = last_update
-        self.logger.debug('Update condition is %r', update_condition)
-        return update_condition, last_update
-
     def _hide_record(self, record, repository):
         drf = self._get_drivers_factory(repository)
         with drf.get_driver() as driver:
