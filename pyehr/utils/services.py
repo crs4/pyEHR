@@ -6,11 +6,9 @@ from logging.handlers import RotatingFileHandler
 
 class ServiceConfig(object):
 
-    def __init__(self, db_driver, db_host, db_database,
-                 db_port, db_user, db_passwd,
-                 db_patients_repository, db_ehr_repository,
-                 index_host, index_port, index_database,
-                 index_user, index_passwd,
+    def __init__(self, db_driver, db_host, db_database, db_port, db_user, db_passwd,
+                 db_patients_repository, db_ehr_repository, db_ehr_versioning_repository,
+                 index_host, index_port, index_database, index_user, index_passwd,
                  db_service_host, db_service_port, db_service_server_engine,
                  query_service_host, query_service_port, query_service_server_engine):
         self.db_driver = db_driver
@@ -21,6 +19,7 @@ class ServiceConfig(object):
         self.db_passwd = db_passwd
         self.db_patients_repository = db_patients_repository
         self.db_ehr_repository = db_ehr_repository
+        self.db_ehr_versioning_repository = db_ehr_versioning_repository
         self.index_host = index_host
         self.index_port = index_port
         self.index_database = index_database
@@ -42,7 +41,8 @@ class ServiceConfig(object):
             'user': self.db_user,
             'passwd': self.db_passwd,
             'patients_repository': self.db_patients_repository,
-            'ehr_repository': self.db_ehr_repository
+            'ehr_repository': self.db_ehr_repository,
+            'ehr_versioning_repository': self.db_ehr_versioning_repository
         }
 
     def get_index_configuration(self):
@@ -84,6 +84,7 @@ def get_service_configuration(configuration_file, logger=None):
             parser.get('db', 'passwd'),
             parser.get('db', 'patients_repository'),
             parser.get('db', 'ehr_repository'),
+            parser.get('db', 'ehr_versioning_repository'),
             parser.get('index', 'host'),
             parser.get('index', 'port'),
             parser.get('index', 'database'),
