@@ -206,10 +206,12 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_record(ehr_record.record_id)
+        self.version_manager.remove_revisions(ehr_record.record_id)
         patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
         if new_record_id:
-            self.version_manager.remove_revisions(ehr_record.record_id)
             ehr_record.reset()
+        else:
+            ehr_record.reset_version()
         return ehr_record, patient_record
 
     def _get_active_records(self, driver):
