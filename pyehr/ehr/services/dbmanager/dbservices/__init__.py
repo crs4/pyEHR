@@ -3,6 +3,7 @@ from pyehr.utils import get_logger
 from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError
+from pyehr.ehr.services.dbmanager.dbservices.version_manager import VersionManager
 import time
 
 
@@ -18,13 +19,16 @@ class DBServices(object):
     :ivar port: (optional) port used to contact the DB
     :ivar database: the name of the database where data are stored
     :ivar patients_repository: (optional) repository where patients' data are stored
-    :ivar ehr_repository: (optional) repository where ehr data are stored
+    :ivar ehr_repository: (optional) repository where clinical records data are stored
+    :ivar ehr_versioning_repository: (optional) repository where older versions of clinical
+      records are stored
     :ivar logger: logger for the DBServices class, if no logger is provided a new one
       is created
     """
 
     def __init__(self, driver, host, database, patients_repository=None,
-                 ehr_repository=None, port=None, user=None, passwd=None, logger=None):
+                 ehr_repository=None, ehr_versioning_repository=None,
+                 port=None, user=None, passwd=None, logger=None):
         self.driver = driver
         self.host = host
         self.database = database
@@ -35,6 +39,7 @@ class DBServices(object):
         self.passwd = passwd
         self.index_service = None
         self.logger = logger or get_logger('db_services')
+        self.version_manager = self._set_version_manager(ehr_versioning_repository)
 
     def _get_drivers_factory(self, repository):
         return DriversFactory(
@@ -46,6 +51,19 @@ class DBServices(object):
             user=self.user,
             passwd=self.passwd,
             index_service=self.index_service,
+            logger=self.logger
+        )
+
+    def _set_version_manager(self, ehr_version_repository):
+        return VersionManager(
+            driver=self.driver,
+            host=self.host,
+            database=self.database,
+            ehr_repository=self.ehr_repository,
+            ehr_versioning_repository=ehr_version_repository,
+            port=self.port,
+            user=self.user,
+            passwd=self.passwd,
             logger=self.logger
         )
 
@@ -135,8 +153,7 @@ class DBServices(object):
         :type ehr_record: :class:`ClinicalRecord`
         :return: the updated :class:`PatientRecord`
         """
-        self._add_to_list(patient_record, 'ehr_records', ehr_record.record_id,
-                          self.patients_repository)
+        self._add_to_list(patient_record, 'ehr_records', ehr_record.record_id)
         patient_record.ehr_records.append(ehr_record)
         return patient_record
 
@@ -151,8 +168,7 @@ class DBServices(object):
         :type ehr_records: list
         :return: the updated :class:`PatientRecord`
         """
-        self._extend_list(patient_record, 'ehr_records', [ehr.record_id for ehr in ehr_records],
-                          self.patients_repository)
+        self._extend_list(patient_record, 'ehr_records', [ehr.record_id for ehr in ehr_records])
         patient_record.ehr_records.extend(ehr_records)
         return patient_record
 
@@ -187,13 +203,13 @@ class DBServices(object):
         :return: the EHR record without an ID and the updated patient record
         :rtype: :class:`ClinicalRecord`, :class:`PatientRecord`
         """
-        self._remove_from_list(patient_record, 'ehr_records', ehr_record.record_id,
-                               self.patients_repository)
+        self._remove_from_list(patient_record, 'ehr_records', ehr_record.record_id)
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_record(ehr_record.record_id)
         patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
         if new_record_id:
+            self.version_manager.remove_revisions(ehr_record.record_id)
             ehr_record.reset()
         return ehr_record, patient_record
 
@@ -291,7 +307,7 @@ class DBServices(object):
         if patient.active:
             for ehr_rec in patient.ehr_records:
                 self.hide_ehr_record(ehr_rec)
-            rec = self._hide_record(patient, self.patients_repository)
+            rec = self._hide_record(patient)
         else:
             rec = patient
         return rec
@@ -306,7 +322,7 @@ class DBServices(object):
         :rtype: :class:`ClinicalRecord`
         """
         if ehr_record.active:
-            rec = self._hide_record(ehr_record, self.ehr_repository)
+            rec = self._hide_record(ehr_record)
         else:
             rec = ehr_record
         return rec
@@ -343,27 +359,46 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_record(ehr_record.record_id)
-            return None
+        self.version_manager.remove_revisions(ehr_record.record_id)
+        return None
 
-    def _hide_record(self, record, repository):
-        drf = self._get_drivers_factory(repository)
-        with drf.get_driver() as driver:
-            last_update = driver.update_field(record.record_id, 'active', False, 'last_update')
-        record.active = False
-        record.last_update = last_update
-        return record
+    def _hide_record(self, record):
+        if isinstance(record, ClinicalRecord):
+            return self.version_manager.update_field(record, 'active', False, 'last_update')
+        else:
+            drf = self._get_drivers_factory(self.patients_repository)
+            with drf.get_driver() as driver:
+                last_update = driver.update_field(record.record_id, 'active', False, 'last_update')
+            record.last_update = last_update
+            record.active = False
+            return record
 
-    def _add_to_list(self, record, list_label, element, repository):
-        drf = self._get_drivers_factory(repository)
-        with drf.get_driver() as driver:
-            driver.add_to_list(record.record_id, list_label, element, 'last_update')
+    def _add_to_list(self, record, list_label, element):
+        if isinstance(record, ClinicalRecord):
+            return self.version_manager.add_to_list(record, list_label, element, 'last_update')
+        else:
+            drf = self._get_drivers_factory(self.patients_repository)
+            with drf.get_driver() as driver:
+                last_update = driver.add_to_list(record.record_id, list_label, element, 'last_update')
+            record.last_update = last_update
+            return record
 
-    def _extend_list(self, record, list_label, elements, repository):
-        drf = self._get_drivers_factory(repository)
-        with drf.get_driver() as driver:
-            driver.extend_list(record.record_id, list_label, elements, 'last_update')
+    def _extend_list(self, record, list_label, elements):
+        if isinstance(record, ClinicalRecord):
+            return self.version_manager.extend_list(record, list_label, elements, 'last_update')
+        else:
+            drf = self._get_drivers_factory(self.patients_repository)
+            with drf.get_driver() as driver:
+                last_update = driver.extend_list(record.record_id, list_label, elements, 'last_update')
+            record.last_update = last_update
+            return record
 
-    def _remove_from_list(self, record, list_label, element, repository):
-        drf = self._get_drivers_factory(repository)
-        with drf.get_driver() as driver:
-            driver.remove_from_list(record.record_id, list_label, element, 'last_update')
+    def _remove_from_list(self, record, list_label, element):
+        if isinstance(record, ClinicalRecord):
+            return self.version_manager.remove_from_list(record, list_label, element, 'last_update')
+        else:
+            drf = self._get_drivers_factory(self.patients_repository)
+            with drf.get_driver() as driver:
+                last_update = driver.remove_from_list(record.record_id, list_label, element, 'last_update')
+            record.last_update = last_update
+            return  record
