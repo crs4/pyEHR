@@ -10,12 +10,14 @@ class QueryManager(object):
     """
 
     def __init__(self, driver, host, database, patients_repository=None,
-                 ehr_repository=None, port=None, user=None, passwd=None, logger=None):
+                 ehr_repository=None, ehr_versioning_repository=None,
+                 port=None, user=None, passwd=None, logger=None):
         self.driver = driver
         self.host = host
         self.database = database
         self.patients_repository = patients_repository
         self.ehr_repository = ehr_repository
+        self.ehr_versioning_repository = ehr_versioning_repository
         self.port = port
         self.user = user
         self.passwd = passwd
