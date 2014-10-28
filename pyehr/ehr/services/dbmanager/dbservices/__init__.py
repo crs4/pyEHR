@@ -203,10 +203,7 @@ class DBServices(object):
         :rtype: :class:`ClinicalRecord`, :class:`PatientRecord`
         """
         self._remove_from_list(patient_record, 'ehr_records', ehr_record.record_id)
-        drf = self._get_drivers_factory(self.ehr_repository)
-        with drf.get_driver() as driver:
-            driver.delete_record(ehr_record.record_id)
-        self.version_manager.remove_revisions(ehr_record.record_id)
+        self.delete_ehr_record(ehr_record)
         patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
         if new_record_id:
             ehr_record.reset()
