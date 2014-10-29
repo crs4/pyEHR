@@ -1,4 +1,5 @@
 from hashlib import md5
+import json
 
 from pyehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from pyehr.utils import get_logger
@@ -38,9 +39,9 @@ class VersionManager(object):
 
     def _check_redundant_update(self, new_record, old_record):
         new_record_hash = md5()
-        new_record_hash.update(new_record.to_json())
+        new_record_hash.update(json.dumps(new_record.to_json()))
         old_record_hash = md5()
-        old_record_hash.update(old_record.to_json())
+        old_record_hash.update(json.dumps(old_record.to_json()))
         if new_record_hash.hexdigest() == old_record_hash.hexdigest():
             raise RedundantUpdateError('Redundant update, old and new record are identical')
 
@@ -93,10 +94,11 @@ class VersionManager(object):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             new_record.version += 1
-            last_update = driver.replace_record(new_record.record.id,
+            last_update = driver.replace_record(new_record.record_id,
                                                 driver.encode_record(new_record),
                                                 'last_update')
-        return last_update
+            new_record.last_update = last_update
+        return new_record
 
     def update_field(self, record, field, value, last_update_label=None):
         current_revision = self._get_current_revision(record.record_id)
