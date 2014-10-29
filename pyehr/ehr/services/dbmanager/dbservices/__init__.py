@@ -171,6 +171,20 @@ class DBServices(object):
         patient_record.ehr_records.extend(ehr_records)
         return patient_record
 
+    def update_ehr_record(self, ehr_record):
+        """
+        Save the given *ehr_record* as an update of the one already existing in the database.
+        Record's ID and version number will be used to match the proper object. Existing EHR
+        will be overwritten by the given one.
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be saved as update
+        :type ehr_record: :class:`ClinicalRecord`
+        :return: the given *ehr_record* with proper *update_timestamp* and *version*
+          fields
+        :rtype: :class:`ClinicalRecord`
+        """
+        return self.version_manager.update_record(ehr_record)
+
     def move_ehr_record(self, src_patient, dest_patient, ehr_record):
         """
         Move a saved :class:`ClinicalRecord` from a saved :class:`PatientRecord` to another one
