@@ -2,7 +2,7 @@ from pyehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from pyehr.utils import get_logger
 from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
-from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError
+from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError, RedundantUpdateError
 from pyehr.ehr.services.dbmanager.dbservices.version_manager import VersionManager
 
 
@@ -295,7 +295,7 @@ class DBServices(object):
 
     def hide_patient(self, patient):
         """
-        Hide a ;class:`PatientRecord` object
+        Hide a :class:`PatientRecord` object
 
         :param patient: the patient record that is going to be hidden
         :type patient: :class:`PatientRecord`
@@ -304,7 +304,13 @@ class DBServices(object):
         """
         if patient.active:
             for ehr_rec in patient.ehr_records:
-                self.hide_ehr_record(ehr_rec)
+                try:
+                    self.hide_ehr_record(ehr_rec)
+                except RedundantUpdateError:
+                    # just ignore RedundantUpdateError, this means that the records
+                    # is already hidden
+                    self.logger.debug('Record %s is already hidden', ehr_rec.record_id)
+                    pass
             rec = self._hide_record(patient)
         else:
             rec = patient
