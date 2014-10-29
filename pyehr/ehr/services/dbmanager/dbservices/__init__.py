@@ -158,7 +158,7 @@ class DBServices(object):
 
     def _add_ehr_records(self, patient_record, ehr_records):
         """
-        Add a list of already saved :class:`ClinicalRecord`s to the given ;class:`PatientRecord`
+        Add a list of already saved :class:`ClinicalRecord`s to the given :class:`PatientRecord`
 
         :param patient_record: the reference :class:`PatientRecord`
         :type patient_record: :class:`PatientRecord`
@@ -285,7 +285,7 @@ class DBServices(object):
         :param patient: the patient record object
         :type patient: :class:`PatientRecord`
         :return: the :class:`PatientRecord` object with loaded :class:`ClinicalRecord`
-        :type: :class;`PatientRecord`
+        :type: :class:`PatientRecord`
         """
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
@@ -321,7 +321,7 @@ class DBServices(object):
         Hide a :class:`ClinicalRecord` object
 
         :param ehr_record: the clinical record that is going to be hidden
-        :type ehr_record: ;class:`ClinicalRecord`
+        :type ehr_record: :class:`ClinicalRecord`
         :return: the clinical record
         :rtype: :class:`ClinicalRecord`
         """
