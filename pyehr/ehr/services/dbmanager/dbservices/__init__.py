@@ -185,6 +185,33 @@ class DBServices(object):
         """
         return self.version_manager.update_record(ehr_record)
 
+    def restore_ehr_version(self, ehr_record, version):
+        """
+        Restore a specific *version* for the given *ehr_record*. All saved revisions that
+        are newer than *version* will be deleted from the :class:`VersionManager`.
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be restored
+        :type ehr_record: :class:`ClinicalRecord`
+        :param version: the version of the record that will replace the one saved
+          within the DB
+        :type version: int
+        :return: the restored :class:`ClinicalRecord` and the count of the revisions
+          that have been deleted
+        """
+        return self.version_manager.restore_version(ehr_record.record_id, version)
+
+    def restore_original_ehr(self, ehr_record):
+        """
+        Restore the original version of the given *ehr_record*. All revisions
+        will be deleted from the :class:`VersionManager`.
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be restored
+        :type ehr_record: :class:`ClinicalRecord`
+        :return: the restored :class:`ClinicalRecord` and the count of the revisions
+          that have been deleted
+        """
+        return self.version_manager.restore_original(ehr_record.record_id)
+
     def move_ehr_record(self, src_patient, dest_patient, ehr_record):
         """
         Move a saved :class:`ClinicalRecord` from a saved :class:`PatientRecord` to another one
