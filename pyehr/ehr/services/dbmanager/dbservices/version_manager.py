@@ -159,11 +159,12 @@ class VersionManager(object):
                                            (version, record_id))
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
-            ehr_record_id = driver.add_record(driver.encode_record(original_record))
+            driver.delete_record(record_id)
+            driver.add_record(driver.encode_record(original_record))
         drf = self._get_drivers_factory(self.ehr_versioning_repository)
         with drf.get_driver() as driver:
             del_count = driver.delete_later_versions(record_id, version)
-        return ehr_record_id, del_count
+        return original_record, del_count
 
     def restore_original(self, record_id):
         return self.restore_version(record_id, version=1)
