@@ -2,7 +2,8 @@ from pyehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from pyehr.utils import get_logger
 from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
-from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError, RedundantUpdateError
+from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError, RedundantUpdateError,\
+    RecordRestoreUnecessaryError
 from pyehr.ehr.services.dbmanager.dbservices.version_manager import VersionManager
 
 
@@ -185,6 +186,10 @@ class DBServices(object):
         """
         return self.version_manager.update_record(ehr_record)
 
+    def _check_unecessary_restore(self, ehr_record):
+        if ehr_record.version == 1:
+            raise RecordRestoreUnecessaryError('Record %s already at original revision')
+
     def restore_ehr_version(self, ehr_record, version):
         """
         Restore a specific *version* for the given *ehr_record*. All saved revisions that
@@ -198,6 +203,7 @@ class DBServices(object):
         :return: the restored :class:`ClinicalRecord` and the count of the revisions
           that have been deleted
         """
+        self._check_unecessary_restore(ehr_record)
         return self.version_manager.restore_version(ehr_record.record_id, version)
 
     def restore_original_ehr(self, ehr_record):
@@ -210,6 +216,7 @@ class DBServices(object):
         :return: the restored :class:`ClinicalRecord` and the count of the revisions
           that have been deleted
         """
+        self._check_unecessary_restore(ehr_record)
         return self.version_manager.restore_original(ehr_record.record_id)
 
     def move_ehr_record(self, src_patient, dest_patient, ehr_record):

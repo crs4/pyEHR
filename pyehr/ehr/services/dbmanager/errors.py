@@ -64,3 +64,7 @@ class RedundantUpdateError(Exception):
 
 class RecordRestoreFailedError(Exception):
     pass
+
+
+class RecordRestoreUnecessaryError(Exception):
+    pass
