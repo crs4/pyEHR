@@ -219,6 +219,16 @@ class DBServices(object):
         self._check_unecessary_restore(ehr_record)
         return self.version_manager.restore_original(ehr_record.record_id)
 
+    def restore_previous_ehr_version(self, ehr_record):
+        """
+        Restore giver *ehr_record* to its previous revision.
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be restored
+        :type ehr_record: :class:`ClinicalRecord`
+        :return: the restored :class:`ClinicalRecord`
+        """
+        return self.restore_ehr_version(ehr_record, ehr_record.version-1)[0]
+
     def move_ehr_record(self, src_patient, dest_patient, ehr_record):
         """
         Move a saved :class:`ClinicalRecord` from a saved :class:`PatientRecord` to another one
