@@ -1,0 +1,159 @@
+import unittest, sys, os, uuid, random, copy
+from pyehr.ehr.services.dbmanager.dbservices import DBServices
+from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
+    ClinicalRecord, ArchetypeInstance
+from pyehr.ehr.services.dbmanager.errors import OptimisticLockError,\
+    RedundantUpdateError, RecordRestoreFailedError, RecordRestoreUnecessaryError
+from pyehr.utils.services import get_service_configuration
+
+CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
+
+
+class TestVersionManager(unittest.TestCase):
+
+    def __init__(self, label):
+        super(TestVersionManager, self).__init__(label)
+        self.dbs = None
+        self.patient = None
+
+    def _create_random_patient(self):
+        self.patient = PatientRecord(record_id=uuid.uuid4().hex)
+
+    def _create_random_clinical_record(self):
+        arch = ArchetypeInstance('openEHR-EHR-OBSERVATION.dummy-observation.v1',
+                                 {'data': {
+                                     'at0001': random.randint(1, 99),
+                                     'at0002': 'just a text field'
+                                 }})
+        return ClinicalRecord(arch)
+
+    def build_dataset(self):
+        self._create_random_patient()
+        crec = self._create_random_clinical_record()
+        self.patient = self.dbs.save_patient(self.patient)
+        crec, self.patient = self.dbs.save_ehr_record(crec, self.patient)
+        return crec
+
+    def setUp(self):
+        if CONF_FILE is None:
+            sys.exit('ERROR: no configuration file provided')
+        sconf = get_service_configuration(CONF_FILE)
+        self.dbs = DBServices(**sconf.get_db_configuration())
+        self.dbs.set_index_service(**sconf.get_index_configuration())
+
+    def tearDown(self):
+        self.dbs.delete_patient(self.patient, cascade_delete=True)
+        self.dbs.index_service.connect()
+        self.dbs.index_service.session.execute('drop database %s' %
+                                               self.dbs.index_service.db)
+        self.dbs.index_service.disconnect()
+        self.dbs = None
+
+    def test_record_update(self):
+        crec = self.build_dataset()
+        crec.ehr_data.archetype_details['data']['at0001'] = random.randint(100, 200)
+        crec = self.dbs.update_ehr_record(crec)
+        self.assertEqual(crec.version, 2)
+        self.assertGreater(crec.last_update, crec.creation_time)
+
+    def test_record_restore(self):
+        crec = self.build_dataset()
+        for x in xrange(0, 10):
+            crec.ehr_data.archetype_details['data']['at0001'] = random.randint(100*x, 200*x)
+            crec = self.dbs.update_ehr_record(crec)
+            if x == 4:
+                v6_value = crec.ehr_data.archetype_details['data']['at0001']
+                v6_last_update = crec.last_update
+        self.assertEqual(crec.version, 11)
+        crec, deleted_revisions = self.dbs.restore_ehr_version(crec, 6)
+        self.assertEqual(deleted_revisions, 5)
+        self.assertEqual(crec.version, 6)
+        self.assertEqual(crec.ehr_data.archetype_details['data']['at0001'],
+                         v6_value)
+        self.assertEqual(crec.last_update, v6_last_update)
+
+    def test_record_restore_original(self):
+        crec = self.build_dataset()
+        original_last_update = crec.last_update
+        original_value = crec.ehr_data.archetype_details['data']['at0001']
+        for x in xrange(0, 10):
+            crec.ehr_data.archetype_details['data']['at0001'] = random.randint(100*x, 200*x)
+            crec = self.dbs.update_ehr_record(crec)
+        self.assertEqual(crec.version, 11)
+        crec, deleted_revisions = self.dbs.restore_original_ehr(crec)
+        self.assertEqual(deleted_revisions, 10)
+        self.assertEqual(crec.version, 1)
+        self.assertEqual(crec.last_update, original_last_update)
+        self.assertEqual(crec.ehr_data.archetype_details['data']['at0001'],
+                         original_value)
+
+    def test_record_restore_previuos_revision(self):
+        crec = self.build_dataset()
+        crec_rev_1 = crec.to_json()
+        crec.ehr_data.archetype_details['data']['at0001'] = random.randint(100, 200)
+        crec = self.dbs.update_ehr_record(crec)
+        crec_rev_2 = crec.to_json()
+        crec.ehr_data.archetype_details['data']['at0002'] = 'updated text message'
+        crec = self.dbs.update_ehr_record(crec)
+        self.assertEqual(crec.version, 3)
+        crec = self.dbs.restore_previous_ehr_version(crec)
+        self.assertEqual(crec.to_json(), crec_rev_2)
+        crec = self.dbs.restore_previous_ehr_version(crec)
+        self.assertEqual(crec.to_json(), crec_rev_1)
+
+    def test_optimistic_lock_error(self):
+        # first user creates a clinical record
+        crec1 = self.build_dataset()
+        # second user retrieve the same record (using copy to make things fast)
+        crec2 = copy.copy(crec1)
+        # first user update the record
+        crec1.ehr_data.archetype_details['data']['at0001'] = random.randint(100, 200)
+        self.dbs.update_ehr_record(crec1)
+        # second user try to update the record, an OptimisticLockError is raised
+        with self.assertRaises(OptimisticLockError) as ctx:
+            crec2.ehr_data.archetype_details['data']['at0002'] = 'updated text message'
+            self.dbs.update_ehr_record(crec2)
+
+    def test_redundant_update_error(self):
+        crec = self.build_dataset()
+        # record unchanged, try to update anyway
+        with self.assertRaises(RedundantUpdateError) as ctx:
+            self.dbs.update_ehr_record(crec)
+
+    def test_record_restore_failed_error(self):
+        # first user creates a clinical record and updates it several times
+        crec1 = self.build_dataset()
+        for x in xrange(0, 10):
+            crec1.ehr_data.archetype_details['data']['at0001'] = random.randint(100*x, 200*x)
+            crec1 = self.dbs.update_ehr_record(crec1)
+        # second user get the last version of the same record (using copy as shortcut)
+        crec2 = copy.copy(crec1)
+        # first user restore the original version of the record
+        self.dbs.restore_original_ehr(crec1)
+        # second user restores one previous version of the record but this will fail
+        # because used version no longer exists
+        with self.assertRaises(RecordRestoreFailedError) as ctx:
+            self.dbs.restore_ehr_version(crec2, 5)
+
+    def test_record_restore_unecessary_error(self):
+        crec = self.build_dataset()
+        with self.assertRaises(RecordRestoreUnecessaryError) as ctx:
+            self.dbs.restore_previous_ehr_version(crec)
+            self.dbs.restore_original_ehr(crec)
+
+
+def suite():
+    suite = unittest.TestSuite()
+    suite.addTest(TestVersionManager('test_record_update'))
+    suite.addTest(TestVersionManager('test_record_restore'))
+    suite.addTest(TestVersionManager('test_record_restore_original'))
+    suite.addTest(TestVersionManager('test_record_restore_previuos_revision'))
+    suite.addTest(TestVersionManager('test_optimistic_lock_error'))
+    suite.addTest(TestVersionManager('test_redundant_update_error'))
+    suite.addTest(TestVersionManager('test_record_restore_failed_error'))
+    suite.addTest(TestVersionManager('test_record_restore_unecessary_error'))
+    return suite
+
+if __name__ == '__main__':
+    runner = unittest.TextTestRunner(verbosity=2)
+    runner.run(suite())
