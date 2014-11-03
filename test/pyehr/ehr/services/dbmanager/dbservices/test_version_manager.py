@@ -3,7 +3,8 @@ from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
     ClinicalRecord, ArchetypeInstance
 from pyehr.ehr.services.dbmanager.errors import OptimisticLockError,\
-    RedundantUpdateError, RecordRestoreFailedError, RecordRestoreUnecessaryError
+    RedundantUpdateError, RecordRestoreFailedError, RecordRestoreUnecessaryError,\
+    OperationNotAllowedError
 from pyehr.utils.services import get_service_configuration
 
 CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
@@ -42,7 +43,8 @@ class TestVersionManager(unittest.TestCase):
         self.dbs.set_index_service(**sconf.get_index_configuration())
 
     def tearDown(self):
-        self.dbs.delete_patient(self.patient, cascade_delete=True)
+        if self.patient:
+            self.dbs.delete_patient(self.patient, cascade_delete=True)
         self.dbs.index_service.connect()
         self.dbs.index_service.session.execute('drop database %s' %
                                                self.dbs.index_service.db)
@@ -141,6 +143,13 @@ class TestVersionManager(unittest.TestCase):
             self.dbs.restore_previous_ehr_version(crec)
             self.dbs.restore_original_ehr(crec)
 
+    def test_operation_not_allowed_error(self):
+        crec = self._create_random_clinical_record()
+        with self.assertRaises(OperationNotAllowedError):
+            crec.ehr_data.archetype_details['data']['at0002'] = 'updated text message'
+            self.dbs.update_ehr_record(crec)
+            self.dbs.restore_original_ehr(crec)
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -152,6 +161,7 @@ def suite():
     suite.addTest(TestVersionManager('test_redundant_update_error'))
     suite.addTest(TestVersionManager('test_record_restore_failed_error'))
     suite.addTest(TestVersionManager('test_record_restore_unecessary_error'))
+    suite.addTest(TestVersionManager('test_operation_not_allowed_error'))
     return suite
 
 if __name__ == '__main__':

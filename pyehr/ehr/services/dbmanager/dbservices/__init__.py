@@ -3,7 +3,7 @@ from pyehr.utils import get_logger
 from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError, RedundantUpdateError,\
-    RecordRestoreUnecessaryError
+    RecordRestoreUnecessaryError, OperationNotAllowedError
 from pyehr.ehr.services.dbmanager.dbservices.version_manager import VersionManager
 
 
@@ -98,7 +98,7 @@ class DBServices(object):
             patient_record.record_id = driver.add_record(driver.encode_record(patient_record))
             return patient_record
 
-    def save_ehr_record(self, ehr_record, patient_record):
+    def save_ehr_record(self, ehr_record, patient_record, record_moved=False):
         """
         Save a clinical record into the DB and link it to a patient record
 
@@ -107,12 +107,24 @@ class DBServices(object):
         :param patient_record: the reference :class:`PatientRecord` for the EHR record that
           is going to be saved
         :type patient_record: :class:`PatientRecord`
+        :param record_moved: if True, the record has been moved from another patient, if
+          False the record should be considered as a new one
+        :type record_moved: bool
         :return: the :class:`ClinicalRecord` and the :class:`PatientRecord`
         """
         drf = self._get_drivers_factory(self.ehr_repository)
-        with drf.get_driver() as driver:
-            ehr_record.bind_to_patient(patient_record)
-            driver.add_record(driver.encode_record(ehr_record))
+        ehr_record.bind_to_patient(patient_record)
+        if ehr_record.is_persistent:
+            if record_moved:
+                ehr_record = self.version_manager.update_field(ehr_record, 'patient_id',
+                                                               ehr_record.patient_id, 'last_update')
+            else:
+                raise OperationNotAllowedError('An already mapped record can\'t be assigned to a patient')
+        else:
+            # saving a new record, this is the first revision
+            ehr_record.increase_version()
+            with drf.get_driver() as driver:
+                driver.add_record(driver.encode_record(ehr_record))
         patient_record = self._add_ehr_record(patient_record, ehr_record)
         return ehr_record, patient_record
 
@@ -135,6 +147,8 @@ class DBServices(object):
         with drf.get_driver() as driver:
             for r in ehr_records:
                 r.bind_to_patient(patient_record)
+                if not r.is_persistent:
+                    r.increase_version()
             encoded_records = [driver.encode_record(r) for r in ehr_records]
             saved, errors = driver.add_records(encoded_records, skip_existing_duplicated)
             errors = [driver.decode_record(e) for e in errors]
@@ -184,11 +198,18 @@ class DBServices(object):
           fields
         :rtype: :class:`ClinicalRecord`
         """
+        if not ehr_record.is_persistent:
+            raise OperationNotAllowedError('Record %s is not mapped in the DB, unable to update' %
+                                           ehr_record.record_id)
         return self.version_manager.update_record(ehr_record)
 
     def _check_unecessary_restore(self, ehr_record):
         if ehr_record.version == 1:
-            raise RecordRestoreUnecessaryError('Record %s already at original revision')
+            raise RecordRestoreUnecessaryError('Record %s already at original revision' %
+                                               ehr_record.record_id)
+        elif ehr_record.version == 0:
+            raise OperationNotAllowedError('Record %s is not mapped in the DB, unable to restore' %
+                                           ehr_record.record_id)
 
     def restore_ehr_version(self, ehr_record, version):
         """
@@ -229,7 +250,7 @@ class DBServices(object):
         """
         return self.restore_ehr_version(ehr_record, ehr_record.version-1)[0]
 
-    def move_ehr_record(self, src_patient, dest_patient, ehr_record):
+    def move_ehr_record(self, src_patient, dest_patient, ehr_record, reset_ehr_record_history=False):
         """
         Move a saved :class:`ClinicalRecord` from a saved :class:`PatientRecord` to another one
 
@@ -240,11 +261,15 @@ class DBServices(object):
         :type dest_patient: :class:`PatientRecord`
         :param ehr_record: the :class:`ClinicalRecord` that is going to be moved
         :type ehr_record: :class:`ClinicalRecord`
+        :param reset_ehr_record_history: if True, reset EHR record history and delete all revisions, if False
+          keep record's history and keep trace of the move event. Default value is False.
+        :type reset_ehr_record_history: bool
         :return: the two :class:`PatientRecord` mapping the proper association to the EHR record
         """
         ehr_record, src_patient = self.remove_ehr_record(ehr_record, src_patient,
-                                                         reset_record=False)
-        ehr_record, dest_patient = self.save_ehr_record(ehr_record, dest_patient)
+                                                         reset_record=reset_ehr_record_history)
+        ehr_record, dest_patient = self.save_ehr_record(ehr_record, dest_patient,
+                                                        record_moved=True)
         return src_patient, dest_patient
 
     def remove_ehr_record(self, ehr_record, patient_record, reset_record=True):
@@ -263,8 +288,8 @@ class DBServices(object):
         """
         self._remove_from_list(patient_record, 'ehr_records', ehr_record.record_id)
         patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
-        self.delete_ehr_record(ehr_record, reset_record)
         if reset_record:
+            self.delete_ehr_record(ehr_record, reset_record)
             ehr_record.reset()
         else:
             ehr_record.patient_id = None

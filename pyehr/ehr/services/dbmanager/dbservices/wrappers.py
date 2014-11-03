@@ -140,13 +140,30 @@ class ClinicalRecord(Record):
 
     def __init__(self, ehr_data, creation_time=None, last_update=None,
                  active=True, record_id=None, structure_id=None,
-                 version=1):
+                 version=0):
         super(ClinicalRecord, self).__init__(creation_time or time.time(),
                                              last_update, active, record_id)
         self.ehr_data = ehr_data
         self.patient_id = None
         self.structure_id = structure_id
-        self.version = version
+        self._version = version
+
+    @property
+    def version(self):
+        return self._version
+
+    @version.setter
+    def version(self, _version):
+        if not isinstance(_version, int):
+            raise ValueError('Version must be an integer, %s was given' % type(_version))
+        if _version >= 0:
+            self._version = _version
+        else:
+            raise ValueError('Wrong value for version field: %r' % _version)
+
+    @property
+    def is_persistent(self):
+        return self.version != 0
 
     def reset(self):
         self.new_record_id()
@@ -161,7 +178,7 @@ class ClinicalRecord(Record):
         self.patient_id = None
 
     def reset_version(self):
-        self.version = 1
+        self.version = 0
 
     def increase_version(self):
         self.version += 1

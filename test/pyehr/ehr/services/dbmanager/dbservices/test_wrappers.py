@@ -20,7 +20,7 @@ class TestWrapper(unittest.TestCase):
             'ehr_records': [{
                 'record_id': '5314b3a55c98900a8a3d1a2c',
                 'active': True,
-                'version': 1,
+                'version': 0,
                 'creation_time': creation_time,
                 'last_update': creation_time,
                 'ehr_data': {

@@ -68,3 +68,11 @@ class RecordRestoreFailedError(Exception):
 
 class RecordRestoreUnecessaryError(Exception):
     pass
+
+
+class MissingRevisionError(Exception):
+    pass
+
+
+class OperationNotAllowedError(Exception):
+    pass
