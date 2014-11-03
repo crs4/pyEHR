@@ -204,7 +204,7 @@ class DBServices(object):
           that have been deleted
         """
         self._check_unecessary_restore(ehr_record)
-        return self.version_manager.restore_version(ehr_record.record_id, version)
+        return self.version_manager.restore_revision(ehr_record.record_id, version)
 
     def restore_original_ehr(self, ehr_record):
         """

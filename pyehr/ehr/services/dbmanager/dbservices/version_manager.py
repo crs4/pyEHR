@@ -149,25 +149,25 @@ class VersionManager(object):
             last_update = driver.remove_from_list(record.record_id, list_label, element,
                                                   last_update_label, True)
         record.last_update = last_update
-        record.version += 1
+        record.increase_version()
         return record
 
-    def restore_version(self, record_id, version):
-        original_record = self._get_record_from_archive(record_id, version)
+    def restore_revision(self, record_id, revision):
+        original_record = self._get_record_from_archive(record_id, revision)
         if not original_record:
             raise RecordRestoreFailedError('Unable to retrieve version %d for record %s' %
-                                           (version, record_id))
+                                           (revision, record_id))
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_record(record_id)
             driver.add_record(driver.encode_record(original_record))
         drf = self._get_drivers_factory(self.ehr_versioning_repository)
         with drf.get_driver() as driver:
-            del_count = driver.delete_later_versions(record_id, version-1)
+            del_count = driver.delete_later_versions(record_id, revision-1)
         return original_record, del_count
 
     def restore_original(self, record_id):
-        return self.restore_version(record_id, version=1)
+        return self.restore_revision(record_id, revision=1)
 
     def remove_revisions(self, record_id):
         drf = self._get_drivers_factory(self.ehr_versioning_repository)
