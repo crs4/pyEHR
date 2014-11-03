@@ -155,13 +155,16 @@ class ClinicalRecord(Record):
         
     def new_record_id(self):
         super(ClinicalRecord, self).new_record_id()
-        self.version = 1
+        self.reset_version()
 
     def unbind_from_patient(self):
         self.patient_id = None
 
     def reset_version(self):
         self.version = 1
+
+    def increase_version(self):
+        self.version += 1
 
     def _set_patient_id(self, patient_id):
         self.patient_id = patient_id

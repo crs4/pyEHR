@@ -93,7 +93,7 @@ class VersionManager(object):
         self._move_record_to_archive(current_revision)
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
-            new_record.version += 1
+            new_record.increase_version()
             last_update = driver.replace_record(new_record.record_id,
                                                 driver.encode_record(new_record),
                                                 'last_update')
@@ -112,7 +112,7 @@ class VersionManager(object):
         with drf.get_driver() as driver:
             last_update = driver.update_field(record.record_id, field, value, last_update_label, True)
         record.last_update = last_update
-        record.version += 1
+        record.increase_version()
         setattr(record, field, value)
         return record
 
@@ -125,7 +125,7 @@ class VersionManager(object):
             last_update = driver.add_to_list(record.record_id, list_label, element,
                                              last_update_label, True)
         record.last_update = last_update
-        record.version += 1
+        record.increase_version()
         return record
 
     def extend_list(self, record, list_label, elements, last_update_label):
@@ -137,7 +137,7 @@ class VersionManager(object):
             last_update = driver.extend_list(record.record_id, list_label, elements,
                                              last_update_label, True)
         record.last_update = last_update
-        record.version += 1
+        record.increase_version()
         return record
 
     def remove_from_list(self, record, list_label, element, last_update_label):
