@@ -3,7 +3,8 @@ from voluptuous import Schema, Required, MultipleInvalid, Coerce
 import time
 from uuid import uuid4
 
-from pyehr.ehr.services.dbmanager.errors import InvalidJsonStructureError
+from pyehr.ehr.services.dbmanager.errors import InvalidJsonStructureError,\
+    OperationNotAllowedError
 from pyehr.utils import cleanup_json, decode_dict
 
 
@@ -47,9 +48,9 @@ class Record(object):
     def to_json(self):
         pass
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def from_json(json_data):
+    def from_json(cls, json_data):
         pass
 
 
@@ -102,8 +103,8 @@ class PatientRecord(Record):
             json['ehr_records'].append(e.to_json())
         return json
 
-    @staticmethod
-    def from_json(json_data):
+    @classmethod
+    def from_json(cls, json_data):
         """
         Create a :class:`PatientRecord` object from the given JSON dictionary, if one or more :class:`ClinicalRecord`
         objects in JSON format are encoded in ehr_records field, create these objects as well
@@ -206,17 +207,26 @@ class ClinicalRecord(Record):
         for a in attrs:
             json[a] = getattr(self, a)
         if self.record_id:
-            json['record_id'] = str(self.record_id)
+            json['record_id'] = self.record_id
         if self.patient_id:
             json['patient_id'] = str(self.patient_id)
         json['ehr_data'] = self.ehr_data.to_json()
         return json
 
     @staticmethod
-    def from_json(json_data):
-        def validate_record_id(record_id):
-            if not isinstance(record_id, str) and not isinstance(record_id, dict):
-                raise ValueError('%s is not a valid clinical record ID' % record_id)
+    def _get_validation_schema():
+        return Schema({
+            Required('ehr_data'): dict,
+            'creation_time': float,
+            'last_update': float,
+            'active': bool,
+            'record_id': str,
+            'patient_id': str,
+            'version': int
+        })
+
+    @classmethod
+    def from_json(cls, json_data):
         """
         Create a :class:`ClinicalRecord` object from the given JSON dictionary
 
@@ -225,15 +235,7 @@ class ClinicalRecord(Record):
         :return: a :class:`ClinicalRecord` object
         :rtype: :class:`ClinicalRecord`
         """
-        schema = Schema({
-            Required('ehr_data'): dict,
-            'creation_time': float,
-            'last_update': float,
-            'active': bool,
-            'record_id': validate_record_id,
-            'patient_id': str,
-            'version': int
-        })
+        schema = cls._get_validation_schema()
         try:
             json_data = decode_dict(json_data)
             schema(json_data)
@@ -248,6 +250,57 @@ class ClinicalRecord(Record):
             return crec
         except MultipleInvalid:
             raise InvalidJsonStructureError('JSON record\'s structure is not compatible with ClinicalRecord object')
+
+    def convert_to_revision(self):
+        if not self.is_persistent:
+            raise OperationNotAllowedError('Non persistent record can\'t be converted to ClinicalRecordRevision')
+        return ClinicalRecordRevision(
+            ehr_data=self.ehr_data,
+            record_id={'_id': self.record_id, '_version': self.version},
+            patient_id=self.patient_id,
+            creation_time=self.creation_time,
+            last_update=self.last_update,
+            active=self.active,
+            structure_id=self.structure_id,
+            version=self.version
+        )
+
+
+class ClinicalRecordRevision(ClinicalRecord):
+
+    def __init__(self, ehr_data, record_id, patient_id, creation_time=None, last_update=None,
+                 active=True, structure_id=None, version=0):
+        super(ClinicalRecordRevision, self).__init__(ehr_data, creation_time, last_update,
+                                                     active, record_id, structure_id, version)
+        self.record_id = record_id
+        self._set_patient_id(patient_id)
+
+    @staticmethod
+    def _get_validation_schema():
+        id_schema = Schema({'_id': str, '_version': int}, required=True)
+        return Schema({
+            Required('ehr_data'): dict,
+            Required('record_id'): id_schema,
+            'creation_time': float,
+            'last_update': float,
+            'active': bool,
+            'record_id': str,
+            'patient_id': str,
+            'version': int
+        })
+
+    def convert_to_clinical_record(self):
+        crec = ClinicalRecord(
+            ehr_data=self.ehr_data,
+            creation_time=self.creation_time,
+            last_update=self.last_update,
+            active=self.active,
+            record_id=self.record_id['_id'],
+            structure_id=self.structure_id,
+            version=self.version
+        )
+        crec._set_patient_id(self.patient_id)
+        return crec
 
 
 class ArchetypeInstance(object):

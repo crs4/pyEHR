@@ -4,7 +4,7 @@ import json
 from pyehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from pyehr.utils import get_logger
 from pyehr.ehr.services.dbmanager.errors import OptimisticLockError,\
-    RedundantUpdateError, RecordRestoreFailedError
+    RedundantUpdateError, MissingRevisionError
 
 
 class VersionManager(object):
@@ -60,29 +60,24 @@ class VersionManager(object):
                 return driver.decode_record(rec)
 
     def _move_record_to_archive(self, record):
-        # add version number to record's ID in order to avoid duplicated
-        # IDs and to ensure that only one record with that version number
-        # will exists in the archive
-        record.record_id = {
-            '_id': record.record_id,
-            '_version': record.version
-        }
+        record = record.convert_to_revision()
         drf = self._get_drivers_factory(self.ehr_versioning_repository)
         with drf.get_driver() as driver:
             record_id = driver.add_record(driver.encode_record(record))
             return record_id
 
-    def _get_record_from_archive(self, record_id, version_number):
+    def get_revision(self, record_id, version_number, convert_to_clinical_record=False):
         if not isinstance(version_number, int) or version_number < 1:
             raise ValueError('%r is not a valid version number' % version_number)
         drf = self._get_drivers_factory(self.ehr_versioning_repository)
         with drf.get_driver() as driver:
-            record_id = {'_id': record_id, '_version': version_number}
-            record = driver.get_record_by_id(record_id)
+            record = driver.get_record_by_version(record_id, version_number)
             if record:
-                # use the "standard" form for the record's ID
-                record['_id'] = record['_id']['_id']
-                return driver.decode_record(record)
+                rec = driver.decode_record(record)
+                if convert_to_clinical_record:
+                    return rec.convert_to_clinical_record()
+                else:
+                    return rec
             else:
                 return None
 
@@ -153,10 +148,11 @@ class VersionManager(object):
         return record
 
     def restore_revision(self, record_id, revision):
-        original_record = self._get_record_from_archive(record_id, revision)
+        original_record = self.get_revision(record_id, revision,
+                                            convert_to_clinical_record=True)
         if not original_record:
-            raise RecordRestoreFailedError('Unable to retrieve version %d for record %s' %
-                                           (revision, record_id))
+            raise MissingRevisionError('Unable to retrieve version %d for record %s' %
+                                      (revision, record_id))
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_record(record_id)
@@ -175,3 +171,4 @@ class VersionManager(object):
             del_count = driver.delete_later_versions(record_id)
         self.logger.debug('Removed %d revisions for record %s', del_count, record_id)
         return del_count
+

@@ -3,7 +3,7 @@ from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
     ClinicalRecord, ArchetypeInstance
 from pyehr.ehr.services.dbmanager.errors import OptimisticLockError,\
-    RedundantUpdateError, RecordRestoreFailedError, RecordRestoreUnecessaryError,\
+    RedundantUpdateError, MissingRevisionError, RecordRestoreUnecessaryError,\
     OperationNotAllowedError
 from pyehr.utils.services import get_service_configuration
 
@@ -122,7 +122,7 @@ class TestVersionManager(unittest.TestCase):
         with self.assertRaises(RedundantUpdateError) as ctx:
             self.dbs.update_ehr_record(crec)
 
-    def test_record_restore_failed_error(self):
+    def test_missing_revision_error(self):
         # first user creates a clinical record and updates it several times
         crec1 = self.build_dataset()
         for x in xrange(0, 10):
@@ -134,7 +134,7 @@ class TestVersionManager(unittest.TestCase):
         self.dbs.restore_original_ehr(crec1)
         # second user restores one previous version of the record but this will fail
         # because used version no longer exists
-        with self.assertRaises(RecordRestoreFailedError) as ctx:
+        with self.assertRaises(MissingRevisionError) as ctx:
             self.dbs.restore_ehr_version(crec2, 5)
 
     def test_record_restore_unecessary_error(self):
@@ -159,7 +159,7 @@ def suite():
     suite.addTest(TestVersionManager('test_record_restore_previuos_revision'))
     suite.addTest(TestVersionManager('test_optimistic_lock_error'))
     suite.addTest(TestVersionManager('test_redundant_update_error'))
-    suite.addTest(TestVersionManager('test_record_restore_failed_error'))
+    suite.addTest(TestVersionManager('test_missing_revision_error'))
     suite.addTest(TestVersionManager('test_record_restore_unecessary_error'))
     suite.addTest(TestVersionManager('test_operation_not_allowed_error'))
     return suite

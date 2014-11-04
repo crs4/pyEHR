@@ -111,26 +111,26 @@ class MongoDriver(DriverInterface):
             encoded_record['_id'] = patient_record.record_id
         return encoded_record
 
-    def _encode_clinical_record(self, clinical_record):
-        def normalize_keys(document, original, encoded):
-            normalized_doc = {}
-            for k, v in document.iteritems():
-                k = k.replace(original, encoded)
-                if not isinstance(v, dict):
-                    if isinstance(v, list):
-                        v = [normalize_keys(x, original, encoded) for x in v]
-                    normalized_doc[k] = v
-                else:
-                    normalized_doc[k] = normalize_keys(v, original, encoded)
-            return normalized_doc
+    def _normalize_keys(self, document, original, encoded):
+        normalized_doc = {}
+        for k, v in document.iteritems():
+            k = k.replace(original, encoded)
+            if not isinstance(v, dict):
+                if isinstance(v, list):
+                    v = [self._normalize_keys(x, original, encoded) for x in v]
+                normalized_doc[k] = v
+            else:
+                normalized_doc[k] = self._normalize_keys(v, original, encoded)
+        return normalized_doc
 
+    def _encode_clinical_record(self, clinical_record):
         ehr_data = clinical_record.ehr_data.to_json()
         if self.index_service:
             structure_id = self.index_service.get_structure_id(ehr_data)
         else:
             structure_id = None
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
-            ehr_data = normalize_keys(ehr_data, original_value, encoded_value)
+            ehr_data = self._normalize_keys(ehr_data, original_value, encoded_value)
         encoded_record = {
             'patient_id': clinical_record.patient_id,
             'creation_time': clinical_record.creation_time,
@@ -145,6 +145,21 @@ class MongoDriver(DriverInterface):
             encoded_record['ehr_structure_id'] = structure_id
         return encoded_record
 
+    def _encode_clinical_record_revision(self, clinical_record_revision):
+        ehr_data = clinical_record_revision.ehr_data.to_json()
+        for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
+            ehr_data = self._normalize_keys(ehr_data, original_value, encoded_value)
+        return {
+            '_id': clinical_record_revision.record_id,
+            'ehr_structure_id': clinical_record_revision.structure_id,
+            'patient_id': clinical_record_revision.patient_id,
+            'creation_time': clinical_record_revision.creation_time,
+            'last_update': clinical_record_revision.last_update,
+            'active': clinical_record_revision.active,
+            'ehr_data': ehr_data,
+            '_version': clinical_record_revision.version
+        }
+
     def encode_record(self, record):
         """
         Encode a :class:`Record` object into a data structure that can be saved within
@@ -154,10 +169,13 @@ class MongoDriver(DriverInterface):
         :type record: a :class:`Record` subclass
         :return: the record encoded as a MongoDB document
         """
-        from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
+        from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
+            ClinicalRecord, ClinicalRecordRevision
 
         if isinstance(record, PatientRecord):
             return self._encode_patient_record(record)
+        elif isinstance(record, ClinicalRecordRevision):
+            return self._encode_clinical_record_revision(record)
         elif isinstance(record, ClinicalRecord):
             return self._encode_clinical_record(record)
         else:
@@ -184,25 +202,25 @@ class MongoDriver(DriverInterface):
                 record_id=record.get('_id')
             )
 
+    def _decode_keys(self, document, encoded, original):
+        normalized_doc = {}
+        for k, v in document.iteritems():
+            k = k.replace(encoded, original)
+            if not isinstance(v, dict):
+                normalized_doc[k] = v
+            else:
+                normalized_doc[k] = self._decode_keys(v, encoded, original)
+        return normalized_doc
+
     def _decode_clinical_record(self, record, loaded):
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord,\
             ArchetypeInstance
-
-        def decode_keys(document, encoded, original):
-            normalized_doc = {}
-            for k, v in document.iteritems():
-                k = k.replace(encoded, original)
-                if not isinstance(v, dict):
-                    normalized_doc[k] = v
-                else:
-                    normalized_doc[k] = decode_keys(v, encoded, original)
-            return normalized_doc
 
         record = decode_dict(record)
         if loaded:
             ehr_data = record['ehr_data']
             for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
-                ehr_data = decode_keys(ehr_data, encoded_value, original_value)
+                ehr_data = self._decode_keys(ehr_data, encoded_value, original_value)
             crec = ClinicalRecord(
                 ehr_data=ArchetypeInstance.from_json(ehr_data),
                 creation_time=record['creation_time'],
@@ -232,6 +250,25 @@ class MongoDriver(DriverInterface):
                 crec._set_patient_id(record['patient_id'])
         return crec
 
+    def _decode_clinical_record_revision(self, record):
+        from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecordRevision, \
+            ArchetypeInstance
+
+        record = decode_dict(record)
+        ehr_data = record['ehr_data']
+        for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
+            ehr_data = self._decode_keys(ehr_data, encoded_value, original_value)
+        return ClinicalRecordRevision(
+            ehr_data=ArchetypeInstance.from_json(ehr_data),
+            patient_id=record['patient_id'],
+            creation_time=record['creation_time'],
+            last_update=record['last_update'],
+            active=record['active'],
+            record_id=record['_id'],
+            structure_id=record['ehr_structure_id'],
+            version=record.get('_version'),
+        )
+
     def decode_record(self, record, loaded=True):
         """
         Create a :class:`Record` object from data retrieved from MongoDB
@@ -244,7 +281,10 @@ class MongoDriver(DriverInterface):
         :return: the MongoDB document encoded as a :class:`Record` object
         """
         if 'ehr_data' in record:
-            return self._decode_clinical_record(record, loaded)
+            if isinstance(record.get('_id'), dict):
+                return self._decode_clinical_record_revision(record)
+            else:
+                return self._decode_clinical_record(record, loaded)
         else:
             return self._decode_patient_record(record, loaded)
 
@@ -314,12 +354,7 @@ class MongoDriver(DriverInterface):
         :return: the record or None if no match was found
         :rtype: dict or None
         """
-        res = self.get_records_by_query({'_id': record_id, '_version': version})
-        assert len(res) <= 1
-        try:
-            return res[0]
-        except IndexError:
-            return None
+        return self.get_record_by_id({'_id': record_id, '_version': version})
 
     def get_all_records(self):
         """
