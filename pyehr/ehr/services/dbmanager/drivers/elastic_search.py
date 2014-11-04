@@ -377,6 +377,9 @@ class ElasticSearchDriver(DriverInterface):
     def get_record_by_version(self, record_id, version):
         raise NotImplementedError()
 
+    def get_revisions_by_ehr_id(self, record_id):
+        raise NotImplementedError()
+
     def get_all_records(self):
         """
         Retrieve all records within current collection

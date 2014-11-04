@@ -107,6 +107,13 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
+    def get_revisions_by_ehr_id(self, record_id):
+        """
+        Retrieve all revisions for the given EHR ID
+        """
+        pass
+
+    @abstractmethod
     def get_all_records(self):
         """
         Retrieve all records from the backed server

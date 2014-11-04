@@ -356,6 +356,16 @@ class MongoDriver(DriverInterface):
         """
         return self.get_record_by_id({'_id': record_id, '_version': version})
 
+    def get_revisions_by_ehr_id(self, ehr_id):
+        """
+        Retrieve all revisions for the given EHR ID
+
+        :param ehr_id: the EHR ID that will be used to retrieve revisions
+        :return: all revisions matching given ID
+        :rtype: list
+        """
+        return self.get_records_by_query({'_id._id': ehr_id})
+
     def get_all_records(self):
         """
         Retrieve all records within current collection

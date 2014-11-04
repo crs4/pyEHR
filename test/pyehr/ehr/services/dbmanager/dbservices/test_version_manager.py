@@ -1,7 +1,7 @@
 import unittest, sys, os, uuid, random, copy
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
-    ClinicalRecord, ArchetypeInstance
+    ClinicalRecord, ClinicalRecordRevision, ArchetypeInstance
 from pyehr.ehr.services.dbmanager.errors import OptimisticLockError,\
     RedundantUpdateError, MissingRevisionError, RecordRestoreUnecessaryError,\
     OperationNotAllowedError
@@ -103,6 +103,38 @@ class TestVersionManager(unittest.TestCase):
         crec = self.dbs.restore_previous_ehr_version(crec)
         self.assertEqual(crec.to_json(), crec_rev_1)
 
+    def test_get_revision(self):
+        crec = self.build_dataset()
+        for x in xrange(0, 10):
+            crec.ehr_data.archetype_details['data']['at0001'] = random.randint(100*x, 200*x)
+            crec = self.dbs.update_ehr_record(crec)
+            if x == 4:
+                v6_value = crec.ehr_data.archetype_details['data']['at0001']
+                v6_last_update = crec.last_update
+        crec_v6 = self.dbs.get_revision(crec, 6)
+        self.assertIsInstance(crec_v6, ClinicalRecordRevision)
+        self.assertEqual(crec_v6.last_update, v6_last_update)
+        self.assertEqual(crec_v6.ehr_data.archetype_details['data']['at0001'],
+                         v6_value)
+
+    def test_get_revisions(self):
+        crec = self.build_dataset()
+        for x in xrange(0, 10):
+            crec.ehr_data.archetype_details['data']['at0001'] = random.randint(100*x, 200*x)
+            crec = self.dbs.update_ehr_record(crec)
+        revisions = self.dbs.get_revisions(crec)
+        self.assertEqual(len(revisions), 10)
+        for rev in revisions:
+            self.assertIsInstance(rev, ClinicalRecordRevision)
+        self.assertEqual(revisions[0].version, 1)
+        self.assertEqual(revisions[-1].version, 10)
+        revisions = self.dbs.get_revisions(crec, reverse_ordering=True)
+        self.assertEqual(len(revisions), 10)
+        for rev in revisions:
+            self.assertIsInstance(rev, ClinicalRecordRevision)
+        self.assertEqual(revisions[0].version, 10)
+        self.assertEqual(revisions[-1].version, 1)
+
     def test_optimistic_lock_error(self):
         # first user creates a clinical record
         crec1 = self.build_dataset()
@@ -157,6 +189,8 @@ def suite():
     suite.addTest(TestVersionManager('test_record_restore'))
     suite.addTest(TestVersionManager('test_record_restore_original'))
     suite.addTest(TestVersionManager('test_record_restore_previuos_revision'))
+    suite.addTest(TestVersionManager('test_get_revision'))
+    suite.addTest(TestVersionManager('test_get_revisions'))
     suite.addTest(TestVersionManager('test_optimistic_lock_error'))
     suite.addTest(TestVersionManager('test_redundant_update_error'))
     suite.addTest(TestVersionManager('test_missing_revision_error'))

@@ -1,5 +1,6 @@
 from hashlib import md5
 import json
+from operator import attrgetter
 
 from pyehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from pyehr.utils import get_logger
@@ -80,6 +81,13 @@ class VersionManager(object):
                     return rec
             else:
                 return None
+
+    def get_revisions(self, record_id, reverse_ordering=False):
+        drf = self._get_drivers_factory(self.ehr_versioning_repository)
+        with drf.get_driver() as driver:
+            revisions = [driver.decode_record(rec) for rec in
+                         driver.get_revisions_by_ehr_id(record_id)]
+        return sorted(revisions, key=attrgetter('version'), reverse=reverse_ordering)
 
     def update_record(self, new_record):
         current_revision = self._get_current_revision(new_record.record_id)

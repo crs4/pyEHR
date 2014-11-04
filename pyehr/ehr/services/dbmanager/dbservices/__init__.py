@@ -250,6 +250,35 @@ class DBServices(object):
         """
         return self.restore_ehr_version(ehr_record, ehr_record.version-1)[0]
 
+    def get_revision(self, ehr_record, version):
+        """
+        Get a specific *version* of the given *ehr_record*
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be used to retrieve the wanted *version*
+        :type ehr_record: :class:`ClinicalRecord`
+        :param version: the revision of the object that will be retrieved
+        :type version: int
+        :return: a :class:`ClinicalRecordRevision` object matching the selected *version* or None
+          if no match is fuond
+        :rtype: :class:`ClinicalRecordRevision` or None
+        """
+        return self.version_manager.get_revision(ehr_record.record_id, version)
+
+    def get_revisions(self, ehr_record, reverse_ordering=False):
+        """
+        Get all revisions for the given *ehr_record* ordered from the older to the newer.
+        If *reverse_ordering* is True, revisions will be ordered from the newer to the older.
+
+        :param ehr_record: the :class:`ClinicalRecord` for which will be retrieved old revisions
+        :type ehr_record: :class:`ClinicalRecord`
+        :param reverse_ordering: if False (default) revisions will be ordered from the older to
+          the newer; if True the opposite ordering will be applied (newer to older).
+        :type reverse_ordering: bool
+        :return: an ordered list with all the revisions for the given *ehr_record*
+        :rtype: list
+        """
+        return self.version_manager.get_revisions(ehr_record.record_id, reverse_ordering)
+
     def move_ehr_record(self, src_patient, dest_patient, ehr_record, reset_ehr_record_history=False):
         """
         Move a saved :class:`ClinicalRecord` from a saved :class:`PatientRecord` to another one
