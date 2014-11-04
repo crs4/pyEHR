@@ -111,38 +111,54 @@ class MongoDriver(DriverInterface):
             encoded_record['_id'] = patient_record.record_id
         return encoded_record
 
-    def _encode_clinical_record(self, clinical_record):
-        def normalize_keys(document, original, encoded):
-            normalized_doc = {}
-            for k, v in document.iteritems():
-                k = k.replace(original, encoded)
-                if not isinstance(v, dict):
-                    if isinstance(v, list):
-                        v = [normalize_keys(x, original, encoded) for x in v]
-                    normalized_doc[k] = v
-                else:
-                    normalized_doc[k] = normalize_keys(v, original, encoded)
-            return normalized_doc
+    def _normalize_keys(self, document, original, encoded):
+        normalized_doc = {}
+        for k, v in document.iteritems():
+            k = k.replace(original, encoded)
+            if not isinstance(v, dict):
+                if isinstance(v, list):
+                    v = [self._normalize_keys(x, original, encoded) for x in v]
+                normalized_doc[k] = v
+            else:
+                normalized_doc[k] = self._normalize_keys(v, original, encoded)
+        return normalized_doc
 
+    def _encode_clinical_record(self, clinical_record):
         ehr_data = clinical_record.ehr_data.to_json()
         if self.index_service:
             structure_id = self.index_service.get_structure_id(ehr_data)
         else:
             structure_id = None
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
-            ehr_data = normalize_keys(ehr_data, original_value, encoded_value)
+            ehr_data = self._normalize_keys(ehr_data, original_value, encoded_value)
         encoded_record = {
             'patient_id': clinical_record.patient_id,
             'creation_time': clinical_record.creation_time,
             'last_update': clinical_record.last_update,
             'active': clinical_record.active,
-            'ehr_data': ehr_data
+            'ehr_data': ehr_data,
+            '_version': clinical_record.version
         }
         if clinical_record.record_id:
             encoded_record['_id'] = clinical_record.record_id
         if structure_id:
             encoded_record['ehr_structure_id'] = structure_id
         return encoded_record
+
+    def _encode_clinical_record_revision(self, clinical_record_revision):
+        ehr_data = clinical_record_revision.ehr_data.to_json()
+        for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
+            ehr_data = self._normalize_keys(ehr_data, original_value, encoded_value)
+        return {
+            '_id': clinical_record_revision.record_id,
+            'ehr_structure_id': clinical_record_revision.structure_id,
+            'patient_id': clinical_record_revision.patient_id,
+            'creation_time': clinical_record_revision.creation_time,
+            'last_update': clinical_record_revision.last_update,
+            'active': clinical_record_revision.active,
+            'ehr_data': ehr_data,
+            '_version': clinical_record_revision.version
+        }
 
     def encode_record(self, record):
         """
@@ -153,10 +169,13 @@ class MongoDriver(DriverInterface):
         :type record: a :class:`Record` subclass
         :return: the record encoded as a MongoDB document
         """
-        from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
+        from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
+            ClinicalRecord, ClinicalRecordRevision
 
         if isinstance(record, PatientRecord):
             return self._encode_patient_record(record)
+        elif isinstance(record, ClinicalRecordRevision):
+            return self._encode_clinical_record_revision(record)
         elif isinstance(record, ClinicalRecord):
             return self._encode_clinical_record(record)
         else:
@@ -183,32 +202,33 @@ class MongoDriver(DriverInterface):
                 record_id=record.get('_id')
             )
 
+    def _decode_keys(self, document, encoded, original):
+        normalized_doc = {}
+        for k, v in document.iteritems():
+            k = k.replace(encoded, original)
+            if not isinstance(v, dict):
+                normalized_doc[k] = v
+            else:
+                normalized_doc[k] = self._decode_keys(v, encoded, original)
+        return normalized_doc
+
     def _decode_clinical_record(self, record, loaded):
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord,\
             ArchetypeInstance
-
-        def decode_keys(document, encoded, original):
-            normalized_doc = {}
-            for k, v in document.iteritems():
-                k = k.replace(encoded, original)
-                if not isinstance(v, dict):
-                    normalized_doc[k] = v
-                else:
-                    normalized_doc[k] = decode_keys(v, encoded, original)
-            return normalized_doc
 
         record = decode_dict(record)
         if loaded:
             ehr_data = record['ehr_data']
             for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
-                ehr_data = decode_keys(ehr_data, encoded_value, original_value)
+                ehr_data = self._decode_keys(ehr_data, encoded_value, original_value)
             crec = ClinicalRecord(
                 ehr_data=ArchetypeInstance.from_json(ehr_data),
                 creation_time=record['creation_time'],
                 last_update=record['last_update'],
                 active=record['active'],
                 record_id=record.get('_id'),
-                structure_id=record.get('ehr_structure_id')
+                structure_id=record.get('ehr_structure_id'),
+                version=record['_version']
             )
             if 'patient_id' in record:
                 crec._set_patient_id(record['patient_id'])
@@ -223,11 +243,31 @@ class MongoDriver(DriverInterface):
                 last_update=record.get('last_update'),
                 active=record.get('active'),
                 ehr_data=arch,
-                structure_id=record.get('ehr_structure_id')
+                structure_id=record.get('ehr_structure_id'),
+                version=record.get('_version')
             )
             if 'patient_id' in record:
                 crec._set_patient_id(record['patient_id'])
         return crec
+
+    def _decode_clinical_record_revision(self, record):
+        from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecordRevision, \
+            ArchetypeInstance
+
+        record = decode_dict(record)
+        ehr_data = record['ehr_data']
+        for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
+            ehr_data = self._decode_keys(ehr_data, encoded_value, original_value)
+        return ClinicalRecordRevision(
+            ehr_data=ArchetypeInstance.from_json(ehr_data),
+            patient_id=record['patient_id'],
+            creation_time=record['creation_time'],
+            last_update=record['last_update'],
+            active=record['active'],
+            record_id=record['_id'],
+            structure_id=record['ehr_structure_id'],
+            version=record.get('_version'),
+        )
 
     def decode_record(self, record, loaded=True):
         """
@@ -241,7 +281,10 @@ class MongoDriver(DriverInterface):
         :return: the MongoDB document encoded as a :class:`Record` object
         """
         if 'ehr_data' in record:
-            return self._decode_clinical_record(record, loaded)
+            if isinstance(record.get('_id'), dict):
+                return self._decode_clinical_record_revision(record)
+            else:
+                return self._decode_clinical_record(record, loaded)
         else:
             return self._decode_patient_record(record, loaded)
 
@@ -291,8 +334,8 @@ class MongoDriver(DriverInterface):
         Retrieve a record using its ID
 
         :param record_id: the ID of the record
-        :return: the record of None if no match was found for the given record
-        :rtype: dictionary or None
+        :return: the record or None if no match was found
+        :rtype: dict or None
         """
         self._check_connection()
         res = self.collection.find_one({'_id': record_id})
@@ -300,6 +343,28 @@ class MongoDriver(DriverInterface):
             return decode_dict(res)
         else:
             return res
+
+    def get_record_by_version(self, record_id, version):
+        """
+        Retrieve a record using its ID and version number
+
+        :param record_id: the ID of the record
+        :param version: the version number of the record
+        :type version: int
+        :return: the record or None if no match was found
+        :rtype: dict or None
+        """
+        return self.get_record_by_id({'_id': record_id, '_version': version})
+
+    def get_revisions_by_ehr_id(self, ehr_id):
+        """
+        Retrieve all revisions for the given EHR ID
+
+        :param ehr_id: the EHR ID that will be used to retrieve revisions
+        :return: all revisions matching given ID
+        :rtype: list
+        """
+        return self.get_records_by_query({'_id._id': ehr_id})
 
     def get_all_records(self):
         """
@@ -349,11 +414,38 @@ class MongoDriver(DriverInterface):
         res = self.collection.remove(record_id)
         self.logger.debug('deleted %d documents', res[u'n'])
 
+    def delete_later_versions(self, record_id, version_to_keep=0):
+        """
+        Delete versions newer than version_to_keep for the given record ID.
+
+        :param record_id: ID of the record
+        :param version_to_keep: the older version that will be preserved, if 0
+                                delete all versions for the given record ID
+        :type version_to_keep: int
+        :return: the number of deleted records
+        :rtype: int
+        """
+        return self.delete_records_by_query({'_id._id': record_id,
+                                             '_version': {'$gt': version_to_keep}})
+
+    def delete_records_by_query(self, query):
+        """
+        Delete all records that match the given query
+
+        :param query: the query used to select records that will be deleted
+        :type query: dict
+        :return: the number of deleted records
+        :rtype: int
+        """
+        self._check_connection()
+        res = self.collection.remove(query)
+        return res[u'n']
+
     def _update_record(self, record_id, update_condition):
         """
         Update an existing record
 
-        :param_record_id: record's ID
+        :param record_id: record's ID
         :param update_condition: the update condition (in MongoDB syntax)
         :type update_condition: dictionary
         """
@@ -380,7 +472,12 @@ class MongoDriver(DriverInterface):
         self.logger.debug('Update statement is %r', update_statement)
         return update_statement, last_update
 
-    def update_field(self, record_id, field_label, field_value, update_timestamp_label=None):
+    def _increase_version(self, update_statement):
+        update_statement.setdefault('$inc', {})['_version'] = 1
+        return update_statement
+
+    def update_field(self, record_id, field_label, field_value, update_timestamp_label=None,
+                     increase_version=False):
         """
         Update record's field *field* with given value
 
@@ -388,10 +485,13 @@ class MongoDriver(DriverInterface):
         :param field_label: field's label
         :type field_label: string
         :param field_value: new value for the selected field
-        :param update_timestamp_label: the label of the *last_update* field of the record if the last update timestamp
-          must be recorded or None
+        :param update_timestamp_label: the label of the *last_update* field of the record
+                                       if the last update timestamp must be recorded or None
         :type update_timestamp_label: field label or None
-        :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
+        :param increase_version: if True, increase record's version number by 1
+        :type increase_version: bool
+        :return: the timestamp of the last update as saved in the DB or None
+                 (if *update_timestamp_label* was None)
         """
         update_statement = {'$set': {field_label: field_value}}
         if update_timestamp_label:
@@ -399,10 +499,38 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
+        if increase_version:
+            update_statement = self._increase_version(update_statement)
         self._update_record(record_id, update_statement)
         return last_update
 
-    def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+    def replace_record(self, record_id, new_record, update_timestamp_label=None):
+        """
+        Replace record with *record_id* with the given *new_record*
+
+        :param record_id: the ID of the record that will be replaced with the new one
+        :param new_record: the new record
+        :type new_record: dict
+        :param update_timestamp_label: the label of the *last_update* field of the record
+                                       if the last update timestamp must be recorded or None
+        :type update_timestamp_label: field label or None
+        :return: the timestamp of the last update as saved in the DB or None
+                 (if *update_timestamp_label* was None)
+        """
+        self._check_connection()
+        last_update = None
+        if update_timestamp_label:
+            last_update = time.time()
+            new_record[update_timestamp_label] = last_update
+        try:
+            new_record.pop('_id')
+        except KeyError:
+            pass
+        self._update_record(record_id, new_record)
+        return last_update
+
+    def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None,
+                    increase_version=False):
         """
         Append a value to a list within a document
 
@@ -421,10 +549,13 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
+        if increase_version:
+            update_statement = self._increase_version(update_statement)
         self._update_record(record_id, update_statement)
         return last_update
 
-    def extend_list(self, record_id, list_label, items, update_timestamp_label=None):
+    def extend_list(self, record_id, list_label, items, update_timestamp_label=None,
+                    increase_version=False):
         """
         Extend a document's list with the list provided
 
@@ -443,10 +574,13 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
+        if increase_version:
+            update_statement = self._increase_version(update_statement)
         self._update_record(record_id, update_statement)
         return last_update
 
-    def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+    def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None,
+                         increase_version=False):
         """
         Remove a value from a list within a document
 
@@ -465,6 +599,8 @@ class MongoDriver(DriverInterface):
                                                                           update_statement)
         else:
             last_update = None
+        if increase_version:
+            update_statement = self._increase_version(update_statement)
         self._update_record(record_id, update_statement)
         return last_update
 

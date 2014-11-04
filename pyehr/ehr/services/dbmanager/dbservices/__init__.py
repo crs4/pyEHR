@@ -2,8 +2,9 @@ from pyehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from pyehr.utils import get_logger
 from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
-from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError
-import time
+from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError, RedundantUpdateError,\
+    RecordRestoreUnecessaryError, OperationNotAllowedError
+from pyehr.ehr.services.dbmanager.dbservices.version_manager import VersionManager
 
 
 class DBServices(object):
@@ -18,13 +19,16 @@ class DBServices(object):
     :ivar port: (optional) port used to contact the DB
     :ivar database: the name of the database where data are stored
     :ivar patients_repository: (optional) repository where patients' data are stored
-    :ivar ehr_repository: (optional) repository where ehr data are stored
+    :ivar ehr_repository: (optional) repository where clinical records data are stored
+    :ivar ehr_versioning_repository: (optional) repository where older versions of clinical
+      records are stored
     :ivar logger: logger for the DBServices class, if no logger is provided a new one
       is created
     """
 
     def __init__(self, driver, host, database, patients_repository=None,
-                 ehr_repository=None, port=None, user=None, passwd=None, logger=None):
+                 ehr_repository=None, ehr_versioning_repository=None,
+                 port=None, user=None, passwd=None, logger=None):
         self.driver = driver
         self.host = host
         self.database = database
@@ -35,6 +39,7 @@ class DBServices(object):
         self.passwd = passwd
         self.index_service = None
         self.logger = logger or get_logger('db_services')
+        self.version_manager = self._set_version_manager(ehr_versioning_repository)
 
     def _get_drivers_factory(self, repository):
         return DriversFactory(
@@ -46,6 +51,19 @@ class DBServices(object):
             user=self.user,
             passwd=self.passwd,
             index_service=self.index_service,
+            logger=self.logger
+        )
+
+    def _set_version_manager(self, ehr_version_repository):
+        return VersionManager(
+            driver=self.driver,
+            host=self.host,
+            database=self.database,
+            ehr_repository=self.ehr_repository,
+            ehr_versioning_repository=ehr_version_repository,
+            port=self.port,
+            user=self.user,
+            passwd=self.passwd,
             logger=self.logger
         )
 
@@ -80,7 +98,7 @@ class DBServices(object):
             patient_record.record_id = driver.add_record(driver.encode_record(patient_record))
             return patient_record
 
-    def save_ehr_record(self, ehr_record, patient_record):
+    def save_ehr_record(self, ehr_record, patient_record, record_moved=False):
         """
         Save a clinical record into the DB and link it to a patient record
 
@@ -89,12 +107,24 @@ class DBServices(object):
         :param patient_record: the reference :class:`PatientRecord` for the EHR record that
           is going to be saved
         :type patient_record: :class:`PatientRecord`
+        :param record_moved: if True, the record has been moved from another patient, if
+          False the record should be considered as a new one
+        :type record_moved: bool
         :return: the :class:`ClinicalRecord` and the :class:`PatientRecord`
         """
         drf = self._get_drivers_factory(self.ehr_repository)
-        with drf.get_driver() as driver:
-            ehr_record.bind_to_patient(patient_record)
-            driver.add_record(driver.encode_record(ehr_record))
+        ehr_record.bind_to_patient(patient_record)
+        if ehr_record.is_persistent:
+            if record_moved:
+                ehr_record = self.version_manager.update_field(ehr_record, 'patient_id',
+                                                               ehr_record.patient_id, 'last_update')
+            else:
+                raise OperationNotAllowedError('An already mapped record can\'t be assigned to a patient')
+        else:
+            # saving a new record, this is the first revision
+            ehr_record.increase_version()
+            with drf.get_driver() as driver:
+                driver.add_record(driver.encode_record(ehr_record))
         patient_record = self._add_ehr_record(patient_record, ehr_record)
         return ehr_record, patient_record
 
@@ -117,6 +147,8 @@ class DBServices(object):
         with drf.get_driver() as driver:
             for r in ehr_records:
                 r.bind_to_patient(patient_record)
+                if not r.is_persistent:
+                    r.increase_version()
             encoded_records = [driver.encode_record(r) for r in ehr_records]
             saved, errors = driver.add_records(encoded_records, skip_existing_duplicated)
             errors = [driver.decode_record(e) for e in errors]
@@ -135,14 +167,13 @@ class DBServices(object):
         :type ehr_record: :class:`ClinicalRecord`
         :return: the updated :class:`PatientRecord`
         """
-        self._add_to_list(patient_record, 'ehr_records', ehr_record.record_id,
-                          self.patients_repository)
+        self._add_to_list(patient_record, 'ehr_records', ehr_record.record_id)
         patient_record.ehr_records.append(ehr_record)
         return patient_record
 
     def _add_ehr_records(self, patient_record, ehr_records):
         """
-        Add a list of already saved :class:`ClinicalRecord`s to the given ;class:`PatientRecord`
+        Add a list of already saved :class:`ClinicalRecord`s to the given :class:`PatientRecord`
 
         :param patient_record: the reference :class:`PatientRecord`
         :type patient_record: :class:`PatientRecord`
@@ -151,12 +182,104 @@ class DBServices(object):
         :type ehr_records: list
         :return: the updated :class:`PatientRecord`
         """
-        self._extend_list(patient_record, 'ehr_records', [ehr.record_id for ehr in ehr_records],
-                          self.patients_repository)
+        self._extend_list(patient_record, 'ehr_records', [ehr.record_id for ehr in ehr_records])
         patient_record.ehr_records.extend(ehr_records)
         return patient_record
 
-    def move_ehr_record(self, src_patient, dest_patient, ehr_record):
+    def update_ehr_record(self, ehr_record):
+        """
+        Save the given *ehr_record* as an update of the one already existing in the database.
+        Record's ID and version number will be used to match the proper object. Existing EHR
+        will be overwritten by the given one.
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be saved as update
+        :type ehr_record: :class:`ClinicalRecord`
+        :return: the given *ehr_record* with proper *update_timestamp* and *version*
+          fields
+        :rtype: :class:`ClinicalRecord`
+        """
+        if not ehr_record.is_persistent:
+            raise OperationNotAllowedError('Record %s is not mapped in the DB, unable to update' %
+                                           ehr_record.record_id)
+        return self.version_manager.update_record(ehr_record)
+
+    def _check_unecessary_restore(self, ehr_record):
+        if ehr_record.version == 1:
+            raise RecordRestoreUnecessaryError('Record %s already at original revision' %
+                                               ehr_record.record_id)
+        elif ehr_record.version == 0:
+            raise OperationNotAllowedError('Record %s is not mapped in the DB, unable to restore' %
+                                           ehr_record.record_id)
+
+    def restore_ehr_version(self, ehr_record, version):
+        """
+        Restore a specific *version* for the given *ehr_record*. All saved revisions that
+        are newer than *version* will be deleted from the :class:`VersionManager`.
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be restored
+        :type ehr_record: :class:`ClinicalRecord`
+        :param version: the version of the record that will replace the one saved
+          within the DB
+        :type version: int
+        :return: the restored :class:`ClinicalRecord` and the count of the revisions
+          that have been deleted
+        """
+        self._check_unecessary_restore(ehr_record)
+        return self.version_manager.restore_revision(ehr_record.record_id, version)
+
+    def restore_original_ehr(self, ehr_record):
+        """
+        Restore the original version of the given *ehr_record*. All revisions
+        will be deleted from the :class:`VersionManager`.
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be restored
+        :type ehr_record: :class:`ClinicalRecord`
+        :return: the restored :class:`ClinicalRecord` and the count of the revisions
+          that have been deleted
+        """
+        self._check_unecessary_restore(ehr_record)
+        return self.version_manager.restore_original(ehr_record.record_id)
+
+    def restore_previous_ehr_version(self, ehr_record):
+        """
+        Restore giver *ehr_record* to its previous revision.
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be restored
+        :type ehr_record: :class:`ClinicalRecord`
+        :return: the restored :class:`ClinicalRecord`
+        """
+        return self.restore_ehr_version(ehr_record, ehr_record.version-1)[0]
+
+    def get_revision(self, ehr_record, version):
+        """
+        Get a specific *version* of the given *ehr_record*
+
+        :param ehr_record: the :class:`ClinicalRecord` that will be used to retrieve the wanted *version*
+        :type ehr_record: :class:`ClinicalRecord`
+        :param version: the revision of the object that will be retrieved
+        :type version: int
+        :return: a :class:`ClinicalRecordRevision` object matching the selected *version* or None
+          if no match is fuond
+        :rtype: :class:`ClinicalRecordRevision` or None
+        """
+        return self.version_manager.get_revision(ehr_record.record_id, version)
+
+    def get_revisions(self, ehr_record, reverse_ordering=False):
+        """
+        Get all revisions for the given *ehr_record* ordered from the older to the newer.
+        If *reverse_ordering* is True, revisions will be ordered from the newer to the older.
+
+        :param ehr_record: the :class:`ClinicalRecord` for which will be retrieved old revisions
+        :type ehr_record: :class:`ClinicalRecord`
+        :param reverse_ordering: if False (default) revisions will be ordered from the older to
+          the newer; if True the opposite ordering will be applied (newer to older).
+        :type reverse_ordering: bool
+        :return: an ordered list with all the revisions for the given *ehr_record*
+        :rtype: list
+        """
+        return self.version_manager.get_revisions(ehr_record.record_id, reverse_ordering)
+
+    def move_ehr_record(self, src_patient, dest_patient, ehr_record, reset_ehr_record_history=False):
         """
         Move a saved :class:`ClinicalRecord` from a saved :class:`PatientRecord` to another one
 
@@ -167,34 +290,38 @@ class DBServices(object):
         :type dest_patient: :class:`PatientRecord`
         :param ehr_record: the :class:`ClinicalRecord` that is going to be moved
         :type ehr_record: :class:`ClinicalRecord`
+        :param reset_ehr_record_history: if True, reset EHR record history and delete all revisions, if False
+          keep record's history and keep trace of the move event. Default value is False.
+        :type reset_ehr_record_history: bool
         :return: the two :class:`PatientRecord` mapping the proper association to the EHR record
         """
-        ehr_record, src_patient = self.remove_ehr_record(ehr_record, src_patient, new_record_id=False)
-        ehr_record, dest_patient = self.save_ehr_record(ehr_record, dest_patient)
+        ehr_record, src_patient = self.remove_ehr_record(ehr_record, src_patient,
+                                                         reset_record=reset_ehr_record_history)
+        ehr_record, dest_patient = self.save_ehr_record(ehr_record, dest_patient,
+                                                        record_moved=True)
         return src_patient, dest_patient
 
-    def remove_ehr_record(self, ehr_record, patient_record, new_record_id=True):
+    def remove_ehr_record(self, ehr_record, patient_record, reset_record=True):
         """
         Remove a :class:`ClinicalRecord` from a patient's records and delete
-        it from the database.
+        it from the database if *reset_record* is True.
 
         :param ehr_record: the :class:`ClinicalRecord` that will be deleted
         :type ehr_record: :class:`ClinicalRecord`
         :param patient_record: the reference :class:`PatientRecord`
         :type patient_record: :class:`PatientRecord`
-        :param new_record_id: if True, get a new random record ID for the ehr_record
-        :type new_record_id: bool
+        :param reset_record: if True, reset ehr record (new ID and delete its revisions)
+        :type reset_record: bool
         :return: the EHR record without an ID and the updated patient record
         :rtype: :class:`ClinicalRecord`, :class:`PatientRecord`
         """
-        self._remove_from_list(patient_record, 'ehr_records', ehr_record.record_id,
-                               self.patients_repository)
-        drf = self._get_drivers_factory(self.ehr_repository)
-        with drf.get_driver() as driver:
-            driver.delete_record(ehr_record.record_id)
+        self._remove_from_list(patient_record, 'ehr_records', ehr_record.record_id)
         patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
-        if new_record_id:
+        if reset_record:
+            self.delete_ehr_record(ehr_record, reset_record)
             ehr_record.reset()
+        else:
+            ehr_record.patient_id = None
         return ehr_record, patient_record
 
     def _get_active_records(self, driver):
@@ -271,7 +398,7 @@ class DBServices(object):
         :param patient: the patient record object
         :type patient: :class:`PatientRecord`
         :return: the :class:`PatientRecord` object with loaded :class:`ClinicalRecord`
-        :type: :class;`PatientRecord`
+        :type: :class:`PatientRecord`
         """
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
@@ -281,7 +408,7 @@ class DBServices(object):
 
     def hide_patient(self, patient):
         """
-        Hide a ;class:`PatientRecord` object
+        Hide a :class:`PatientRecord` object
 
         :param patient: the patient record that is going to be hidden
         :type patient: :class:`PatientRecord`
@@ -290,8 +417,14 @@ class DBServices(object):
         """
         if patient.active:
             for ehr_rec in patient.ehr_records:
-                self.hide_ehr_record(ehr_rec)
-            rec = self._hide_record(patient, self.patients_repository)
+                try:
+                    self.hide_ehr_record(ehr_rec)
+                except RedundantUpdateError:
+                    # just ignore RedundantUpdateError, this means that the records
+                    # is already hidden
+                    self.logger.debug('Record %s is already hidden', ehr_rec.record_id)
+                    pass
+            rec = self._hide_record(patient)
         else:
             rec = patient
         return rec
@@ -301,12 +434,12 @@ class DBServices(object):
         Hide a :class:`ClinicalRecord` object
 
         :param ehr_record: the clinical record that is going to be hidden
-        :type ehr_record: ;class:`ClinicalRecord`
+        :type ehr_record: :class:`ClinicalRecord`
         :return: the clinical record
         :rtype: :class:`ClinicalRecord`
         """
         if ehr_record.active:
-            rec = self._hide_record(ehr_record, self.ehr_repository)
+            rec = self._hide_record(ehr_record)
         else:
             rec = ehr_record
         return rec
@@ -339,31 +472,51 @@ class DBServices(object):
                 driver.delete_record(patient.record_id)
                 return None
 
-    def delete_ehr_record(self, ehr_record):
+    def delete_ehr_record(self, ehr_record, reset_history=True):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_record(ehr_record.record_id)
-            return None
+        if reset_history:
+            self.version_manager.remove_revisions(ehr_record.record_id)
+        return None
 
-    def _hide_record(self, record, repository):
-        drf = self._get_drivers_factory(repository)
-        with drf.get_driver() as driver:
-            last_update = driver.update_field(record.record_id, 'active', False, 'last_update')
-        record.active = False
-        record.last_update = last_update
-        return record
+    def _hide_record(self, record):
+        if isinstance(record, ClinicalRecord):
+            return self.version_manager.update_field(record, 'active', False, 'last_update')
+        else:
+            drf = self._get_drivers_factory(self.patients_repository)
+            with drf.get_driver() as driver:
+                last_update = driver.update_field(record.record_id, 'active', False, 'last_update')
+            record.last_update = last_update
+            record.active = False
+            return record
 
-    def _add_to_list(self, record, list_label, element, repository):
-        drf = self._get_drivers_factory(repository)
-        with drf.get_driver() as driver:
-            driver.add_to_list(record.record_id, list_label, element, 'last_update')
+    def _add_to_list(self, record, list_label, element):
+        if isinstance(record, ClinicalRecord):
+            return self.version_manager.add_to_list(record, list_label, element, 'last_update')
+        else:
+            drf = self._get_drivers_factory(self.patients_repository)
+            with drf.get_driver() as driver:
+                last_update = driver.add_to_list(record.record_id, list_label, element, 'last_update')
+            record.last_update = last_update
+            return record
 
-    def _extend_list(self, record, list_label, elements, repository):
-        drf = self._get_drivers_factory(repository)
-        with drf.get_driver() as driver:
-            driver.extend_list(record.record_id, list_label, elements, 'last_update')
+    def _extend_list(self, record, list_label, elements):
+        if isinstance(record, ClinicalRecord):
+            return self.version_manager.extend_list(record, list_label, elements, 'last_update')
+        else:
+            drf = self._get_drivers_factory(self.patients_repository)
+            with drf.get_driver() as driver:
+                last_update = driver.extend_list(record.record_id, list_label, elements, 'last_update')
+            record.last_update = last_update
+            return record
 
-    def _remove_from_list(self, record, list_label, element, repository):
-        drf = self._get_drivers_factory(repository)
-        with drf.get_driver() as driver:
-            driver.remove_from_list(record.record_id, list_label, element, 'last_update')
+    def _remove_from_list(self, record, list_label, element):
+        if isinstance(record, ClinicalRecord):
+            return self.version_manager.remove_from_list(record, list_label, element, 'last_update')
+        else:
+            drf = self._get_drivers_factory(self.patients_repository)
+            with drf.get_driver() as driver:
+                last_update = driver.remove_from_list(record.record_id, list_label, element, 'last_update')
+            record.last_update = last_update
+            return  record

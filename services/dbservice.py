@@ -15,7 +15,8 @@ import pyehr.ehr.services.dbmanager.errors as pyehr_errors
 class DBService(object):
 
     def __init__(self, driver, host, database, patients_repository=None,
-                 ehr_repository=None, port=None, user=None, passwd=None,
+                 ehr_repository=None, ehr_versioning_repository=None,
+                 port=None, user=None, passwd=None,
                  log_file=None, log_level='INFO'):
         if not log_file:
             self.logger = get_logger('db_service_daemon', log_level=log_level)
@@ -23,7 +24,8 @@ class DBService(object):
             self.logger = get_rotating_file_logger('db_service_daemon', log_file,
                                                    log_level=log_level)
         self.dbs = DBServices(driver, host, database, patients_repository,
-                              ehr_repository, port, user, passwd, self.logger)
+                              ehr_repository, ehr_versioning_repository,
+                              port, user, passwd, self.logger)
         #######################################################
         # Web Service methods
         #######################################################
@@ -401,7 +403,6 @@ class DBService(object):
         patients_data = params.get('patients_data')
         if patients_data is None:
             self._missing_mandatory_field('patients_data')
-        print patients_data
         response_body = {
             'SUCCESS': True,
             'SAVED': [],

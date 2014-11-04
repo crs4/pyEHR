@@ -100,6 +100,20 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
+    def get_record_by_version(self, record_id, version):
+        """
+        Retrieve a record by giving a record ID and a version number
+        """
+        pass
+
+    @abstractmethod
+    def get_revisions_by_ehr_id(self, record_id):
+        """
+        Retrieve all revisions for the given EHR ID
+        """
+        pass
+
+    @abstractmethod
     def get_all_records(self):
         """
         Retrieve all records from the backed server
@@ -114,8 +128,22 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def update_field(self, record_id, field_label, field_value,
-                     update_timestamp_label):
+    def delete_later_versions(self, record_id, version_to_keep=0):
+        """
+        Delete versions newer than version_to_keep for the given record ID
+        """
+        pass
+
+    @abstractmethod
+    def delete_records_by_query(self, query):
+        """
+        Delete all records that match the given query
+        """
+        pass
+
+    @abstractmethod
+    def update_field(self, record_id, field_label, field_value, update_timestamp_label,
+                     increase_version):
         """
         Update the field with label *field_label* of the record with ID *record_id* with the
         value provided as *field_value* and update timestamp in field *update_timestamp_label*
@@ -123,8 +151,15 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def add_to_list(self, record_id, list_label, item_value,
-                    update_timestamp_label):
+    def replace_record(self, record_id, new_record, update_timestamp_label=None):
+        """
+        Replace record with *record_id* with the given *new_record*
+        """
+        pass
+
+    @abstractmethod
+    def add_to_list(self, record_id, list_label, item_value, update_timestamp_label,
+                    increase_version):
         """
         Add the value provided with the *item_value* field to the list with label *list_label*
         of the record with ID *record_id* and update the timestamp in field *update_timestamp_label*
@@ -132,8 +167,8 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def extend_list(self, record_id, list_label, items,
-                    update_timestamp_label):
+    def extend_list(self, record_id, list_label, items, update_timestamp_label,
+                    increase_version):
         """
         Add values provided with the *items* field to the list with label *list_label*
         of the record with ID *record_id* and update the timestamp in field *update_timestamp_label*
@@ -145,8 +180,8 @@ class DriverInterface(object):
         return update_timestamp
 
     @abstractmethod
-    def remove_from_list(self, record_id, list_label, item_value,
-                         update_timestamp_label):
+    def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label,
+                         increase_version):
         """
         Remove the value provided with the *item_value* field from the list with label *list_label*
         of the record with ID *record_id* and update the timestamp in field *update_timestamp_label*

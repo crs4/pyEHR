@@ -374,6 +374,12 @@ class ElasticSearchDriver(DriverInterface):
         except elasticsearch.NotFoundError:
             return None
 
+    def get_record_by_version(self, record_id, version):
+        raise NotImplementedError()
+
+    def get_revisions_by_ehr_id(self, record_id):
+        raise NotImplementedError()
+
     def get_all_records(self):
         """
         Retrieve all records within current collection
@@ -423,8 +429,14 @@ class ElasticSearchDriver(DriverInterface):
         except elasticsearch.NotFoundError:
             return None
 
+    def delete_later_versions(self, record_id, version_to_keep=0):
+        raise NotImplementedError()
 
-    def update_field(self, record_id, field_label, field_value, update_timestamp_label=None):
+    def delete_records_by_query(self, query):
+        raise NotImplementedError()
+
+    def update_field(self, record_id, field_label, field_value, update_timestamp_label=None,
+                     increase_version=False):
         """
         Update record's field *field* with given value
 
@@ -439,7 +451,7 @@ class ElasticSearchDriver(DriverInterface):
         :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
         """
         record_to_update = self.get_record_by_id(record_id)
-        if(record_to_update == None):
+        if record_to_update is None:
             self.logger.debug('No record found with ID %r', record_id)
             return None
         else:
@@ -453,7 +465,11 @@ class ElasticSearchDriver(DriverInterface):
             self.logger.debug('updated %s document', res[u'_id'])
             return last_update
 
-    def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+    def replace_record(self, record_id, new_record, update_timestamp_label=None):
+        raise NotImplementedError
+
+    def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None,
+                    increase_version=False):
         """
         Append a value to a list within a document
 
@@ -478,12 +494,13 @@ class ElasticSearchDriver(DriverInterface):
         self.logger.debug('updated %s document', res[u'_id'])
         return last_update
 
-    def extend_list(self, record_id, list_label, items,
-                    update_timestamp_label):
+    def extend_list(self, record_id, list_label, items, update_timestamp_label,
+                    increase_version=False):
         return super(ElasticSearchDriver, self).extend_list(record_id, list_label, items,
-                                                            update_timestamp_label)
+                                                            update_timestamp_label, increase_version)
 
-    def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None):
+    def remove_from_list(self, record_id, list_label, item_value, update_timestamp_label=None,
+                         increase_version=False):
         """
         Remove a value from a list within a document
 

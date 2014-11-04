@@ -52,3 +52,27 @@ class MissiongLocationExpressionError(Exception):
 
 class InvalidFieldError(Exception):
     pass
+
+
+class OptimisticLockError(Exception):
+    pass
+
+
+class RedundantUpdateError(Exception):
+    pass
+
+
+class RecordRestoreFailedError(Exception):
+    pass
+
+
+class RecordRestoreUnecessaryError(Exception):
+    pass
+
+
+class MissingRevisionError(Exception):
+    pass
+
+
+class OperationNotAllowedError(Exception):
+    pass
