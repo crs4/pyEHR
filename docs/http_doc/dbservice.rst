@@ -154,6 +154,7 @@ API Methods
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
+                    "version": 1,
                 },
                 {
                     "ehr_data": {
@@ -167,6 +168,7 @@ API Methods
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
+                    "version": 1,
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -193,6 +195,7 @@ API Methods
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
+                    "version": 1,
                 },
                 {
                     "ehr_data": {
@@ -203,6 +206,7 @@ API Methods
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
+                    "version": 1,
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -246,6 +250,7 @@ API Methods
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
+                    "version": 1,
                 },
                 {
                     "ehr_data": {
@@ -256,6 +261,7 @@ API Methods
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
+                    "version": 1,
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -291,6 +297,7 @@ API Methods
                     "last_update": 1399905956.765149,
                     "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
                     "active": true,
+                    "version": 1,
                 },
                 {
                     "ehr_data": {
@@ -304,6 +311,7 @@ API Methods
                     "last_update": 1400244143.18824,
                     "record_id": "e22332fcd4b7440585745bb2fe7866e5",
                     "active": true,
+                    "version": 1,
                 }
             ],
             "creation_time": 1399902042.211941,
@@ -361,6 +369,7 @@ API Methods
           "last_update": 1399905956.765149,
           "record_id": "9a30f6b6a36b49c6b16e249ef35445eb",
           "active": true,
+          "version": 1,
         },
         "SUCCESS": true
       }
@@ -476,6 +485,7 @@ API Methods
          "ehr_records": [
            {
              "active": true,
+             "version": 1,
              "creation_time": 1399905956.765149,
              "ehr_data" : {
                "archetype_class": "openEHR.TEST-EVALUATION.v1",
@@ -487,6 +497,7 @@ API Methods
            },
            {
              "active": true,
+             "version": 1,
              "creation_time": 1399905956.895149,
              "ehr_data": {
                "archetype_class": "openEHR.TEST-EVALUATION-BIS.v1",
@@ -532,6 +543,7 @@ API Methods
         {
           "record_id": "GOOD_PATIENT",
           "active": true,
+          "version": 1,
           "creation_time": 1399905956.765149,
           "last_update": 1399905956.765149,
           "ehr_records": [
