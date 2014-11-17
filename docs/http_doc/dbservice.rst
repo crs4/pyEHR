@@ -25,7 +25,7 @@ API Methods
 
    Simple page to check if server is up and running.
 
-.. http:post:: /patient/add/
+.. http:post:: /patient/add
 
    Add a new patient with ID `patient_id`
 
@@ -58,7 +58,7 @@ API Methods
         "SUCCESS": true
       }
 
-.. http:post:: /patient/hide/
+.. http:post:: /patient/hide
 
    Hide patient with ID `patient_id`. Related EHRs will be hidden as well.
 
@@ -86,7 +86,7 @@ API Methods
         "SUCCESS": true
       }
 
-.. http:post:: /patient/delete/
+.. http:post:: /patient/delete
 
    Delete patient with ID `patient_id`. If `cascade_delete` parameter is passed
    with a `True` vale, delete related EHRs as well, otherwise, if one or more EHRs
@@ -112,7 +112,7 @@ API Methods
         "MESSAGE": "Patient record with ID FOOBAR successfully deleted"
       }
 
-.. http:post:: /patient/get/
+.. http:post:: /patient/get
 
    Get patient with ID `patient_id` and related EHRs. If `fetch_ehr_records` parameter
    is passed with a `False` value, only fetch a minimum amount of details for the EHRs
@@ -224,7 +224,7 @@ API Methods
         "RECORD": null
     }
 
-.. http:post:: /patient/load_ehr_records/
+.. http:post:: /patient/load_ehr_records
 
    Load EHR records data for a given patient record (in JSON format), this method is usefull
    if the patient record was retrieved with the `fetch_ehr_records` flag set up to False.
@@ -320,7 +320,7 @@ API Methods
         "SUCCESS": true
     }
 
-.. http:post:: /ehr/add/
+.. http:post:: /ehr/add
 
    Add an EHR to an existing patient record.
 
@@ -374,7 +374,7 @@ API Methods
         "SUCCESS": true
       }
 
-.. http:post:: /ehr/hide/
+.. http:post:: /ehr/hide
 
    Hide an EHR with a specific `ehr_record_id` related to a patient record with ID `patient_id`
 
@@ -417,7 +417,7 @@ API Methods
       "MESSAGE": "EHR record with ID 9a30f6b6a36b49c6b16e249ef35445eb succesfully hidden"
     }
 
-.. http:post:: /ehr/delete/
+.. http:post:: /ehr/delete
 
    Delete an EHR with a specific `ehr_record_id` related to a patient record with ID `patient_id`
 
@@ -459,7 +459,7 @@ API Methods
       "MESSAGE": "EHR record with ID 9a30f6b6a36b49c6b16e249ef35445eb succesfully deleted"
     }
 
-.. http:post:: /ehr/get/
+.. http:post:: /ehr/get
 
    Get an EHR with a specific `ehr_record_id` related to a patient record with ID `patient_id`
 
@@ -492,7 +492,7 @@ API Methods
          }
        }
 
-.. http:post:: /batch/save/patient/
+.. http:post:: /batch/save/patient
 
    Save a patient and one or more related EHRs passed as a JSON document. If EHRs have a
    given ID and a duplicated key error is raisen, all EHRs of this batch previously saved
@@ -550,7 +550,7 @@ API Methods
          ]
        }
 
-.. http:post:: /batch/save/patients/
+.. http:post:: /batch/save/patients
 
    Save a list of patients with related EHRs passed as a JSON document. For each patient
    in the set, if EHRs have a given ID and a duplicated key error is raisen, all EHRs of
