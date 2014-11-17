@@ -459,6 +459,39 @@ API Methods
       "MESSAGE": "EHR record with ID 9a30f6b6a36b49c6b16e249ef35445eb succesfully deleted"
     }
 
+.. http:post:: /ehr/get/
+
+   Get an EHR with a specific `ehr_record_id` related to a patient record with ID `patient_id`
+
+   :query patient_id: ID of the patient record
+   :query ehr_record_id: ID of the EHR
+   :resheader Content-Type: application/json
+   :statuscode 200: record successfully retrieved. If `patient_id` can't be mapped to a patient record
+                    a response with `SUCCESS` set to False will be returned, the same thing happens
+                    if the EHR with ID `ehr_record_id` is not connected to the patient record
+   :statuscode 400: missing mandatory field `patient_id` or `ehr_record_id`
+   :statuscode 500: generic server error, error's details are specified in the return response
+
+   **Success response**
+
+   .. sourcecode:: json
+
+       {
+         "record_id": "e22332fcd4b7440585745bb2fe7866e5",
+         "patient_id": "JOHN_DOE",
+         "version": 1,
+         "active": true,
+         "creation_time": 1416220308.61583,
+         "last_update": 1416220308.61583,
+         "ehr_data": {
+            "archetype_class": "openEHR.TEST-EVALUATION.v1",
+            "archetype_details": {
+                "k1": "v1",
+                "k2": "v2"
+            }
+         }
+       }
+
 .. http:post:: /batch/save/patient/
 
    Save a patient and one or more related EHRs passed as a JSON document. If EHRs have a

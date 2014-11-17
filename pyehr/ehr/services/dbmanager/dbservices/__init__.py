@@ -372,7 +372,7 @@ class DBServices(object):
 
     def get_patient(self, patient_id, fetch_ehr_records=True, fetch_hidden_ehr=False):
         """
-        Load the `PatientRecord` that match the given ID from the DB.
+        Load the :class:`PatientRecord` that matches the given ID from the DB.
 
         :param patient_id: the ID of the record
         :param fetch_ehr_records: if True fetch connected EHR records  as well, if False only EHR records'
@@ -390,6 +390,27 @@ class DBServices(object):
                 return None
             return self._fetch_patient_data_full(patient_record, fetch_ehr_records,
                                                  fetch_hidden_ehr)
+
+    def get_ehr_record(self, ehr_record_id, patient_id):
+        """
+        Load a `ClinicalRecord` that matches the given *ehr_record_id* and that belongs
+        to the `PatientRecord` with ID *atient_id*. If no record with *ehr_record_id* is found or
+        if record doesn't belong to *patient_id* None will be returned.
+
+        :param ehr_record_id: the ID of the clinical record
+        :param patient_id: the ID of the patient that the clinical record must belong to
+        :return: a :class:`ClinicalRecord` object or None
+        """
+        drf = self._get_drivers_factory(self.ehr_repository)
+        with drf.get_driver() as driver:
+            try:
+                ehr_record = driver.decode_record(driver.get_record_by_id(ehr_record_id))
+            except TypeError:
+                return None
+            if ehr_record.patient_id != patient_id:
+                return None
+            else:
+                return ehr_record
 
     def load_ehr_records(self, patient):
         """

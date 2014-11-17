@@ -212,6 +212,29 @@ class TestDBServices(unittest.TestCase):
         dbs.delete_patient(pat_rec_2, cascade_delete=True)
         self._delete_index_db(dbs)
 
+    def test_get_ehr_record(self):
+        dbs = DBServices(**self.conf)
+        dbs.set_index_service(**self.index_conf)
+        p = dbs.save_patient(self.create_random_patient())
+        arch = ArchetypeInstance(
+            'openEHR-EHR-EVALUATION.dummy-evaluation.v1',
+            {'k1': 'v1', 'k2': 'v2', 'k3': 'v3'}
+        )
+        crec_id = uuid.uuid4().hex
+        dbs.save_ehr_record(ClinicalRecord(arch, record_id=crec_id), p)
+        # wrong ehr_record_id and patient_id
+        e = dbs.get_ehr_record(uuid.uuid4().hex, uuid.uuid4().hex)
+        self.assertIsNone(e)
+        # right ehr_record_id but wrong patient_id
+        e = dbs.get_ehr_record(crec_id, uuid.uuid4().hex)
+        self.assertIsNone(e)
+        # right ehr_record_id and patient_id
+        e = dbs.get_ehr_record(crec_id, p.record_id)
+        self.assertIsInstance(e, ClinicalRecord)
+        #cleanup
+        dbs.delete_patient(p, cascade_delete=True)
+        self._delete_index_db(dbs)
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -222,6 +245,7 @@ def suite():
     suite.addTest(TestDBServices('test_load_ehr_records'))
     suite.addTest(TestDBServices('test_hide_ehr_record'))
     suite.addTest(TestDBServices('test_move_ehr_record'))
+    suite.addTest(TestDBServices('test_get_ehr_record'))
     return suite
 
 if __name__ == '__main__':

@@ -54,6 +54,14 @@ class TestDBService(unittest.TestCase):
             request['ehr_record_id'] = ehr_record_id
         return request
 
+    def _build_get_ehr_request(self, patient_id=None, ehr_record_id=None):
+        request = {}
+        if patient_id:
+            request['patient_id'] = patient_id
+        if ehr_record_id:
+            request['ehr_record_id'] = ehr_record_id
+        return request
+
     def _build_patient_batch_request(self, patient_batch):
         return {
             'patient_data': json.dumps(patient_batch)
@@ -285,7 +293,7 @@ class TestDBService(unittest.TestCase):
         r, c = self._send_request(add_ehr_path, ehr_add_request)
         self.assertEqual(r.status, 200)
         c = decode_dict(json.loads(c))
-        # get EHR record ID (will be used to deletere the record itself)
+        # get EHR record ID (will be used to delete the record itself)
         ehr_record_id = c['RECORD']['record_id']
         self.assertTrue(c['SUCCESS'])
         # check for mandatory fields
@@ -318,7 +326,59 @@ class TestDBService(unittest.TestCase):
         patient_delete_request = self._build_delete_patient_request(patient_id='TEST_PATIENT',
                                                                     cascade_delete=True)
         r, c = self._send_request(delete_patient_path, patient_delete_request)
-        self.assertTrue(r.status, 200)
+        self.assertEqual(r.status, 200)
+
+    def test_get_ehr_record(self):
+        add_patient_path = '/patient/add'
+        add_ehr_path = '/ehr/add'
+        get_ehr_path = '/ehr/get'
+        delete_patient_path = '/patient/delete'
+        # create a patient
+        patient_details = self._build_add_patient_request(patient_id='TEST_PATIENT')
+        r, c = self._send_request(add_patient_path, patient_details)
+        self.assertEqual(r.status, 200)
+        # add an EHR record
+        ehr_record = {
+            'archetype_class': 'openEHR.TEST-EVALUATION.v1',
+            'archetype_details': {'k1': 'v1', 'k2': 'v2'}
+        }
+        ehr_add_request = self._build_add_ehr_request(patient_id='TEST_PATIENT',
+                                                      ehr_record=ehr_record)
+        r, c = self._send_request(add_ehr_path, ehr_add_request)
+        self.assertEqual(r.status, 200)
+        ehr_record_id = decode_dict(json.loads(c))['RECORD']['record_id']
+        # check for missing mandatory fields
+        r, _ = self._send_request(get_ehr_path, self._build_get_ehr_request())
+        self.assertEqual(r.status, 400)
+        r, _ = self._send_request(get_ehr_path, self._build_get_ehr_request(patient_id='FOOBAR'))
+        self.assertEqual(r.status, 400)
+        r, _ = self._send_request(get_ehr_path, self._build_get_ehr_request(ehr_record_id='TEST_EHR_RECORD'))
+        self.assertEqual(r.status, 400)
+        # try to get record using a wrong patient ID and right EHR ID
+        get_ehr_request = self._build_get_ehr_request(patient_id='JOHN_DOE', ehr_record_id=ehr_record_id)
+        r, c = self._send_request(get_ehr_path, get_ehr_request)
+        self.assertEqual(r.status, 200)
+        c = decode_dict(json.loads(c))
+        self.assertIsNone(c['RECORD'])
+        # now right patient ID and wrong EHR ID
+        get_ehr_request = self._build_get_ehr_request(patient_id='TEST_PATIENT', ehr_record_id='TEST_EHR_RECORD')
+        r, c = self._send_request(get_ehr_path, get_ehr_request)
+        self.assertEqual(r.status, 200)
+        c = decode_dict(json.loads(c))
+        self.assertIsNone(c['RECORD'])
+        # test with right IDs
+        get_ehr_request = self._build_get_ehr_request(patient_id='TEST_PATIENT', ehr_record_id=ehr_record_id)
+        r, c = self._send_request(get_ehr_path, get_ehr_request)
+        self.assertEqual(r.status, 200)
+        c = decode_dict(json.loads(c))
+        self.assertIsInstance(c['RECORD'], dict)
+        self.assertEqual(c['RECORD']['record_id'], ehr_record_id)
+        self.assertEqual(c['RECORD']['patient_id'], 'TEST_PATIENT')
+        # cleanup
+        patient_delete_request = self._build_delete_patient_request(patient_id='TEST_PATIENT',
+                                                                    cascade_delete=True)
+        r, _ = self._send_request(delete_patient_path, patient_delete_request)
+        self.assertEqual(r.status, 200)
 
     def test_patient_batch(self):
         add_patient_batch_path = '/batch/save/patient'
@@ -379,7 +439,7 @@ class TestDBService(unittest.TestCase):
         patients_batch.append(self._build_patient_batch(patient_id='TEST_PATIENT_2',
                                                         ehr_records_count=3,
                                                         duplicated_ehr_id=True))
-        # fourth record has the same PATIENT_ID sa record 2
+        # fourth record has the same PATIENT_ID as record 2
         patients_batch.append(self._build_patient_batch(patient_id='TEST_PATIENT_1'))
         # fifth record is the last one and is a good one, it has no EHR records
         patients_batch.append(self._build_patient_batch(patient_id='TEST_PATIENT_2',
@@ -404,6 +464,7 @@ def suite():
     suite.addTest(TestDBService('test_add_ehr_record'))
     suite.addTest(TestDBService('test_delete_patient'))
     suite.addTest(TestDBService('test_delete_ehr_record'))
+    suite.addTest(TestDBService('test_get_ehr_record'))
     suite.addTest(TestDBService('test_patient_batch'))
     suite.addTest(TestDBService('test_patients_batch'))
     return suite
