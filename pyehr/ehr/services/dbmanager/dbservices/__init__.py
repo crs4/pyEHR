@@ -318,7 +318,7 @@ class DBServices(object):
         self._remove_from_list(patient_record, 'ehr_records', ehr_record.record_id)
         patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr_record))
         if reset_record:
-            self.delete_ehr_record(ehr_record, reset_record)
+            self._delete_ehr_record(ehr_record, reset_record)
             ehr_record.reset()
         else:
             ehr_record.patient_id = None
@@ -487,13 +487,13 @@ class DBServices(object):
                                      patient.record_id, len(patient.ehr_records))
         else:
             for ehr_record in patient.ehr_records:
-                self.delete_ehr_record(ehr_record)
+                self._delete_ehr_record(ehr_record)
             drf = self._get_drivers_factory(self.patients_repository)
             with drf.get_driver() as driver:
                 driver.delete_record(patient.record_id)
                 return None
 
-    def delete_ehr_record(self, ehr_record, reset_history=True):
+    def _delete_ehr_record(self, ehr_record, reset_history=True):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_record(ehr_record.record_id)
