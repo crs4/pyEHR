@@ -32,8 +32,8 @@ class QueryService():
         post('/check/status/querymanager')(self.test_server)
         get('/check/status/querymanager')(self.test_server)
 
-    def add_index_service(self, host, port, database, user, passwd):
-        self.qmanager.set_index_service(host, port, database, user, passwd)
+    def add_index_service(self, url, database, user, passwd):
+        self.qmanager.set_index_service(url, database, user, passwd)
 
     def exception_handler(f):
         @wraps(f)

@@ -26,8 +26,7 @@ class TestDBServices(unittest.TestCase):
 
     def _delete_index_db(self, dbs):
         dbs.index_service.connect()
-        dbs.index_service.session.execute('drop database %s' %
-                                          dbs.index_service.db)
+        dbs.index_service.basex_client.delete_database()
         dbs.index_service.disconnect()
 
     def test_save_patient(self):

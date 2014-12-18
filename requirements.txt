@@ -3,3 +3,4 @@ voluptuous
 pymongo
 elasticsearch
 bottle
+pybasex

@@ -44,8 +44,8 @@ class DBService(object):
         post('/check/status/dbservice')(self.test_server)
         get('/check/status/dbservice')(self.test_server)
 
-    def add_index_service(self, host, port, database, user, passwd):
-        self.dbs.set_index_service(host, port, database, user, passwd)
+    def add_index_service(self, url, database, user, passwd):
+        self.dbs.set_index_service(url, database, user, passwd)
 
     def exceptions_handler(f):
         @wraps(f)

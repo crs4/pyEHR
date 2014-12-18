@@ -1,9 +1,6 @@
 import unittest, os
 from lxml import etree
 from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
-from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
-    ClinicalRecord, ArchetypeInstance
-from pyehr.utils.services import get_service_configuration
 
 CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
 
