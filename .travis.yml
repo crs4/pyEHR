@@ -14,7 +14,7 @@ before_install:
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then sudo service mongodb start; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then sudo service elasticsearch start; fi
   # install BaseX server and start it
-  - pushd.
+  - pushd .
   - cd ..
   - wget $BASEX_DOWNLOAD_URL
   - unzip BaseX*.zip
