@@ -24,7 +24,7 @@ before_install:
   - pip install httplib2
   - pip install voluptuous
   - pip install lxml
-  - pip install pybasex
+  - pip install --pre pybasex
   # export proper configuration file
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then export SERVICE_CONFIG_FILE=./config/services.mongodb.conf; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export SERVICE_CONFIG_FILE=./config/services.elasticsearch.conf; fi
