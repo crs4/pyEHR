@@ -8,7 +8,7 @@ class ServiceConfig(object):
 
     def __init__(self, db_driver, db_host, db_database, db_port, db_user, db_passwd,
                  db_patients_repository, db_ehr_repository, db_ehr_versioning_repository,
-                 index_host, index_port, index_database, index_user, index_passwd,
+                 index_url, index_database, index_user, index_passwd,
                  db_service_host, db_service_port, db_service_server_engine,
                  query_service_host, query_service_port, query_service_server_engine):
         self.db_driver = db_driver
@@ -20,8 +20,7 @@ class ServiceConfig(object):
         self.db_patients_repository = db_patients_repository
         self.db_ehr_repository = db_ehr_repository
         self.db_ehr_versioning_repository = db_ehr_versioning_repository
-        self.index_host = index_host
-        self.index_port = index_port
+        self.index_url = index_url
         self.index_database = index_database
         self.index_user = index_user
         self.index_passwd = index_passwd
@@ -47,8 +46,7 @@ class ServiceConfig(object):
 
     def get_index_configuration(self):
         return {
-            'host': self.index_host,
-            'port': self.index_port,
+            'url': self.index_url,
             'database': self.index_database,
             'user': self.index_user,
             'passwd': self.index_passwd
@@ -85,8 +83,7 @@ def get_service_configuration(configuration_file, logger=None):
             parser.get('db', 'patients_repository'),
             parser.get('db', 'ehr_repository'),
             parser.get('db', 'ehr_versioning_repository'),
-            parser.get('index', 'host'),
-            parser.get('index', 'port'),
+            parser.get('index', 'url'),
             parser.get('index', 'database'),
             parser.get('index', 'user'),
             parser.get('index', 'passwd'),

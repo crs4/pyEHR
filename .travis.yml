@@ -3,6 +3,8 @@ python:
   - 2.7
 
 env:
+  global:
+    - BASEX_DOWNLOAD_URL=http://files.basex.org/releases/7.9/BaseX79.zip
   matrix:
     - DB_ENGINE=mongodb
     # - DB_ENGINE=elasticsearch
@@ -12,11 +14,13 @@ before_install:
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then sudo service mongodb start; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then sudo service elasticsearch start; fi
   # install BaseX server and start it
-  - sudo apt-get -qq update
-  - sudo apt-get install -qq basex
-  # create data directory for BaseX server (it seems that the default conf is not working)
-  - mkdir test_index
-  - basexserver -S
+  - pushd.
+  - cd ..
+  - wget $BASEX_DOWNLOAD_URL
+  - unzip BaseX*.zip
+  - cd ./basex/bin
+  - ./basexhttp -S
+  - popd
   # install Python dependencies
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then pip install elasticsearch; fi
@@ -24,6 +28,7 @@ before_install:
   - pip install httplib2
   - pip install voluptuous
   - pip install lxml
+  - pip install --pre pybasex
   # export proper configuration file
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then export SERVICE_CONFIG_FILE=./config/services.mongodb.conf; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export SERVICE_CONFIG_FILE=./config/services.elasticsearch.conf; fi

@@ -46,8 +46,7 @@ class TestVersionManager(unittest.TestCase):
         if self.patient:
             self.dbs.delete_patient(self.patient, cascade_delete=True)
         self.dbs.index_service.connect()
-        self.dbs.index_service.session.execute('drop database %s' %
-                                               self.dbs.index_service.db)
+        self.dbs.index_service.basex_client.delete_database()
         self.dbs.index_service.disconnect()
         self.dbs = None
 

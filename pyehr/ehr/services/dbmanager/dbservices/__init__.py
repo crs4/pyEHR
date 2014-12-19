@@ -67,14 +67,12 @@ class DBServices(object):
             logger=self.logger
         )
 
-    def set_index_service(self, host, port, database, user, passwd):
+    def set_index_service(self, url, database, user, passwd):
         """
         Add a :class:`IndexService` to the current :class:`DBService` that will be used
         to index clinical records
-        :param host: the host of the :class:`IndexService`
-        :type host: str
-        :param port: the port of the :class:`IndexService`
-        :type port: str
+        :param url: the URL of the :class:`IndexService`
+        :type url: str
         :param database: the database used to store the indices
         :type database: str
         :param user: the user to access the :class:`IndexService`
@@ -82,8 +80,7 @@ class DBServices(object):
         :param passwd: the password to access the :class:`IndexService`
         :type passwd: str
         """
-        self.index_service = IndexService(database, host, port, user, passwd,
-                                          self.logger)
+        self.index_service = IndexService(database, url, user, passwd, self.logger)
 
     def save_patient(self, patient_record):
         """
