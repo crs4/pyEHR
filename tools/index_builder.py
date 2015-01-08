@@ -20,8 +20,7 @@ class IndexBuilder(object):
     def _cleanup_index(self):
         self.logger.info('Cleaning index service database')
         self.db_service.index_service.connect()
-        self.db_service.index_service.session.execute('drop database %s' %
-                                                      self.db_service.index_service.db)
+        self.db_service.index_service.basex_client.delete_database(self.db_service.index_service.db)
         self.db_service.index_service.disconnect()
 
     def _get_structure_ids(self):
