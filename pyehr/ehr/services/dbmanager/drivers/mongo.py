@@ -836,16 +836,22 @@ class MongoDriver(DriverInterface):
         self.connect()
         self.select_collection(collection)
         query_results = self.get_records_by_query(query, fields)
+        print '----risultati--------'
+        print query_results
+
         if close_conn_after_done:
             self.disconnect()
         else:
             self.select_collection(original_collection)
         for q in query_results:
+            print q
             record = dict()
             for x in self._split_results(q):
                 record[x[0]] = x[1]
+            print record
             rr = ResultRow(record)
             rs.add_row(rr)
+        print '---------------------'
         return rs
 
     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
@@ -873,9 +879,14 @@ class MongoDriver(DriverInterface):
 
         query_mappings = list()
         queries, location_query = self.build_queries(query_model, patients_repository, ehr_repository, query_params)
+        print "location_query"
+        print location_query
         for x in queries:
+            print "----query----"
+            print x
             if x not in query_mappings:
                 query_mappings.append(x)
+        print "--------------------"
         # reduce number of queries based on the selection filter
         selection_mappings = dict()
         filter_mappings = dict()
@@ -887,9 +898,20 @@ class MongoDriver(DriverInterface):
             q = qm['query'][0]
             filter_mappings.setdefault(selection_key, []).append(q)
         total_results = ResultSet()
+
+        print 'selection_mappings'
+        print selection_mappings
+        print 'filter mappings'
+        print filter_mappings
+
         for sk, sm in selection_mappings.iteritems():
             q = {'$or': filter_mappings[sk]}
+
             q.update(location_query)
+            print '----a------'
+            print q
+            print sm['selection_filter']
+            print sm['aliases']
             results = self._run_aql_query(q, sm['selection_filter'], aliases=sm['aliases'],
                                           collection=ehr_repository)
             total_results.extend(results)

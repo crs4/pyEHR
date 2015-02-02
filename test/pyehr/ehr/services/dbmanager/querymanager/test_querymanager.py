@@ -25,10 +25,11 @@ class TestQueryManager(unittest.TestCase):
         self.patients = list()
 
     def tearDown(self):
-        for p in self.patients:
-            self.dbs.delete_patient(p, cascade_delete=True)
-        self._delete_index_db()
-        self.patients = None
+#        for p in self.patients:
+#            self.dbs.delete_patient(p, cascade_delete=True)
+#        self._delete_index_db()
+#        self.patients = None
+        pass
 
     def _delete_index_db(self):
         self.dbs.index_service.connect()
@@ -109,6 +110,7 @@ class TestQueryManager(unittest.TestCase):
         for k, v in batch_details.iteritems():
             details_results.extend(v)
         res = list(results.results)
+        print res
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_deep_select_query(self):
@@ -125,6 +127,7 @@ class TestQueryManager(unittest.TestCase):
         for k, v in batch_details.iteritems():
             details_results.extend(v)
         res = list(results.results)
+        print res
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_simple_where_query(self):
@@ -144,6 +147,7 @@ class TestQueryManager(unittest.TestCase):
                 if x['systolic'] >= 180 or x['dyastolic'] >= 110:
                     details_results.append(x)
         res = list(results.results)
+        print res
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_deep_where_query(self):
@@ -157,6 +161,7 @@ class TestQueryManager(unittest.TestCase):
         OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
         """
         batch_details = self._build_patients_batch_mixed(10, 10, (0, 250), (0, 200))
+        pass
         results = self.qmanager.execute_aql_query(query)
         details_results = list()
         for k,v in batch_details.iteritems():
@@ -164,6 +169,7 @@ class TestQueryManager(unittest.TestCase):
                 if x['systolic'] >= 180 or x['dyastolic'] >= 110:
                     details_results.append(x)
         res = list(results.results)
+        print sorted(res)
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_simple_parametric_query(self):
@@ -177,6 +183,8 @@ class TestQueryManager(unittest.TestCase):
         for patient_label, records in batch_details.iteritems():
             results = self.qmanager.execute_aql_query(query, {'ehrUid': patient_label})
             res = list(results.results)
+            print res
+            print "--------"
             self.assertEqual(sorted(records), sorted(res))
 
     def test_simple_patients_selection(self):
@@ -195,16 +203,18 @@ class TestQueryManager(unittest.TestCase):
                 if x['systolic'] >= 180 or x['dyastolic'] >= 110:
                     details_results.add(k)
         res = list(results.get_distinct_results('patient_identifier'))
+        print res
         self.assertEqual(sorted(list(details_results)), sorted(res))
 
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(TestQueryManager('test_simple_select_query'))
-    suite.addTest(TestQueryManager('test_simple_where_query'))
-    suite.addTest(TestQueryManager('test_simple_parametric_query'))
-    suite.addTest(TestQueryManager('test_simple_patients_selection'))
-    suite.addTest(TestQueryManager('test_deep_select_query'))
+#    suite.addTest(TestQueryManager('test_simple_select_query'))
+#    suite.addTest(TestQueryManager('test_simple_where_query'))
+    suite.addTest(TestQueryManager('test_deep_where_query'))
+#    suite.addTest(TestQueryManager('test_simple_parametric_query'))
+#    suite.addTest(TestQueryManager('test_simple_patients_selection'))
+#    suite.addTest(TestQueryManager('test_deep_select_query'))
     return suite
 
 if __name__ == '__main__':

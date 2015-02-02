@@ -3,6 +3,11 @@ from pyehr.ehr.services.dbmanager.drivers.interface import DriverInterface
 from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import *
 from pyehr.ehr.services.dbmanager.errors import *
 from pyehr.utils import *
+from itertools import izip
+from hashlib import md5
+from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import ResultSet,\
+    ResultColumnDef, ResultRow
+import json
 import elasticsearch
 import time
 import sys
@@ -401,7 +406,7 @@ class ElasticSearchDriver(DriverInterface):
         :rtype: list
         """
         myquery = {
-            "query" : {
+            "filter" : {
                     "term" : { field : value }
                     }
                 }
@@ -522,62 +527,327 @@ class ElasticSearchDriver(DriverInterface):
         return last_update
 
     def _map_operand(self, left, right, operand):
-        raise NotImplementedError()
+        def cast_right_operand(rigth_operand):
+            if rigth_operand.isdigit():
+                return int(rigth_operand)
+            elif '.' in rigth_operand:
+                try:
+                    i, d = rigth_operand.split('.')
+                    if i.isdigit() and d.isdigit():
+                        return float(rigth_operand)
+                except ValueError:
+                    pass
+            return rigth_operand
+
+        # map an AQL operand to the equivalent MongoDB one
+        operands_map = {
+            '>': 'gt',
+            '>=': 'gte',
+            '<': 'lt',
+            '<=': 'lte'
+        }
+        right = cast_right_operand(right.strip())
+        left = left.strip()
+        if operand == '=':
+            return {self.get_selection_hash("{\"term\" : "+str({left : right})+"}") : {"term" : {left: right}}}
+        elif operand == "!=":
+            return  {self.get_selection_hash("{\"filter\" : { \"not\" : { \"term\" : "+str({left : right})+"}}}") : { "filter" : { "not" : { "term" : {left : right}}}}}
+        elif operand in operands_map:
+            return {self.get_selection_hash("{\"range\" : { "+str({left: {operands_map[operand]: right}})+"}}") : {"range" : { left: {operands_map[operand]: right}}}}
+        else:
+            raise ValueError('The operand %s is not supported' % operand)
 
     def _parse_expression(self, expression):
-        raise NotImplementedError()
+        # replace all invalid characters
+        for not_allowed_char, allowed_char in self.ENCODINGS_MAP.iteritems():
+            expression = expression.replace(not_allowed_char, allowed_char)
+        q = expression.replace('/', '.')
+        return q
 
     def _parse_simple_expression(self, expression):
-        super(ElasticSearchDriver, self)._parse_expression(expression)
+        return super(ElasticSearchDriver, self)._parse_simple_expression(expression)
 
     def _parse_match_expression(self, expr):
-        super(ElasticSearchDriver, self)._parse_match_expression(expr)
+        return super(ElasticSearchDriver, self)._parse_match_expression(expr)
 
     def _normalize_path(self, path):
-        raise NotImplementedError()
+        for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
+            path = path.replace(original_value, encoded_value)
+        if path.startswith('/'):
+            path = path[1:]
+        for x, y in [('[', '/'), (']', ''), ('/', '.')]:
+            path = path.replace(x, y)
+        return path
 
     def _build_path(self, path):
-        raise NotImplementedError()
+        path = list(path)
+        path[0] = 'ehr_data'
+        tmp_path = '.archetype_details.'.join([self._normalize_path(x) for x in path])
+        return '%s.archetype_details' % tmp_path
 
     def _build_paths(self, aliases):
-        super(ElasticSearchDriver, self)._build_paths(aliases)
+        return super(ElasticSearchDriver, self)._build_paths(aliases)
 
     def _extract_path_alias(self, path):
-        super(ElasticSearchDriver, self)._extract_path_alias(path)
+        return super(ElasticSearchDriver, self)._extract_path_alias(path)
 
     def _get_archetype_class_path(self, path):
-        super(ElasticSearchDriver, self)._get_archetype_class_path(path)
+        path_pieces = path.split('.')
+        path_pieces[-1] = 'archetype_class'
+        return '.'.join(path_pieces)
 
     def _calculate_condition_expression(self, condition, aliases):
-        raise NotImplementedError()
+        queries = list()
+        paths = self._build_paths(aliases)
+        for a in izip(*paths.values()):
+            for p in [dict(izip(paths.keys(), a))]:
+                query = dict()
+                # bind fields to archetypes
+                for k in aliases.keys():
+                    query.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
+                expressions = dict()
+                or_indices = list()
+                and_indices = list()
+                for i, cseq_element in enumerate(condition.condition.condition_sequence):
+                    if isinstance(cseq_element, PredicateExpression):
+                        l_op_var, l_op_path = self._extract_path_alias(cseq_element.left_operand)
+                        expressions[i] = self._map_operand('%s.%s' % (p[l_op_var],
+                                                                      self._normalize_path(l_op_path)),
+                                                           cseq_element.right_operand,
+                                                           cseq_element.operand)
+                    elif isinstance(cseq_element, ConditionOperator):
+                        if cseq_element.op == 'OR':
+                            or_indices.extend([i-1, i+1])
+                        elif cseq_element.op == 'AND':
+                            if (i-1) not in or_indices:
+                                and_indices.extend([i-1, i+1])
+                            else:
+                                and_indices.append(i+1)
+                if len(or_indices) > 0:
+                    or_statement={ "bool" : { "should" : [ expressions[i] for i in or_indices],"minimum_should_match" : 1}}
+                    expressions[max(expressions.keys()) + 1] = or_statement
+                    and_indices.append(max(expressions.keys()))
+                if len(and_indices) > 0:
+                    for i in and_indices:
+                        print "\nexpressionnnnnnnnn="+str(expressions[i])+"\n"
+                        print self.get_selection_hash("{\"bool\" : { \"must\" : "+str(expressions[i])+"}}")
+                        print {self.get_selection_hash("{\"bool\" : { \"must\" : "+str(expressions[i])+"}}") : {"bool" : { "must" : 1}}}
+                        print "\n"
+                        query.update({self.get_selection_hash("{\"bool\" : { \"must\" : "+str(expressions[i])+"}}") : {"bool" : { "must" : {expressions[i]}}}})
+                else:
+                    for e in expressions.values():
+                        query.update({self.get_selection_hash(e):e})
+                # append query and used mapping
+                if not (query, p) in queries:
+                    queries.append((query, p))
+        return queries
 
     def _compute_predicate(self, predicate):
-        raise NotImplementedError()
+        query = dict()
+        if type(predicate) == Predicate:
+            pred_ex = predicate.predicate_expression
+            if pred_ex:
+                lo = pred_ex.left_operand
+                if not lo:
+                    raise PredicateException("No left operand found")
+                op = pred_ex.operand
+                ro = pred_ex.right_operand
+                if op and ro:
+                    self.logger.debug("lo: %s - op: %s - ro: %s", lo, op, ro)
+                    if op == "=":
+                        query[lo] = ro
+            else:
+                raise PredicateException("No predicate expression found")
+        elif type(predicate) == ArchetypePredicate:
+            predicate_string = predicate.archetype_id
+            query["filter"] = {"exists" : { "field" : predicate_string }}
+        else:
+            raise PredicateException("No predicate expression found")
+        return query
 
     def _calculate_ehr_expression(self, ehr_class_expression, query_params, patients_collection,
                                   ehr_collection):
-        raise NotImplementedError()
+        # Resolve predicate expressed for EHR AQL expression
+        query = dict()
+        if ehr_class_expression.predicate:
+            pr = ehr_class_expression.predicate.predicate_expression
+            if pr.left_operand:
+                if pr.right_operand.startswith('$'):
+                    try:
+                        right_operand = query_params[pr.right_operand]
+                    except KeyError, ke:
+                        raise PredicateException('Missing value for parameter %s' % ke)
+                else:
+                    right_operand = pr.right_operand
+                if pr.left_operand == 'uid':
+                    query.update({'patient_id': right_operand})
+                elif pr.left_operand == 'id':
+                    # use given EHR ID
+                    query.update(self._map_operand(pr.left_operand,
+                                                   right_operand,
+                                                   pr.operand))
+                else:
+                    query.update(self._compute_predicate(pr))
+            else:
+                raise PredicateException('No left operand in predicate')
+        return query
 
     def _calculate_location_expression(self, location, query_params, patients_collection,
                                        ehr_collection):
-        raise NotImplementedError()
+        query = dict()
+        # Here is where the collection has been chosen according to the selection
+        self.logger.debug("LOCATION: %s", str(location))
+        ehr_alias = None
+        if location.class_expression:
+            ce = location.class_expression
+            if ce.class_name.upper() == 'EHR':
+                query.update(self._calculate_ehr_expression(ce, query_params,
+                                                            patients_collection,
+                                                            ehr_collection))
+                ehr_alias = ce.variable_name
+            else:
+                if ce.predicate:
+                    query.update(self._compute_predicate(ce.predicate))
+        else:
+            raise MissiongLocationExpressionError("Query must have a location expression")
+        structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
+        if len(structure_ids) == 0:
+            return None, None, None
+        query.update({self.get_selection_hash("{\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"minimum_should_match\" : 1 } }") : {"terms" : {"ehr_structure_id" : [structure_ids],"minimum_should_match" : 1 } }})
+        return query, aliases_mapping, ehr_alias
 
-    def _calculate_selection_expression(self, selection, aliases):
-        raise NotImplementedError()
+    def _map_ehr_selection(self, path, ehr_var):
+        path = path.replace('%s.' % ehr_var, '')
+        if path == 'ehr_id.value':
+            return {'patient_id': True}
+        if path == 'uid.value':
+            return {'_id': True}
 
     def _calculate_selection_expression(self, selection, aliases, ehr_alias):
-        pass
+        query = {'_id': False}
+        results_aliases = dict()
+        for v in selection.variables:
+            path = self._normalize_path(v.variable.path.value)
+            if v.variable.variable == ehr_alias:
+                q = self._map_ehr_selection(path, ehr_alias)
+                query.update(q)
+                results_aliases[q.keys()[0]] = v.label or '%s%s' % (v.variable.variable,
+                                                                    v.variable.path.value)
+            else:
+                path = '%s.%s' % (aliases[v.variable.variable], path)
+                query[path] = True
+                # use alias or ADL path
+                results_aliases[path] = v.label or '%s%s' % (v.variable.variable,
+                                                             v.variable.path.value)
+        return query, results_aliases
 
-    def _split_results(self, query_results):
-        raise NotImplementedError()
+    def _split_results(self, query_result):
+        for key, value in query_result.iteritems():
+            if isinstance(value, dict):
+                for k, v in self._split_results(value):
+                    yield '{}.{}'.format(key, k), v
+            elif isinstance(value, list):
+                for element in value:
+                    for k, v in self._split_results(element):
+                        yield '{}.{}'.format(key, k), v
+            else:
+                yield key, value
 
-    def _run_aql_query(self, query, fileds, aliases, collection):
-        raise NotImplementedError()
+    def _run_aql_query(self, query, fields, aliases, collection):
+        self.logger.debug("Running query\n%s\nwith filters\n%s", query, fields)
+        rs = ResultSet()
+        for path, alias in aliases.iteritems():
+            col = ResultColumnDef(alias, path)
+            rs.add_column_definition(col)
+        if self.is_connected:
+            original_collection = self.collection_name
+            close_conn_after_done = False
+        else:
+            close_conn_after_done = True
+        self.connect()
+        self.select_collection(collection)
+        query_results = self.get_records_by_query(query, fields)
+        print '----risultati--------'
+        print query_results
+
+        if close_conn_after_done:
+            self.disconnect()
+        else:
+            self.select_collection(original_collection)
+        for q in query_results:
+            print q
+            record = dict()
+            for x in self._split_results(q):
+                record[x[0]] = x[1]
+            print record
+            rr = ResultRow(record)
+            rs.add_row(rr)
+        print '---------------------'
+        return rs
 
     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
         super(ElasticSearchDriver, self).build_queries(query_model, patients_repository,
                                                        ehr_repository, query_params)
 
-    def execute_query(self, query_model, patients_repository, ehr_repository,
-                      query_parameters):
-        raise NotImplementedError()
+    def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
+        """
+        Execute a query parsed with the :class:`pyehr.aql.parser.Parser` object and expressed
+        as a :class:`pyehr.aql.model.QueryModel`. If the query is a parametric one, query parameters
+        must be passed using the query_params dictionary.
+
+        :param query_model: the :class:`pyehr.aql.parser.QueryModel` obtained when the query
+                            is parsed
+        :type: :class:`pyehr.aql.parser.QueryModel`
+        :param query_params: a dictionary containing query's parameters and their values
+        :type: dictionary
+        :return: a :class:`pyehr.ehr.services.dbmanager.querymanager.query.ResultSet` object
+                 containing results for the given query
+        """
+        def get_selection_hash(selection):
+            sel_hash = md5()
+            sel_hash.update(json.dumps(selection))
+            return sel_hash.hexdigest()
+
+        query_mappings = list()
+        queries, location_query = self.build_queries(query_model, patients_repository, ehr_repository, query_params)
+        print "location_query"
+        print location_query
+        for x in queries:
+            print "----query----"
+            print x
+            if x not in query_mappings:
+                query_mappings.append(x)
+        print "--------------------"
+        # reduce number of queries based on the selection filter
+        selection_mappings = dict()
+        filter_mappings = dict()
+        for qm in query_mappings:
+            selection_key = get_selection_hash(qm['query'][1])
+            if selection_key not in selection_mappings:
+                selection_mappings[selection_key] = {'selection_filter': qm['query'][1],
+                                                     'aliases': qm['results_aliases']}
+            q = qm['query'][0]
+            filter_mappings.setdefault(selection_key, []).append(q)
+        total_results = ResultSet()
+
+        print 'selection_mappings'
+        print selection_mappings
+        print 'filter mappings'
+        print filter_mappings
+
+        for sk, sm in selection_mappings.iteritems():
+            q = {'$or': filter_mappings[sk]}
+
+            q.update(location_query)
+            print '----a------'
+            print q
+            print sm['selection_filter']
+            print sm['aliases']
+            #results = self._run_aql_query(q, sm['selection_filter'], aliases=sm['aliases'],
+            #                              collection=ehr_repository)
+            #total_results.extend(results)
+        return total_results
+    def get_selection_hash(self,selection):
+        sel_hash = md5()
+        sel_hash.update(json.dumps(selection))
+        return sel_hash.hexdigest()
