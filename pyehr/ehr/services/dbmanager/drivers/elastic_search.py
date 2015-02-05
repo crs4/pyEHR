@@ -549,11 +549,19 @@ class ElasticSearchDriver(DriverInterface):
         right = cast_right_operand(right.strip())
         left = left.strip()
         if operand == '=':
-            return {self.get_selection_hash("{\"term\" : "+str({left : right})+"}") : {"term" : {left: right}}}
+#            return {"{\"term\" : "+str({left : right})+"}" : pippo}
+#            return "{\"term\" : "+str({left : right})+"}"
+            return {"{\"match\" : "+str({left : right})+"}" : "nothing"}
         elif operand == "!=":
-            return  {self.get_selection_hash("{\"filter\" : { \"not\" : { \"term\" : "+str({left : right})+"}}}") : { "filter" : { "not" : { "term" : {left : right}}}}}
+#            return  { "{\"filter\" : { \"not\" : { \"term\" : "+str({left : right})+"}}}" :
+#                          "pippo"}
+#            return   "{\"filter\" : { \"not\" : { \"term\" : "+str({left : right})+"}}}"
+            return   { " \"filter\" : { \"not\" : { \"match\" : "+str({left : right})+"}} : " : "nothing" }
         elif operand in operands_map:
-            return {self.get_selection_hash("{\"range\" : { "+str({left: {operands_map[operand]: right}})+"}}") : {"range" : { left: {operands_map[operand]: right}}}}
+#            return {"{\"range\" :  "+str({left: {operands_map[operand]: right}})+"}" :
+#            "pippo" }
+#            return "{\"range\" :  "+str({left: {operands_map[operand]: right}})+"}"
+            return { "{ \"range\" :  "+str({left: {operands_map[operand]: right}})+"}" : "nothing" }
         else:
             raise ValueError('The operand %s is not supported' % operand)
 
@@ -604,7 +612,8 @@ class ElasticSearchDriver(DriverInterface):
                 query = dict()
                 # bind fields to archetypes
                 for k in aliases.keys():
-                    query.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
+                    query.update({"\"must\" :{ \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "nothing" })
+#                    query.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
                 expressions = dict()
                 or_indices = list()
                 and_indices = list()
@@ -624,19 +633,27 @@ class ElasticSearchDriver(DriverInterface):
                             else:
                                 and_indices.append(i+1)
                 if len(or_indices) > 0:
-                    or_statement={ "bool" : { "should" : [ expressions[i] for i in or_indices],"minimum_should_match" : 1}}
+ #                   or_statement = {'$or': [expressions[i] for i in or_indices]}
+ #                   or_statement= {"{\"bool\" : { \"should\" : "+str([ expressions[i].keys() for i in or_indices])+",\"minimum_should_match\" : 1}}" : "nothing" }
+                    or_statement= " \"should\" : "+str([ expressions[i].keys() for i in or_indices])+",\"minimum_should_match\" : 1"
+#                    or_statement=or_statement.replace("[[","[")
+#                    or_statement=or_statement.replace("]]","]")
                     expressions[max(expressions.keys()) + 1] = or_statement
                     and_indices.append(max(expressions.keys()))
+#                    query.update({or_statement : "nothing" })
                 if len(and_indices) > 0:
                     for i in and_indices:
-                        print "\nexpressionnnnnnnnn="+str(expressions[i])+"\n"
-                        print self.get_selection_hash("{\"bool\" : { \"must\" : "+str(expressions[i])+"}}")
-                        print {self.get_selection_hash("{\"bool\" : { \"must\" : "+str(expressions[i])+"}}") : {"bool" : { "must" : 1}}}
-                        print "\n"
-                        query.update({self.get_selection_hash("{\"bool\" : { \"must\" : "+str(expressions[i])+"}}") : {"bool" : { "must" : {expressions[i]}}}})
+#                        query.update({"{\"bool\" : { \"must\" : "+str(expressions[i])+"}}" : "pippo"})
+#                        query.update({ " \"bool\" : { \"must\" : "+str(expressions[i])+"}" : "nothing" })
+#                        query.update({str(expressions[i].keys()) : "nothing" })
+#                        query.update({str(expressions[i].keys()) : "nothing" })
+                        print "oooooooooooooooooo"
+                        print expressions[i]
+#                        if(expressions[i].value == "nothing")
+                        query.update({str(expressions[i]) : "nothing" })
                 else:
                     for e in expressions.values():
-                        query.update({self.get_selection_hash(e):e})
+                        query.update(e)
                 # append query and used mapping
                 if not (query, p) in queries:
                     queries.append((query, p))
@@ -655,12 +672,13 @@ class ElasticSearchDriver(DriverInterface):
                 if op and ro:
                     self.logger.debug("lo: %s - op: %s - ro: %s", lo, op, ro)
                     if op == "=":
-                        query[lo] = ro
+                        query.update({"{ \"match\" : {"+ str({lo : ro})+"}}" : "nothing" })
+#                        query[lo] = ro
             else:
                 raise PredicateException("No predicate expression found")
         elif type(predicate) == ArchetypePredicate:
             predicate_string = predicate.archetype_id
-            query["filter"] = {"exists" : { "field" : predicate_string }}
+            query.update({"{ \"filter\" : {\"exists\" : { \"field\" : "+ str(predicate_string)+"}}}" : "nothing"} )
         else:
             raise PredicateException("No predicate expression found")
         return query
@@ -680,7 +698,7 @@ class ElasticSearchDriver(DriverInterface):
                 else:
                     right_operand = pr.right_operand
                 if pr.left_operand == 'uid':
-                    query.update({'patient_id': right_operand})
+                    query.update({ " \"must\" : { \"match\" : {\"patient_id\": " + str(right_operand) +"}}" : "nothing"})
                 elif pr.left_operand == 'id':
                     # use given EHR ID
                     query.update(self._map_operand(pr.left_operand,
@@ -690,6 +708,9 @@ class ElasticSearchDriver(DriverInterface):
                     query.update(self._compute_predicate(pr))
             else:
                 raise PredicateException('No left operand in predicate')
+            print "in ehr_expression"
+            print query
+            print "in ehr_expression end"
         return query
 
     def _calculate_location_expression(self, location, query_params, patients_collection,
@@ -713,7 +734,9 @@ class ElasticSearchDriver(DriverInterface):
         structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
         if len(structure_ids) == 0:
             return None, None, None
-        query.update({self.get_selection_hash("{\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"minimum_should_match\" : 1 } }") : {"terms" : {"ehr_structure_id" : [structure_ids],"minimum_should_match" : 1 } }})
+#        query.update({"{\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"minimum_should_match\" : 1 } }" :
+#                          {'ehr_structure_id': {'$in': structure_ids}}})
+        query.update({"{\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"execution\" : \"or\" } }" : "nothing"})
         return query, aliases_mapping, ehr_alias
 
     def _map_ehr_selection(self, path, ehr_var):
@@ -730,7 +753,10 @@ class ElasticSearchDriver(DriverInterface):
             path = self._normalize_path(v.variable.path.value)
             if v.variable.variable == ehr_alias:
                 q = self._map_ehr_selection(path, ehr_alias)
+                print "in calculate selection"
                 query.update(q)
+                print q
+                print "in calc---"
                 results_aliases[q.keys()[0]] = v.label or '%s%s' % (v.variable.variable,
                                                                     v.variable.path.value)
             else:
@@ -786,7 +812,7 @@ class ElasticSearchDriver(DriverInterface):
         return rs
 
     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
-        super(ElasticSearchDriver, self).build_queries(query_model, patients_repository,
+        return super(ElasticSearchDriver, self).build_queries(query_model, patients_repository,
                                                        ehr_repository, query_params)
 
     def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
@@ -810,8 +836,10 @@ class ElasticSearchDriver(DriverInterface):
 
         query_mappings = list()
         queries, location_query = self.build_queries(query_model, patients_repository, ehr_repository, query_params)
-        print "location_query"
+        print "\nlocation_query\n"
         print location_query
+        print '\nqueries\n'
+        print queries
         for x in queries:
             print "----query----"
             print x
@@ -835,19 +863,47 @@ class ElasticSearchDriver(DriverInterface):
         print 'filter mappings'
         print filter_mappings
 
+        querylist=[]
         for sk, sm in selection_mappings.iteritems():
-            q = {'$or': filter_mappings[sk]}
-
+#            q = {'$or': filter_mappings[sk]}
+            print "+++++++++"
+            print filter_mappings[sk]
+            print "+++++++++++++"
+            querylist.append("{ \"query\" : { \"bool\" : "+str(filter_mappings[sk][0].keys())+"}}")
+            querylist.append("\"filter\" : "+str(location_query.keys()))
+            print "querylist----------"
+            print querylist
+            print "ql---------------"
+            ql=self.cleanquery(querylist)
+            q={str(filter_mappings[sk][0].keys()) : "nothing"}
             q.update(location_query)
             print '----a------'
-            print q
+            print str(q)
             print sm['selection_filter']
             print sm['aliases']
+            print "-----------------------------------"
+            print ql
+            print "-----------------------------------"
             #results = self._run_aql_query(q, sm['selection_filter'], aliases=sm['aliases'],
             #                              collection=ehr_repository)
             #total_results.extend(results)
+            querylist[:] = []
         return total_results
     def get_selection_hash(self,selection):
         sel_hash = md5()
         sel_hash.update(json.dumps(selection))
         return sel_hash.hexdigest()
+    def cleanquery(self,querylist):
+#        newlist=[]
+#        for i in querylist:
+#            for j in i:
+#            newlist.append(j)
+#        print "newlist"
+#        print newlist
+#        print "------"
+        q1 = ",".join(querylist)
+#        q1 = q1.replace("'{","{").replace("\\","").replace("\"","\\\'").replace("\'","\\\'").replace("\\\\","\\").replace("\'","\"").replace("}\\\"]","}]").replace("}\\\",","},")
+        q1 = q1.replace("[\\\'","{").replace("\\\\\\\'","\"").replace("\'","").replace("[\"{","[{").replace("}\"]","}]").replace("\\","")
+        q1 = q1.replace("[[","@").replace("]]","%").replace("[","").replace("]","").replace("@","[").replace("%","]").replace("{{terms","{terms").replace("\"","\\\"")
+        qtot="{ \\\"query\\\" : { \\\"filtered\\\" : " + q1+ "}}"
+        return qtot

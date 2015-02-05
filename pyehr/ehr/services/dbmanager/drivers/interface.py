@@ -292,11 +292,29 @@ class DriverInterface(object):
         location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
                                                                                  patients_repository,
                                                                                  ehr_repository)
+        # print "\nlocation query\n"
+        # print location_query
+        # print "\naliases:\n"
+        # print aliases
+        # print "\nehr_alias\n"
+        # print ehr_alias
+        # print "\ndopo--------\n"
         if not location_query:
             return queries, []
         if condition:
             condition_results = self._calculate_condition_expression(condition, aliases)
+            print "\ncondition_results\n"
+            print condition_results
+            print "\ndopo-----cr\n"
             for condition_query, mappings in condition_results:
+                # print "condquery,result\n"
+                # print condition_query
+                # print "\n---\n"
+                # print mappings
+                # print "\n-----\n"
+                # for condq in condition_query:
+                #     print "\ncondq--->"
+                #     print condq
                 selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
                                                                                          ehr_alias)
                 queries.append(
@@ -311,7 +329,13 @@ class DriverInterface(object):
                 for p in [dict(izip(paths.keys(), a))]:
                     q = dict()
                     for k in aliases.keys():
-                        q.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
+                        # print "befoooooooooooooooore"
+                        # print q
+                        query.update({"{ \"term\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "nothing" })
+#                        q.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
+                        # print "afteeeeeeeeeeeeeeeeer"
+                        # print q
+                        # print "eeeeeeeeeeeeeeend"
                     selection_filter, results_aliases = self._calculate_selection_expression(selection, p,
                                                                                              ehr_alias)
                     queries.append(
@@ -320,6 +344,14 @@ class DriverInterface(object):
                             'results_aliases': results_aliases
                         }
                     )
+        # print "\nqueries\n"
+        # print queries
+        # for q in queries:
+        #     print "aaaaaaaaaa->"
+        #     print q
+        # print "\nlocation_query\n"
+        # print location_query
+        # print 'before returning\n'
         return queries, location_query
 
     @abstractmethod
