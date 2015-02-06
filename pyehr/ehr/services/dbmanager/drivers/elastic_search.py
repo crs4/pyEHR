@@ -779,6 +779,31 @@ class ElasticSearchDriver(DriverInterface):
             else:
                 yield key, value
 
+    def get_records_by_query(self, query,**otherfields):
+        """
+        Retrieve all records for the query given with the otherfields extra parameters
+
+        :param otherfields: the parameters to pass to elasticsearch for the search
+        :type otherfield: dictionary
+        :param query: the value that must be matched for the given field
+        :type query: string
+        :return: a list of records
+        :rtype: list
+        """
+        size = 100
+        restot = []
+        resu = self.client.search(index=self.database,doc_type=self.collection,size=size,body=query)['hits']
+        number_of_results=resu['total']
+        restot.extend(resu['hits'])
+        if number_of_results > size:
+            for i in range(1, (number_of_results-1)/size+1):
+                resu = self.client.search(index=self.database,doc_type=self.collection,size=size,from_=i*size,body=query)['hits']
+                restot.extend(resu['hits'])
+        res = [p['_source'] for p in restot]
+        if res != []:
+            return ( decode_dict(res[i]) for i in range(0,len(res)) )
+        return None
+
     def _run_aql_query(self, query, fields, aliases, collection):
         self.logger.debug("Running query\n%s\nwith filters\n%s", query, fields)
         rs = ResultSet()
@@ -786,34 +811,140 @@ class ElasticSearchDriver(DriverInterface):
             col = ResultColumnDef(alias, path)
             rs.add_column_definition(col)
         if self.is_connected:
-            original_collection = self.collection_name
+            original_collection = self.collection
             close_conn_after_done = False
         else:
             close_conn_after_done = True
         self.connect()
         self.select_collection(collection)
-        query_results = self.get_records_by_query(query, fields)
+        query_results = self.get_records_by_query(query)
         print '----risultati--------'
         print query_results
-
         if close_conn_after_done:
             self.disconnect()
         else:
             self.select_collection(original_collection)
+
         for q in query_results:
-            print q
+#            print "--------inside loop------"
+#            print q
             record = dict()
             for x in self._split_results(q):
                 record[x[0]] = x[1]
-            print record
-            rr = ResultRow(record)
+#            print record
+#            record_sel_al = self.apply_selection_and_aliases(record,fields,aliases)
+            record_sel_al = self.apply_selection(record,fields)
+#            print "ahhhhhhhhhhhhhhhhhhhhhhhhhh"
+#            print record_sel_al
+#            print "bbbbbbbbbbhhhhhhhhhhhhhhhhh"
+            rr = ResultRow(record_sel_al)
             rs.add_row(rr)
         print '---------------------'
         return rs
 
+    def apply_selection(self,record,fields):
+        q={}
+        for f in fields:
+            if fields[f] == True:
+                if f in record:
+                    q.update({f : record[f]})
+        return q
+
+    def apply_selection_and_aliases(self,record,fields,aliases):
+        q={}
+        for f in fields:
+            if fields[f] == True:
+                if f in record:
+                    if f in aliases:
+                        q.update({aliases[f] : record[f]})
+                    else:
+                        q.update({f : record[f]})
+        return q
+
+
     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
-        return super(ElasticSearchDriver, self).build_queries(query_model, patients_repository,
-                                                       ehr_repository, query_params)
+        if not query_params:
+            query_params = dict()
+        selection = query_model.selection
+        location = query_model.location
+        condition = query_model.condition
+        # TODO: add ORDER RULES and TIME CONSTRAINTS
+        queries = []
+        location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
+                                                                                 patients_repository,
+                                                                                 ehr_repository)
+        # print "\nlocation query\n"
+        # print location_query
+        # print "\naliases:\n"
+        # print aliases
+        # print "\nehr_alias\n"
+        # print ehr_alias
+        # print "\ndopo--------\n"
+        if not location_query:
+            return queries, []
+        if condition:
+            condition_results = self._calculate_condition_expression(condition, aliases)
+            print "\ncondition_results\n"
+            print condition_results
+            print "\ndopo-----cr\n"
+            for condition_query, mappings in condition_results:
+                # print "condquery,result\n"
+                # print condition_query
+                # print "\n---\n"
+                # print mappings
+                # print "\n-----\n"
+                # for condq in condition_query:
+                #     print "\ncondq--->"
+                #     print condq
+                selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
+                                                                                         ehr_alias)
+                queries.append(
+                    {
+                        'query': (condition_query, selection_filter),
+                        'results_aliases': results_aliases
+                    }
+                )
+        else:
+            paths = self._build_paths(aliases)
+            for a in izip(*paths.values()):
+                for p in [dict(izip(paths.keys(), a))]:
+                    q = dict()
+                    for k in aliases.keys():
+                        print "aliases"
+                        print aliases
+                        print "fine aliases"
+                        # print "befoooooooooooooooore"
+                        # print q
+                        print str(k)
+                        print "risoluzione----"
+                        print str(self._get_archetype_class_path(p[k]))
+                        print str(aliases[k]['archetype_class'])
+                        print {"\"must\" : { \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "nothing"}
+                        q.update({"\"must\" : { \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "nothing" })
+                        print q
+#                        q.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
+                        # print "afteeeeeeeeeeeeeeeeer"
+                        # print q
+                        # print "eeeeeeeeeeeeeeend"
+                    print "outside"
+                    print q
+                    selection_filter, results_aliases = self._calculate_selection_expression(selection, p,
+                                                                                             ehr_alias)
+                    queries.append(
+                        {
+                            'query': (q, selection_filter),
+                            'results_aliases': results_aliases
+                        }
+                    )
+        # print "\nqueries\n"
+        # print queries
+        # for q in queries:
+        #     print "aaaaaaaaaa->"
+        #     print q
+        # print "\nlocation_query\n"
+        # print location_query
+        # print 'before returning\n'
+        return queries, location_query
 
     def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
         """
@@ -884,9 +1015,9 @@ class ElasticSearchDriver(DriverInterface):
             print "-----------------------------------"
             print ql
             print "-----------------------------------"
-            #results = self._run_aql_query(q, sm['selection_filter'], aliases=sm['aliases'],
-            #                              collection=ehr_repository)
-            #total_results.extend(results)
+            results = self._run_aql_query(ql, sm['selection_filter'], aliases=sm['aliases'],
+                                          collection=ehr_repository)
+            total_results.extend(results)
             querylist[:] = []
         return total_results
     def get_selection_hash(self,selection):
@@ -903,7 +1034,14 @@ class ElasticSearchDriver(DriverInterface):
 #        print "------"
         q1 = ",".join(querylist)
 #        q1 = q1.replace("'{","{").replace("\\","").replace("\"","\\\'").replace("\'","\\\'").replace("\\\\","\\").replace("\'","\"").replace("}\\\"]","}]").replace("}\\\",","},")
-        q1 = q1.replace("[\\\'","{").replace("\\\\\\\'","\"").replace("\'","").replace("[\"{","[{").replace("}\"]","}]").replace("\\","")
-        q1 = q1.replace("[[","@").replace("]]","%").replace("[","").replace("]","").replace("@","[").replace("%","]").replace("{{terms","{terms").replace("\"","\\\"")
-        qtot="{ \\\"query\\\" : { \\\"filtered\\\" : " + q1+ "}}"
+#        q1 = q1.replace("[\\\'","{").replace("\\\\\\\'","\"")
+#            replace("\'","").replace("[\"{","[{").replace("}\"]","}]").replace("\\","")
+#        q1 = q1.replace("[[","@").replace("]]","%").replace("[","").replace("]","").replace("@","[").replace("%","]").replace("{{terms","{terms").replace("\"","\\\"")
+        q1 = q1.replace("} }']","} } }").replace("[\'","{").replace("\\\'","\"").replace("\\\\\"","\"").replace("\'\"","\"")\
+            .replace("\'","\"").replace("\" \"","\"").replace("}\"]","}]").replace("[\"{","[{")\
+            .replace("}\",","},").replace("[[","@").replace("]]","%").replace("[","").replace("]","")\
+            .replace("@","[").replace("%","]").replace("{{\"terms","{\"terms").replace(": 1\\\"}",": 1}").replace(": 1\"}}",": 1}}")
+#            .replace("@","[").replace("%","]").replace("{{\"terms","{\"terms").replace(": 1\\\"}",": 1}").replace("\"","\\\"")
+        qtot="{ \"query\" : { \"filtered\" : " + q1+ "}}"
+#        qtot="{ \\\"query\\\" : { \\\"filtered\\\" : " + q1+ "}}"
         return qtot
