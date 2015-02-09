@@ -43,8 +43,8 @@ class TestVersionManager(unittest.TestCase):
         self.dbs.set_index_service(**sconf.get_index_configuration())
 
     def tearDown(self):
-        if self.patient:
-            self.dbs.delete_patient(self.patient, cascade_delete=True)
+#        if self.patient:
+#            self.dbs.delete_patient(self.patient, cascade_delete=True)
         self.dbs.index_service.connect()
         self.dbs.index_service.basex_client.delete_database()
         self.dbs.index_service.disconnect()

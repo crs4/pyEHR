@@ -211,10 +211,10 @@ def suite():
     suite = unittest.TestSuite()
 #    suite.addTest(TestQueryManager('test_simple_select_query'))
 #    suite.addTest(TestQueryManager('test_simple_where_query'))
-    suite.addTest(TestQueryManager('test_deep_where_query'))
+#    suite.addTest(TestQueryManager('test_deep_where_query'))
 #    suite.addTest(TestQueryManager('test_simple_parametric_query'))
 #    suite.addTest(TestQueryManager('test_simple_patients_selection'))
-#    suite.addTest(TestQueryManager('test_deep_select_query'))
+    suite.addTest(TestQueryManager('test_deep_select_query'))
     return suite
 
 if __name__ == '__main__':
