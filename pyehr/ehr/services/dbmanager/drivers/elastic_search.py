@@ -182,14 +182,15 @@ class ElasticSearchDriver(DriverInterface):
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = self._normalize_keys(ehr_data, original_value, encoded_value)
         return {
-            '_id': clinical_record_revision.record_id,
+            '_id': clinical_record_revision.record_id['_id']+"_"+str(clinical_record_revision.record_id['_version']),
             'ehr_structure_id': clinical_record_revision.structure_id,
             'patient_id': clinical_record_revision.patient_id,
             'creation_time': clinical_record_revision.creation_time,
             'last_update': clinical_record_revision.last_update,
             'active': clinical_record_revision.active,
             'ehr_data': ehr_data,
-            '_version': clinical_record_revision.version
+            '_version': clinical_record_revision.record_id['_version'],
+            'archived': True
         }
 
     def encode_record(self, record):
@@ -247,7 +248,6 @@ class ElasticSearchDriver(DriverInterface):
     def _decode_clinical_record(self, record, loaded):
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord,\
             ArchetypeInstance
-
         record = decode_dict(record)
         if loaded:
             ehr_data = record['ehr_data']
@@ -280,12 +280,11 @@ class ElasticSearchDriver(DriverInterface):
             )
             if 'patient_id' in record:
                 crec._set_patient_id(record['patient_id'])
-            return crec
+        return crec
 
     def _decode_clinical_record_revision(self, record):
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecordRevision, \
             ArchetypeInstance
-
         record = decode_dict(record)
         ehr_data = record['ehr_data']
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
@@ -296,9 +295,9 @@ class ElasticSearchDriver(DriverInterface):
             creation_time=record['creation_time'],
             last_update=record['last_update'],
             active=record['active'],
-            record_id=record['_id'],
+            record_id={'_id': record['_id'].rsplit('_', 1)[0],'_revision' : int(record['_id'].rsplit('_', 1)[1])},
             structure_id=record['ehr_structure_id'],
-            version=record.get('_version'),
+            version=int(record['_id'].rsplit('_', 1)[1]),
         )
 
     def decode_record(self, record, loaded=True):
@@ -313,7 +312,7 @@ class ElasticSearchDriver(DriverInterface):
         :return: the ElasticSearch document encoded as a :class:`Record` object
         """
         if 'ehr_data' in record:
-            if isinstance(record.get('_id'), dict):
+            if 'archived' in record:
                 return self._decode_clinical_record_revision(record)
             else:
                 return self._decode_clinical_record(record, loaded)
@@ -340,9 +339,17 @@ class ElasticSearchDriver(DriverInterface):
         self.__check_connection()
         try:
             if(record.has_key('_id')):
-                return str(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],body=record,op_type='create',refresh='true')['_id'])
+                if(record.has_key("archived")):
+                    idreturned=str(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],
+                                                     version=record['_version'],version_type="external",
+                                                      body=record,op_type='create',refresh='true')['_id'])
+                    return {idreturned.rsplit('_', 1)[0],idreturned.rsplit('_', 1)[1]}
+                else:
+                    return str(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],
+                                                 body=record,op_type='create',refresh='true')['_id'])
             else:
-                return str(self.client.index(index=self.database,doc_type=self.collection,body=record,op_type='create',refresh='true')['_id'])
+                return str(self.client.index(index=self.database,doc_type=self.collection,body=record,
+                                             op_type='create',refresh='true')['_id'])
         except elasticsearch.ConflictError:
             raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
 
@@ -418,7 +425,11 @@ class ElasticSearchDriver(DriverInterface):
         self.__check_connection()
         #res = self.client.get(index=self.database,id=record_id,_source='true')
         try:
-            res = self.client.get_source(index=self.database,id=record_id)
+            if(isinstance(record_id,dict)):
+                newid=record_id ['_id']['_id']+"_"+str(record_id['_id']['_version'])
+                res = self.client.get_source(index=self.database,id=newid)
+            else:
+                res = self.client.get_source(index=self.database,id=record_id)
             return decode_dict(res)
         except elasticsearch.NotFoundError:
             return None
@@ -436,12 +447,19 @@ class ElasticSearchDriver(DriverInterface):
         self.__check_connection()
         #res = self.client.get(index=self.database,id=record_id,_source='true')
         try:
-            res = self.client.get_source(index=self.database,id=record_id,version=version)
-            return decode_dict(res)
-        except elasticsearch.NotFoundError:
-            return None
+            #search in ehr archive repository first
+            newid=record_id+"_"+str(version)
+            res = self.client.get(index=self.database,id=newid,version=version,version_type="external")
+            return decode_dict(res['_source'])
+        except (elasticsearch.NotFoundError, elasticsearch.ConflictError,elasticsearch.TransportError) :
+                #search in ehr repository
+                try:
+                    res = self.client.get(index=self.database,id=record_id,version=version,version_type="external")
+                    return decode_dict(res['_source'])
+                except (elasticsearch.NotFoundError, elasticsearch.ConflictError,elasticsearch.TransportError):
+                    return None
 
-    def get_revisions_by_ehr_id(self, record_id):
+    def get_revisions_by_ehr_id(self, ehr_id):
         """
         Retrieve all revisions for the given EHR ID
 
@@ -449,7 +467,8 @@ class ElasticSearchDriver(DriverInterface):
         :return: all revisions matching given ID
         :rtype: list
         """
-        return self.get_records_by_query({'_id._id': ehr_id})
+        query="{ \"filter\" : { \"prefix\" : { \"_id\" : \""+str(ehr_id)+"\" } } }"
+        return self.get_records_by_query(query)
 
 
     def get_all_records(self):
@@ -496,16 +515,59 @@ class ElasticSearchDriver(DriverInterface):
         self.__check_connection()
         self.logger.debug('deleting document with ID %s', record_id)
         try:
-            res=self.client.delete(index=self.database,doc_type=self.collection,id=record_id,refresh='true')
+            if(isinstance(record_id,dict)):
+                newid=record_id['_id']['_id']+"_"+str(record_id['_id']['_version'])
+                res=self.client.delete(index=self.database,doc_type=self.collection,id=newid,refresh='true')
+            else:
+                res=self.client.delete(index=self.database,doc_type=self.collection,id=record_id,refresh='true')
             return res
         except elasticsearch.NotFoundError:
             return None
 
     def delete_later_versions(self, record_id, version_to_keep=0):
-        raise NotImplementedError()
+        """
+        Delete versions newer than version_to_keep for the given record ID.
+
+        :param record_id: ID of the record
+        :param version_to_keep: the older version that will be preserved, if 0
+                                delete all versions for the given record ID
+        :type version_to_keep: int
+        :return: the number of deleted records
+        :rtype: int
+        """
+        if(isinstance(record_id,dict)):
+            newid = record_id['_id']['_id']
+            query="{ \"query\" : { \"bool\" : { \"must\" : { \"prefix\" : { \"_id\" : \""+str(newid)+\
+              "\" }}}}}"
+        else:
+            query="{ \"query\" : { \"bool\" : { \"must\" : { \"prefix\" : { \"_id\" : \""+str(record_id)+\
+              "\" }}}}}"
+
+        res=self.get_records_by_query(query)
+        counter=0
+        if(res):
+            for r in res:
+                if(r['_version'] > version_to_keep):
+                    self.delete_record(r['_id'])
+                    counter=counter+1
+        return counter
 
     def delete_records_by_query(self, query):
-        raise NotImplementedError()
+        """
+        Delete all records that match the given query
+
+        :param query: the query used to select records that will be deleted
+        :type query: dict
+        :return: the number of deleted records
+        :rtype: int
+        """
+        self.__check_connection()
+        try:
+            res=self.client.delete_by_query(index=self.database,doc_type=self.collection,body=query,refresh='true')
+            return res
+        except elasticsearch.NotFoundError:
+            return None
+
 
     def update_field(self, record_id, field_label, field_value, update_timestamp_label=None,
                      increase_version=False):
@@ -520,6 +582,8 @@ class ElasticSearchDriver(DriverInterface):
           must be recorded or None
           For ElasticSearch the default is not storing the timestamp
         :type update_timestamp_label: field label or None
+        :param increase_version: if True, increase record's version number by 1
+        :type increase_version: bool
         :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
         """
         record_to_update = self.get_record_by_id(record_id)
@@ -533,12 +597,44 @@ class ElasticSearchDriver(DriverInterface):
                 record_to_update['last_update']=last_update
             else:
                 last_update=None
-            res = self.client.index(index=self.database,doc_type=self.collection,body=record_to_update,id=record_id)
-            self.logger.debug('updated %s document', res[u'_id'])
+            if increase_version:
+                newversion = record_to_update['_version']+1
+                record_to_update['_version']=newversion
+                res = self.client.index(index=self.database,doc_type=self.collection,body=record_to_update,id=record_id,\
+                                    version=newversion,version_type="external")
+                self.logger.debug('updated %s document', res[u'_id'])
+            else:
+                res = self.client.index(index=self.database,doc_type=self.collection,body=record_to_update,id=record_id,\
+                                    version=record_to_update['_version'],version_type="external")
+                self.logger.debug('updated %s document', res[u'_id'])
             return last_update
 
     def replace_record(self, record_id, new_record, update_timestamp_label=None):
-        raise NotImplementedError
+        """
+        Replace record with *record_id* with the given *new_record*
+
+        :param record_id: the ID of the record that will be replaced with the new one
+        :param new_record: the new record
+        :type new_record: dict
+        :param update_timestamp_label: the label of the *last_update* field of the record
+                                       if the last update timestamp must be recorded or None
+        :type update_timestamp_label: field label or None
+        :return: the timestamp of the last update as saved in the DB or None
+                 (if *update_timestamp_label* was None)
+        """
+        self.__check_connection()
+        last_update = None
+        if update_timestamp_label:
+            last_update = time.time()
+            new_record[update_timestamp_label] = last_update
+        try:
+            new_record.pop('_id')
+        except KeyError:
+            pass
+        new_record['_id']=record_id
+        version=new_record['_version']
+        res = self.client.index(index=self.database,doc_type=self.collection,body=new_record,id=record_id,version=version,version_type="external")
+        return last_update
 
     def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None,
                     increase_version=False):
@@ -704,18 +800,11 @@ class ElasticSearchDriver(DriverInterface):
                             else:
                                 and_indices.append(i+1)
                 if len(or_indices) > 0:
- #                   or_statement = {'$or': [expressions[i] for i in or_indices]}
- #                   or_statement= {"{\"bool\" : { \"should\" : "+str([ expressions[i].keys() for i in or_indices])+",\"minimum_should_match\" : 1}}" : "nothing" }
                     or_statement= " \"should\" : "+str([ expressions[i].keys() for i in or_indices])+",\"minimum_should_match\" : 1"
-#                    or_statement=or_statement.replace("[[","[")
-#                    or_statement=or_statement.replace("]]","]")
                     expressions[max(expressions.keys()) + 1] = or_statement
                     and_indices.append(max(expressions.keys()))
-#                    query.update({or_statement : "nothing" })
                 if len(and_indices) > 0:
                     for i in and_indices:
-#                        print "oooooooooooooooooo"
-#                        print expressions[i]
                         query.update({str(expressions[i]) : "nothing" })
                 else:
                     for e in expressions.values():
@@ -774,9 +863,6 @@ class ElasticSearchDriver(DriverInterface):
                     query.update(self._compute_predicate(pr))
             else:
                 raise PredicateException('No left operand in predicate')
-            # print "in ehr_expression"
-            # print query
-            # print "in ehr_expression end"
         return query
 
     def _calculate_location_expression(self, location, query_params, patients_collection,
@@ -820,9 +906,6 @@ class ElasticSearchDriver(DriverInterface):
             if v.variable.variable == ehr_alias:
                 q = self._map_ehr_selection(path, ehr_alias)
                 query.update(q)
-                # print "in calculate selection"
-                # print q
-                # print "in calc---"
                 results_aliases[q.keys()[0]] = v.label or '%s%s' % (v.variable.variable,
                                                                     v.variable.path.value)
             else:
@@ -884,21 +967,15 @@ class ElasticSearchDriver(DriverInterface):
         self.connect()
         self.select_collection(collection)
         query_results = self.get_records_by_query(query)
-        # print '----risultati--------'
-        # print query_results
         if close_conn_after_done:
             self.disconnect()
         else:
             self.select_collection(original_collection)
         if query_results:
             for q in query_results:
-#                print "--------inside loop------"
-#               print q
                 record = dict()
                 for x in self._split_results(q):
                     record[x[0]] = x[1]
-#               print record
-#               record_sel_al = self.apply_selection_and_aliases(record,fields,aliases)
                 record_sel_al = self.apply_selection(record,fields)
                 rr = ResultRow(record_sel_al)
                 rs.add_row(rr)
@@ -935,29 +1012,11 @@ class ElasticSearchDriver(DriverInterface):
         location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
                                                                                  patients_repository,
                                                                                  ehr_repository)
-        # print "\nlocation query\n"
-        # print location_query
-        # print "\naliases:\n"
-        # print aliases
-        # print "\nehr_alias\n"
-        # print ehr_alias
-        # print "\ndopo--------\n"
         if not location_query:
             return queries, []
         if condition:
             condition_results = self._calculate_condition_expression(condition, aliases)
-            # print "\ncondition_results\n"
-            # print condition_results
-            # print "\ndopo-----cr\n"
             for condition_query, mappings in condition_results:
-                # print "condquery,result\n"
-                # print condition_query
-                # print "\n---\n"
-                # print mappings
-                # print "\n-----\n"
-                # for condq in condition_query:
-                #     print "\ncondq--->"
-                #     print condq
                 selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
                                                                                          ehr_alias)
                 queries.append(
@@ -969,11 +1028,7 @@ class ElasticSearchDriver(DriverInterface):
         else:
             paths = self._build_paths(aliases)
             for a in izip(*paths.values()):
-                # print "------------A----------"
-                # print a
                 for p in [dict(izip(paths.keys(), a))]:
-                    # print "---------P-----------"
-                    # print p
                     q = dict()
                     for k in aliases.keys():
                         q.update({"\"must\" : { \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "nothing" })
@@ -1008,16 +1063,9 @@ class ElasticSearchDriver(DriverInterface):
 
         query_mappings = list()
         queries, location_query = self.build_queries(query_model, patients_repository, ehr_repository, query_params)
-        # print "\nlocation_query\n"
-        # print location_query
-        # print '\nqueries\n'
-        # print queries
         for x in queries:
-            # print "----query----"
-            # print x
             if x not in query_mappings:
                 query_mappings.append(x)
-        # print "--------------------"
         # reduce number of queries based on the selection filter
         selection_mappings = dict()
         filter_mappings = dict()
@@ -1029,26 +1077,11 @@ class ElasticSearchDriver(DriverInterface):
             q = qm['query'][0]
             filter_mappings.setdefault(selection_key, []).append(q)
         total_results = ResultSet()
-        # print 'selection_mappings'
-        # print selection_mappings
-        # print 'filter mappings'
-        # print filter_mappings
-
         querylist=[]
         for sk, sm in selection_mappings.iteritems():
-#            q = {'$or': filter_mappings[sk]}
-#             print "+++++++++"
-#             print filter_mappings[sk]
-#             print "+++++++++++++"
             querylist.append("{ \"query\" : { \"bool\" : "+str(filter_mappings[sk][0].keys())+"}}")
             querylist.append("\"filter\" : { \"bool\" : "+str(location_query.keys())+"}}}")
-            # print "querylist----------"
-            # print querylist
-            # print "ql---------------"
             ql=self.cleanquery(querylist)
-#            print "\n-------------AAAA----------------------"
-#            print ql
-#            print "---------------BBBB--------------------"
             results = self._run_aql_query(ql, sm['selection_filter'], aliases=sm['aliases'],
                                           collection=ehr_repository)
             total_results.extend(results)
@@ -1059,13 +1092,6 @@ class ElasticSearchDriver(DriverInterface):
         sel_hash.update(json.dumps(selection))
         return sel_hash.hexdigest()
     def cleanquery(self,querylist):
-#        newlist=[]
-#        for i in querylist:
-#            for j in i:
-#            newlist.append(j)
-#        print "newlist"
-#        print newlist
-#        print "------"
         q1 = ",".join(querylist)
         q1 = q1.replace("} }']","} } }").replace("[\'","{").replace("\\\'","\"").replace("\\\\\"","\"").replace("\'\"","\"")\
             .replace("\'","\"").replace("\" \"","\"").replace("}\"]","}]").replace("[\"{","[{")\
