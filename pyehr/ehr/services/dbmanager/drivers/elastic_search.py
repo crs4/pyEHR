@@ -53,7 +53,7 @@ class ElasticSearchDriver(DriverInterface):
         #self.database_name = database
         self.database = database
         self.collection = collection
-        #self.collection_name = collection
+        self.collection_name = collection
         # self.port = port
         # self.user = user
         # self.passwd = passwd
@@ -135,6 +135,10 @@ class ElasticSearchDriver(DriverInterface):
         self.logger.debug('Changing collection for database %s, old collection: %s - new collection %s',
                           self.database, self.collection, collection_label)
         self.collection = collection_label
+        self.collection_name = collection_label
+
+    def _select_doc_type(self,strid):
+        self.collection_name = self.collection+"_"+strid
 
     def _encode_patient_record(self, patient_record):
         encoded_record = {
@@ -311,13 +315,22 @@ class ElasticSearchDriver(DriverInterface):
         :type loaded: boolean
         :return: the ElasticSearch document encoded as a :class:`Record` object
         """
-        if 'ehr_data' in record:
-            if 'archived' in record:
+        if self._is_clinical_record(record):
+            return self._decode_clinical_record(record, loaded)
+        else:
+            if self._is_clinical_record_revision(record):
                 return self._decode_clinical_record_revision(record)
             else:
-                return self._decode_clinical_record(record, loaded)
-        else:
-            return self._decode_patient_record(record, loaded)
+                return self._decode_patient_record(record, loaded)
+
+    def _is_clinical_record(self,record):
+        return ('ehr_data' in record) and ('archived' not in record)
+
+    def _is_clinical_record_revision(self,record):
+        return ('ehr_data' in record) and ('archived' in record)
+
+    def _is_patient_record(self,record):
+        return 'ehr_data' not in record
 
     def count(self):
         return self.client.count(index=self.database,doc_type=self.collection)['count']
@@ -336,31 +349,63 @@ class ElasticSearchDriver(DriverInterface):
         :type record: dictionary
         :return: the ID of the record
         """
+        def clinical_add_withid():
+            return str(self.client.index(index=self.database,doc_type=self.collection_name,id=record['_id'],
+                                version=version,version_type="external",body=record,
+                                op_type='create',refresh='true')['_id'])
+
+        def clinical_add_withoutid():
+            return str(self.client.index(index=self.database,doc_type=self.collection_name,body=record,
+                                             version=version,version_type="external",
+                                             op_type='create',refresh='true')['_id'])
+
         self.__check_connection()
         try:
-            if(record.has_key('_id')):
-                if(record.has_key("archived")):
-                    idreturned=str(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],
-                                                     version=record['_version'],version_type="external",
-                                                      body=record,op_type='create',refresh='true')['_id'])
-                    return {idreturned.rsplit('_', 1)[0],idreturned.rsplit('_', 1)[1]}
-                else:
+            if self._is_patient_record(record):
+                if(record.has_key('_id')):
                     return str(self.client.index(index=self.database,doc_type=self.collection,id=record['_id'],
                                                  body=record,op_type='create',refresh='true')['_id'])
-            else:
-                return str(self.client.index(index=self.database,doc_type=self.collection,body=record,
+                else:
+                    return str(self.client.index(index=self.database,doc_type=self.collection,body=record,
                                              op_type='create',refresh='true')['_id'])
+            else:
+                self._select_doc_type(record['ehr_structure_id'])
+                version=1
+                if(record.has_key('_version')):
+                    version=record['_version']
+                if self._is_clinical_record(record):
+                    if(record.has_key('_id')):
+                        return clinical_add_withid()
+                    else:
+                        return clinical_add_withoutid()
+                else: #clinical_revision_record
+                    idreturned=clinical_add_withid()
+                    return {idreturned.rsplit('_', 1)[0],idreturned.rsplit('_', 1)[1]}
         except elasticsearch.ConflictError:
             raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
 
 
     def pack_record(self,records):
-        first="{\"create\":{\"_index\":\""+self.database+"\",\"_type\":\""+self.collection+"\""
+        #the records must be of the same type!
+        #all patient records or all clinical records
+        rectype_clinical = True
+        if self._is_patient_record(records[0]):
+            rectype_clinical= False
+        first="{\"create\":{\"_index\":\""+self.database
         puzzle=""
         for dox in records:
-            puzzle=puzzle+first
-            if(dox.has_key("_id")):
-                puzzle = puzzle+",\"_id\":\""+dox["_id"]+"\"}}\n{"
+            if(rectype_clinical and self._is_patient_record(dox)):
+                raise InvalidRecordTypeError("Patient Record among Clinical Records")
+            if((not rectype_clinical) and (not self._is_patient_record(dox))):
+                raise InvalidRecordTypeError("Clinical Record among Patient Records")
+            versionstring=""
+            if rectype_clinical:
+                self._select_doc_type(dox['ehr_structure_id'])
+                if("_version" in dox):
+                    versionstring=",\"_version\":"+str(dox['_version'])+",\"version_type\" : \"external\""
+            puzzle=puzzle+first+"\",\"_type\":\""+self.collection_name+"\""+versionstring
+            if(dox.has_key('_id')):
+                puzzle = puzzle+",\"_id\":\""+dox['_id']+"\"}}\n{"
             else:
                 puzzle=puzzle+"}}\n{"
             for k in dox:
@@ -368,38 +413,45 @@ class ElasticSearchDriver(DriverInterface):
             puzzle=puzzle.strip(",")+"}\n"
         return puzzle
 
-    # def add_records(self, records):
-    #     """
-    #     Save a list of records within ElasticSearch and return records' IDs
-    #
-    #     :param records: the list of records that is going to be saved
-    #     :type record: list
-    #     :return: a list of records' IDs
-    #     :rtype: list
-    #     """
-    #     self.__check_connection()
-    #     #create a bulk list
-    #     bulklist = self.pack_record(records)
-    #     bulkanswer = self.client.bulk(body=bulklist,index=self.database,doc_type=self.collection,refresh='true')
-    #     if(bulkanswer['errors']): # there are errors
-    #         #count the errors
-    #         nerrors=0
-    #         err=[]
-    #         errtype=[]
-    #         for b in bulkanswer['items']:
-    #             if(b['create'].has_key('error')):
-    #                 err[nerrors] = b['create']['_id']
-    #                 errtype[nerrors] = b['create']['error']
-    #                 nerrors += 1
-    #         if(nerrors):
-    #             raise DuplicatedKeyError('Record with these id already exist: %s' %err)
-    #         else:
-    #             print 'bad programmer'
-    #             sys.exit(1)
-    #     else:
-    #         return [str(g['create']['_id']) for g in bulkanswer['items']]
+    def add_records(self, records,skip_existing_duplicated=False):
+         """
+         Save a list of records within ElasticSearch and return records' IDs
 
-    def add_records(self, records, skip_existing_duplicated=False):
+         :param records: the list of records that is going to be saved
+         :type record: list
+         :return: a list of records' IDs
+         :rtype: list
+         """
+         self.__check_connection()
+         #create a bulk list
+         bulklist = self.pack_record(records)
+         bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh='true')
+         notduplicatedlist=[]
+         if(bulkanswer['errors']): # there are errors
+            if(skip_existing_duplicated):
+                for b in bulkanswer['items']:
+                    if(not b['create'].has_key('error')):
+                        notduplicatedlist.append(str(b['create']['_id']))
+                return notduplicatedlist
+            else:
+                #count the errors
+                nerrors=0
+                err=[]
+                errtype=[]
+                for b in bulkanswer['items']:
+                    if(b['create'].has_key('error')):
+                        err[nerrors] = b['create']['_id']
+                        errtype[nerrors] = b['create']['error']
+                        nerrors += 1
+                if(nerrors):
+                    raise DuplicatedKeyError('Record with these id already exist: %s \n List of Errors found %s' %(err,errtype) )
+                else:
+                    print 'bad programmer'
+                    sys.exit(1)
+         else:
+            return [str(g['create']['_id']) for g in bulkanswer['items']]
+
+    def add_records2(self, records, skip_existing_duplicated=False):
         """
         Save a list of records within ElasticSearch and return records' IDs
 
