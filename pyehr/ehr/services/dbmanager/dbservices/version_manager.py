@@ -14,13 +14,14 @@ class VersionManager(object):
     """
 
     def __init__(self, driver, host, database, ehr_repository=None,
-                 ehr_versioning_repository=None, port=None, user=None,
-                 passwd=None, logger=None):
+                 ehr_versioning_repository=None, index_service=None,
+                 port=None, user=None, passwd=None, logger=None):
         self.driver = driver
         self.host = host
         self.database = database
         self.ehr_repository = ehr_repository
         self.ehr_versioning_repository = ehr_versioning_repository
+        self.index_service = index_service
         self.port = port
         self.user = user
         self.passwd = passwd
@@ -35,7 +36,8 @@ class VersionManager(object):
             port=self.port,
             user=self.user,
             passwd=self.passwd,
-            logger=self.logger
+            logger=self.logger,
+            index_service=self.index_service,
         )
 
     def _check_redundant_update(self, new_record, old_record):
