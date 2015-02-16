@@ -34,12 +34,13 @@ class DBServices(object):
         self.database = database
         self.patients_repository = patients_repository
         self.ehr_repository = ehr_repository
+        self.ehr_versioning_repository = ehr_versioning_repository
         self.port = port
         self.user = user
         self.passwd = passwd
         self.index_service = None
         self.logger = logger or get_logger('db_services')
-        self.version_manager = self._set_version_manager(ehr_versioning_repository)
+        self.version_manager = self._set_version_manager()
 
     def _get_drivers_factory(self, repository):
         return DriversFactory(
@@ -54,13 +55,14 @@ class DBServices(object):
             logger=self.logger
         )
 
-    def _set_version_manager(self, ehr_version_repository):
+    def _set_version_manager(self):
         return VersionManager(
             driver=self.driver,
             host=self.host,
             database=self.database,
             ehr_repository=self.ehr_repository,
-            ehr_versioning_repository=ehr_version_repository,
+            ehr_versioning_repository=self.ehr_versioning_repository,
+            index_service=self.index_service,
             port=self.port,
             user=self.user,
             passwd=self.passwd,
@@ -81,6 +83,8 @@ class DBServices(object):
         :type passwd: str
         """
         self.index_service = IndexService(database, url, user, passwd, self.logger)
+        # update version manager as well
+        self.version_manager = self._set_version_manager()
 
     def save_patient(self, patient_record):
         """
