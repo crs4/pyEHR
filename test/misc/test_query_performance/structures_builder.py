@@ -123,7 +123,7 @@ def get_forced_path(level, full_path):
     return list(operator.itemgetter(*fpath_index)(full_path))
 
 
-def build_structures(json_output_file, builder_conf):
+def build_structures(builder_conf):
     """
     build_conf field is a dictionary used to describe how the run is configured.
     The dictionary should be like
@@ -187,6 +187,11 @@ def build_structures(json_output_file, builder_conf):
             build_structure(depth, width, labels,
                             ignored_compositions=builder_conf['full_query_path'][:-1])
         )
+    return structures
+
+
+def structures_to_json(builder_conf, json_output_file):
+    structures = builder_conf(builder_conf)
     with open(json_output_file, 'w') as f:
         f.write(json.dumps(structures))
 
