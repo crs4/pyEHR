@@ -110,7 +110,9 @@ class TestQueryManager(unittest.TestCase):
         for k, v in batch_details.iteritems():
             details_results.extend(v)
         res = list(results.results)
+        print "\n-----------------------"
         print res
+        print "------------------------"
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_deep_select_query(self):
@@ -172,6 +174,28 @@ class TestQueryManager(unittest.TestCase):
         print sorted(res)
         self.assertEqual(sorted(details_results), sorted(res))
 
+    def test_deeper_where_query(self):
+        query = """
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
+        FROM Ehr e
+        CONTAINS Composition c[openEHR-EHR-COMPOSITION.encounter.v1]
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        AND o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude != 81
+        """
+        batch_details = self._build_patients_batch_mixed(10, 10, (0, 250), (0, 200))
+        pass
+        results = self.qmanager.execute_aql_query(query)
+        details_results = list()
+        for k,v in batch_details.iteritems():
+            for x in v:
+                if x['systolic'] >= 180 and x['dyastolic'] != 81:
+                    details_results.append(x)
+        res = list(results.results)
+        print sorted(res)
+        self.assertEqual(sorted(details_results), sorted(res))
+
     def test_simple_parametric_query(self):
         query = """
         SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
@@ -212,9 +236,10 @@ def suite():
 #    suite.addTest(TestQueryManager('test_simple_select_query'))
 #    suite.addTest(TestQueryManager('test_simple_where_query'))
 #    suite.addTest(TestQueryManager('test_deep_where_query'))
+    suite.addTest(TestQueryManager('test_deeper_where_query'))
 #    suite.addTest(TestQueryManager('test_simple_parametric_query'))
 #    suite.addTest(TestQueryManager('test_simple_patients_selection'))
-    suite.addTest(TestQueryManager('test_deep_select_query'))
+#    suite.addTest(TestQueryManager('test_deep_select_query'))
     return suite
 
 if __name__ == '__main__':

@@ -43,12 +43,13 @@ class TestVersionManager(unittest.TestCase):
         self.dbs.set_index_service(**sconf.get_index_configuration())
 
     def tearDown(self):
-#        if self.patient:
-#            self.dbs.delete_patient(self.patient, cascade_delete=True)
+        if self.patient:
+            self.dbs.delete_patient(self.patient, cascade_delete=True)
         self.dbs.index_service.connect()
         self.dbs.index_service.basex_client.delete_database()
         self.dbs.index_service.disconnect()
         self.dbs = None
+        pass
 
     def test_record_update(self):
         crec = self.build_dataset()
@@ -88,7 +89,7 @@ class TestVersionManager(unittest.TestCase):
         self.assertEqual(crec.ehr_data.archetype_details['data']['at0001'],
                          original_value)
 
-    def test_record_restore_previuos_revision(self):
+    def test_record_restore_previous_revision(self):
         crec = self.build_dataset()
         crec_rev_1 = crec.to_json()
         crec.ehr_data.archetype_details['data']['at0001'] = random.randint(100, 200)
@@ -187,7 +188,7 @@ def suite():
     suite.addTest(TestVersionManager('test_record_update'))
     suite.addTest(TestVersionManager('test_record_restore'))
     suite.addTest(TestVersionManager('test_record_restore_original'))
-    suite.addTest(TestVersionManager('test_record_restore_previuos_revision'))
+    suite.addTest(TestVersionManager('test_record_restore_previous_revision'))
     suite.addTest(TestVersionManager('test_get_revision'))
     suite.addTest(TestVersionManager('test_get_revisions'))
     suite.addTest(TestVersionManager('test_optimistic_lock_error'))
