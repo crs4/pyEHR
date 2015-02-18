@@ -190,8 +190,7 @@ def build_structures(builder_conf):
     return structures
 
 
-def structures_to_json(builder_conf, json_output_file):
-    structures = builder_conf(builder_conf)
+def structures_to_json(structures, json_output_file):
     with open(json_output_file, 'w') as f:
         f.write(json.dumps(structures))
 
