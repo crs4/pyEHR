@@ -25,10 +25,10 @@ class TestQueryManager(unittest.TestCase):
         self.patients = list()
 
     def tearDown(self):
-#        for p in self.patients:
-#            self.dbs.delete_patient(p, cascade_delete=True)
-#        self._delete_index_db()
-#        self.patients = None
+        for p in self.patients:
+            self.dbs.delete_patient(p, cascade_delete=True)
+        self._delete_index_db()
+        self.patients = None
         pass
 
     def _delete_index_db(self):
@@ -233,13 +233,13 @@ class TestQueryManager(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-#    suite.addTest(TestQueryManager('test_simple_select_query'))
-#    suite.addTest(TestQueryManager('test_simple_where_query'))
-#    suite.addTest(TestQueryManager('test_deep_where_query'))
+    suite.addTest(TestQueryManager('test_simple_select_query'))
+    suite.addTest(TestQueryManager('test_simple_where_query'))
+    suite.addTest(TestQueryManager('test_deep_where_query'))
     suite.addTest(TestQueryManager('test_deeper_where_query'))
-#    suite.addTest(TestQueryManager('test_simple_parametric_query'))
-#    suite.addTest(TestQueryManager('test_simple_patients_selection'))
-#    suite.addTest(TestQueryManager('test_deep_select_query'))
+    suite.addTest(TestQueryManager('test_simple_parametric_query'))
+    suite.addTest(TestQueryManager('test_simple_patients_selection'))
+    suite.addTest(TestQueryManager('test_deep_select_query'))
     return suite
 
 if __name__ == '__main__':

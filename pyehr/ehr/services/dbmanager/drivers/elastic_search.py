@@ -811,17 +811,17 @@ class ElasticSearchDriver(DriverInterface):
         if operand == '=':
 #            return {"{\"term\" : "+str({left : right})+"}" : pippo}
 #            return "{\"term\" : "+str({left : right})+"}"
-            return {"{\"match\" : "+str({left : right})+"}" : "nothing"}
+            return {"{\"match\" : "+str({left : right})+"}" : "$%nothing%$"}
         elif operand == "!=":
 #            return  { "{\"filter\" : { \"not\" : { \"term\" : "+str({left : right})+"}}}" :
 #                          "pippo"}
 #            return   "{\"filter\" : { \"not\" : { \"term\" : "+str({left : right})+"}}}"
-            return   { " { \"filter\" : { \"not\" : { \"match\" : "+str({left : right})+"}}}" : "nothing" }
+            return   { "  \"must_not\" : { \"match\" : "+str({left : right})+"}" : "$%nothing%$" }
         elif operand in operands_map:
 #            return {"{\"range\" :  "+str({left: {operands_map[operand]: right}})+"}" :
 #            "pippo" }
 #            return "{\"range\" :  "+str({left: {operands_map[operand]: right}})+"}"
-            return { "{ \"range\" :  "+str({left: {operands_map[operand]: right}})+"}" : "nothing" }
+            return { "{ \"range\" :  "+str({left: {operands_map[operand]: right}})+"}" : "$%nothing%$" }
         else:
             raise ValueError('The operand %s is not supported' % operand)
 
@@ -872,14 +872,13 @@ class ElasticSearchDriver(DriverInterface):
                 query = dict()
                 # bind fields to archetypes
                 for k in aliases.keys():
-                    query.update({"\"must\" :{ \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "nothing" })
+                    query.update({"\"must\" :{ \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "$%nothing%$" })
 #                    query.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
                 expressions = dict()
                 or_indices = list()
                 and_indices = list()
                 for i, cseq_element in enumerate(condition.condition.condition_sequence):
                     if isinstance(cseq_element, PredicateExpression):
-                        print "passo da qui"
                         l_op_var, l_op_path = self._extract_path_alias(cseq_element.left_operand)
                         expressions[i] = self._map_operand('%s.%s' % (p[l_op_var],
                                                                       self._normalize_path(l_op_path)),
@@ -894,23 +893,23 @@ class ElasticSearchDriver(DriverInterface):
                             else:
                                 and_indices.append(i+1)
                 if len(or_indices) > 0:
-                    or_statement= " \"should\" : "+str([ expressions[i].keys() for i in or_indices])+",\"minimum_should_match\" : 1"
+                    or_statement= " \"should\" : "+str([ expressions[i] for i in or_indices])+",\"minimum_should_match\" : 1"
                     expressions[max(expressions.keys()) + 1] = or_statement
                     and_indices.append(max(expressions.keys()))
                 if len(and_indices) > 0:
                     for i in and_indices:
-                        print "---i----"
-                        print expressions[i]
-                        query.update({str(expressions[i]) : "nothing" })
+                        if(isinstance(expressions[i],str)):
+                            query.update({str(expressions[i]) : "$%nothing%$" })
+                        else:
+                            if( str(expressions[i]).find("must_not") == -1 ):
+                                query.update({ " \"must\" : "+str(expressions[i]) : "$%nothing%$" })
+                            else:
+                                query.update(expressions[i])
                 else:
                     for e in expressions.values():
-                        print "----e"
-                        print e
                         query.update(e)
                 # append query and used mapping
                 if not (query, p) in queries:
-                    print "----q"
-                    print (query,p)
                     queries.append((query, p))
         return queries
 
@@ -927,13 +926,13 @@ class ElasticSearchDriver(DriverInterface):
                 if op and ro:
                     self.logger.debug("lo: %s - op: %s - ro: %s", lo, op, ro)
                     if op == "=":
-                        query.update({"{ \"match\" : {"+ str({lo : ro})+"}}" : "nothing" })
+                        query.update({"{ \"match\" : {"+ str({lo : ro})+"}}" : "$%nothing%$" })
 #                        query[lo] = ro
             else:
                 raise PredicateException("No predicate expression found")
         elif type(predicate) == ArchetypePredicate:
             predicate_string = predicate.archetype_id
-            query.update({"{ \"filter\" : {\"exists\" : { \"field\" : "+ str(predicate_string)+"}}}" : "nothing"} )
+            query.update({"{ \"filter\" : {\"exists\" : { \"field\" : "+ str(predicate_string)+"}}}" : "$%nothing%$"} )
         else:
             raise PredicateException("No predicate expression found")
         return query
@@ -953,7 +952,7 @@ class ElasticSearchDriver(DriverInterface):
                 else:
                     right_operand = pr.right_operand
                 if pr.left_operand == 'uid':
-                    query.update({ " \"must\" : { \"term\" : {\"patient_id\": \"" + str(right_operand).lower() +"\"}}" : "nothing"})
+                    query.update({ " \"must\" : { \"term\" : {\"patient_id\": \"" + str(right_operand).lower() +"\"}}" : "$%nothing%$"})
                 elif pr.left_operand == 'id':
                     # use given EHR ID
                     query.update(self._map_operand(pr.left_operand,
@@ -986,9 +985,7 @@ class ElasticSearchDriver(DriverInterface):
         structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
         if len(structure_ids) == 0:
             return None, None, None
-#        query.update({"{\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"minimum_should_match\" : 1 } }" :
-#                          {'ehr_structure_id': {'$in': structure_ids}}})
-        query.update({"\"must\" : {\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"execution\" : \"or\" } }" : "nothing"})
+        query.update({"\"must\" : {\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"execution\" : \"or\" } }" : "$%nothing%$"})
         return query, aliases_mapping, ehr_alias
 
     def _map_ehr_selection(self, path, ehr_var):
@@ -1116,8 +1113,6 @@ class ElasticSearchDriver(DriverInterface):
             return queries, []
         if condition:
             condition_results = self._calculate_condition_expression(condition, aliases)
-            print "\n-----condition results\n"
-            print condition_results
             for condition_query, mappings in condition_results:
                 selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
                                                                                          ehr_alias)
@@ -1133,7 +1128,7 @@ class ElasticSearchDriver(DriverInterface):
                 for p in [dict(izip(paths.keys(), a))]:
                     q = dict()
                     for k in aliases.keys():
-                        q.update({"\"must\" : { \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "nothing" })
+                        q.update({"\"must\" : { \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "$%nothing%$" })
                     selection_filter, results_aliases = self._calculate_selection_expression(selection, p,
                                                                                              ehr_alias)
                     queries.append(
@@ -1181,26 +1176,191 @@ class ElasticSearchDriver(DriverInterface):
         total_results = ResultSet()
         querylist=[]
         for sk, sm in selection_mappings.iteritems():
-            querylist.append("{ \"query\" : { \"bool\" : "+str(filter_mappings[sk][0].keys())+"}}")
-            querylist.append("\"filter\" : { \"bool\" : "+str(location_query.keys())+"}}}")
-            ql=self.cleanquery(querylist)
-            print "--------query----"
-            print ql
-            print "-----------------"
-            results = self._run_aql_query(ql, sm['selection_filter'], aliases=sm['aliases'],
+            q1 = self._clean_piece(filter_mappings[sk][0])
+            querylist.append("{ \"query\" : { \"bool\" : "+str(q1)+"}")
+            q2 = self._clean_piece(location_query)
+            querylist.append("\"filter\" : { \"bool\" : "+str(q2)+"}}")
+            qs = ",".join(querylist)
+            qtot="{ \"query\" : { \"filtered\" : " + qs+ "}}"
+            qtot=self._final_check(qtot)
+            results = self._run_aql_query(qtot, sm['selection_filter'], aliases=sm['aliases'],
                                           collection=ehr_repository)
             total_results.extend(results)
             querylist[:] = []
         return total_results
+
+    def _final_check(self,qtot):
+        ql=list(qtot)
+        ob=0
+        oq=0
+        for i in ql:
+            if i=="{":
+                ob=ob+1
+            elif i=="}":
+                ob=ob-1
+            elif i=="[":
+                oq=oq+1
+            elif i=="]":
+                oq=oq-1
+        if ob != 0:
+            #drop or add parentheses from the right and hopefully it will work
+            if ob>0:
+                for i in range(ob):
+                    ql.append("}")
+            else:
+                for i in range(ob):
+                    ql.pop(len(ql) - 1 - ql[::-1].index("}"))
+        if oq !=0:
+            #drop or add parentheses from the right and hopefully it will work
+            if oq>0:
+                for i in range(oq):
+                    ql.append("]")
+            else:
+                for i in range(oq):
+                    ql.pop(len(ql) - 1 - ql[::-1].index("]"))
+        qtot="".join(ql)
+        return qtot
+
+
+
+    def _clean_piece(self,piece):
+        def cleanp(p):
+            newp = str(p)
+            newpr=newp[::-1]
+            #clean p from nothing
+            posnothing=[]
+            poscolon=[]
+            posparleft=[]
+            posparright=[]
+            starts=0
+            ends = len(newp)
+            while starts < ends:
+                #find position of string nothing
+                positionn = newp.find("$%nothing%$",starts,ends)
+                if (positionn == -1):
+                    starts=ends
+                else:
+                    starts=positionn+1
+                    posnothing.append(positionn)
+                    #find position of left colon
+                    positionc=newpr.find(":",len(newpr)-positionn,len(newpr))
+                    if( positionc == -1):
+                        print "not found colon for a given nothing :D"
+                        exit(1)
+                    else:
+                        positionc=len(newpr)-positionc-1
+                        poscolon.append(positionc)
+                    #find position of first right parenthesis
+                    position=newp.find("}",positionn+10,len(newp))
+                    position2=newp.find("]",positionn+10,len(newp))
+                    isbrace=True
+                    if( position==-1 and position2==-1):
+                        print "not found parenthesis for a given nothing :D"
+                        exit(1)
+                    else:
+                        if(position2 != -1):
+                            if(position == -1):
+                                posparright.append(position2)
+                                isbrace=False
+                            if(position < position2):
+                                posparright.append(position)
+                            else:
+                                posparright.append(position2)
+                                isbrace=False
+                        else:
+                            posparright.append(position)
+                    #find position of corresponding left parenthesis
+                    br=0
+                    sq=0
+                    for g,h in enumerate(newpr[(len(newpr)-positionc):len(newpr)]):
+                        if h == "{":
+                            if isbrace and br==0:
+                                posparleft.append(positionc-g-1)
+                                break
+                            else:
+                                br=br-1
+                        elif h == "[":
+                            if not isbrace and sq==0:
+                                posparleft.append(positionc-g-1)
+                                break
+                            else:
+                                sq=sq-1
+                        elif h== "}":
+                            br=br+1
+                        elif h=="]":
+                            sq=sq+1
+            newpl = list(newp)
+            for i in posparleft:
+                newpl[i]=""
+                newpl[i+1]=""
+            for i in range(len(poscolon)):
+                for j in range(poscolon[i]-1,posparright[i]+1):
+                    newpl[j]=""
+            #clean p from extra braces
+            #clean p from extra squares
+            br=0
+            sq=0
+            istart=[]
+            iend=[]
+            cursor=-1
+            for i in range(len(newpl)-1):
+                if newpl[i]==newpl[i+1]:
+                    if(newpl[i]=="{"):
+                        br=2
+                        istart.append(i)
+                        cursor=len(istart)-1
+                    elif(newpl[i]=="}"):
+                        if(br==2):
+                            iend.append(i)
+                            cursor=-1
+                        else:
+                            br=0
+                            if(cursor>-1):
+                                istart.pop()
+                    elif(newpl[i]=="["):
+                        sq=1
+                        istart.append(i)
+                        cursor=len(istart)-1
+                    elif(newpl[i]=="]"):
+                        if(sq==1):
+                            iend.append(i)
+                            cursor=-1
+                        else:
+                            sq=0
+                            if(cursor>-1):
+                                istart.pop()
+                elif newpl[i]=="{":
+                    if (i-1) in istart:
+                        pass
+                    else:
+                        br=0
+                elif newpl[i]== "[":
+                    if (i-1) in istart:
+                        pass
+                    else:
+                        sq=0
+            for i in range(len(istart)):
+                newpl[istart[i]]=""
+                newpl[iend[i]]=""
+            #change all single quotation marks to double
+            for i in range(len(newpl)-1):
+                if newpl[i]=="\\" and newpl[i+1]=="'":
+                    newpl[i]=""
+                    newpl[i+1]='"'
+                elif newpl[i]=="\\" and newpl[i+1]=="\"":
+                    newpl[i]=""
+                elif newpl[i] == "'":
+                    newpl[i]='"'
+                elif newpl[i+1]=="'":
+                    newpl[i+1]='"'
+            newpn = "".join(newpl)
+            return newpn
+        newpiece="{"
+        for p in piece:
+            newpiece=newpiece+cleanp(p)+","
+        newpiece=newpiece.strip(",")+"}"
+        return newpiece
     def get_selection_hash(self,selection):
         sel_hash = md5()
         sel_hash.update(json.dumps(selection))
         return sel_hash.hexdigest()
-    def cleanquery(self,querylist):
-        q1 = ",".join(querylist)
-        q1 = q1.replace("} }']","} } }").replace("[\'","{").replace("\\\'","\"").replace("\\\\\"","\"").replace("\'\"","\"")\
-            .replace("\'","\"").replace("\" \"","\"").replace("}\"]","}]").replace("[\"{","[{")\
-            .replace("}\",","},").replace("[[","@").replace("]]","%").replace("[","").replace("]","")\
-            .replace("@","[").replace("%","]").replace("{{\"terms","{\"terms").replace(": 1\\\"}",": 1}").replace(": 1\"}}",": 1}}")
-        qtot="{ \"query\" : { \"filtered\" : " + q1+ "}}"
-        return qtot
