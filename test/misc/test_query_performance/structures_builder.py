@@ -83,7 +83,8 @@ def build_structure(max_depth, max_width, labels, forced_path=None, ignored_comp
         ignored_compositions = []
     if len(forced_path) > max_depth:
         # forced_path can't be applied
-        forced_path = []
+        raise ValueError('Unable to apply forced path %r for structure with maximum depth of %d' %
+                         (forced_path, max_depth))
     if len(forced_path) == max_depth:
         cmp_label = forced_path[0]
     else:
@@ -126,7 +127,7 @@ def get_labels(labels_set_size=20):
 
 def build_structures(builder_conf):
     """
-    build_conf field is a dictionary used to describe how the run is configured.
+    builder_conf field is a dictionary used to describe how the run is configured.
     The dictionary should be like
 
     {
@@ -161,15 +162,17 @@ def build_structures(builder_conf):
     labels = get_labels()
     for level in sorted(builder_conf['matching_structures'], reverse=True):
         structures[level] = []
-        fpath = get_forced_path(level, builder_conf['full_query_path'])
         str_count = round((builder_conf['structures_count']/100.) *
                           builder_conf['matching_structures'][level]) - created_matching_str
-        for depth, width in it.izip([int(i) for i in np.random.normal(builder_conf['mean_depth'], 1,
+        min_depth = min(builder_conf['matching_structures'])
+        for depth, width in it.izip([int(i) for i in np.random.normal(builder_conf['mean_depth'],
+                                                                      min_depth,
                                                                       str_count)],
                                     [int(i) for i in np.random.uniform(1, builder_conf['max_width'],
                                                                        str_count)]):
-            if depth < 1:
-                depth = 1
+            fpath = get_forced_path(level, builder_conf['full_query_path'])
+            if depth < min_depth:
+                depth = min_depth
             elif depth > builder_conf['mean_depth'] + (builder_conf['mean_depth']-1):
                 depth = builder_conf['mean_depth'] + (builder_conf['mean_depth']-1)
             structures[level].append(build_structure(depth, width, labels,
