@@ -1,4 +1,6 @@
-from random import randint
+from random import randint, choice
+from uuid import uuid4
+from inspect import ismethod, isbuiltin, isfunction
 import json
 
 import archetype_builder
@@ -6,33 +8,80 @@ from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance
 from archetype_builder import Composition
 
 
-def build_record(record_description, archetypes_dir, match, record_to_match=None):
+def build_record(record_description, archetypes_dir, forced_values=None):
     if isinstance(record_description, dict):
         for k, v in record_description.iteritems():
             if not k.startswith('composition'):
-                raise ValueError('Container type %s unknown' % k)
-            children = [build_record(x, archetypes_dir, match, record_to_match) for x in v]
+                raise ValueError('Container type "%s" unknown' % k)
+            children = [build_record(x, archetypes_dir, forced_values) for x in v]
             composition_label = k.split('.')[1]
             return ArchetypeInstance(*archetype_builder.BUILDERS['composition'](archetypes_dir, children,
                                                                                 composition_label).build())
     else:
         kw = {}
-        if record_description == 'blood_pressure':
-            if match and record_to_match == 'blood_pressure':
-                kw.update({'systolic': randint(121, 130), 'dyastolic': randint(80, 90)})
-            else:
-                kw.update({'systolic': randint(100, 105), 'dyastolic': randint(60, 75)})
-        elif record_description == 'urin_analysis':
-            if match and record_to_match == 'urin_analysis':
-                kw.update({'glucose': 'at0120', 'protein': 'at0101'})
-            else:
-                glucose_values = ['at0115', 'at0116', 'at0117', 'at0118', 'at0119']
-                protein_values = ['at0096', 'at0097', 'at0098', 'at0099', 'at0100']
-                kw.update({
-                    'glucose': glucose_values[randint(0, len(glucose_values)-1)],
-                    'protein': protein_values[randint(0, len(protein_values)-1)]
-                })
+        if forced_values and record_description in forced_values:
+            for k, v in forced_values[record_description].iteritems():
+                if isfunction(v[0]) or ismethod(v[0]) or isbuiltin(v[0]):
+                    kw[k] = (v[0])(*v[1:])
+                else:
+                    kw[k] = v[0]  # only take the first element of the tuple
         return ArchetypeInstance(*archetype_builder.BUILDERS[record_description](archetypes_dir, **kw).build())
+
+
+def build_patient_dataset(dataset_conf, structures, archetypes_dir):
+    """
+    {
+      "records_distribution": {
+        2: 1,
+        3: 0,
+        "no_match": 49
+      },
+      "hits": {
+        2: {
+          "hits_count": 1,
+          "hit_condition": {"blood_pressure": {"systolic": (randint, 10, 20)}},
+          "no_hit_condition": {"blood_pressure": {"systolic": (randint, 200, 250)}}
+        },
+        3: {
+          "hits_count": 0,
+          "hit_condition": None,
+          "no_hit_condition": {"blood_pressure": {"systolic": (randint, 200, 250)}}
+        }
+      }
+    }
+    """
+    patient_label = 'PATIENT_%s' % uuid4().hex
+    records = []
+    # first of all, create non matching records
+    no_match_count = dataset_conf['records_distribution'].pop('no_match')
+    for _ in xrange(no_match_count):
+        r = build_record(
+            choice(structures['no_match']),
+            archetypes_dir
+        )
+        records.append(r.to_json())
+    # build records that will match queries
+    for level in sorted(dataset_conf['records_distribution'], reverse=True):
+        level_records_count = 0
+        # build hits
+        for _ in xrange(dataset_conf['hits'][level]['hits_count'] - level_records_count):
+            r = build_record(
+                choice(structures[level]),
+                archetypes_dir,
+                dataset_conf['hits'][level]['hit_condition']
+            )
+            records.append(r.to_json())
+            level_records_count += 1
+        # matching structures but no hits for where clause
+        for _ in xrange(dataset_conf['records_distribution'][level] - level_records_count):
+            r = build_record(
+                choice(structures[level]),
+                archetypes_dir,
+                dataset_conf['hits'][level]['no_hit_condition']
+            )
+            records.append(r.to_json())
+            level_records_count += 1
+    return {patient_label: records}
 
 
 def contains_archetype(structure_description, archetype_label):
