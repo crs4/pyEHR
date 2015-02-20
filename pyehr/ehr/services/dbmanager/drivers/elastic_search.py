@@ -907,7 +907,7 @@ class ElasticSearchDriver(DriverInterface):
                                 query.update(expressions[i])
                 else:
                     for e in expressions.values():
-                        query.update(e)
+                        query.update({" \"must\" : "+ str(e) : "$%nothing%$" })
                 # append query and used mapping
                 if not (query, p) in queries:
                     queries.append((query, p))
