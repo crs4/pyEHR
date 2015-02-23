@@ -893,6 +893,12 @@ class ElasticSearchDriver(DriverInterface):
                             else:
                                 and_indices.append(i+1)
                 if len(or_indices) > 0:
+                    for j in or_indices:
+                        if(str(expressions[j]).find("must_not") != -1):
+                            exprstr=self._clean_piece(expressions[j])
+                            exprstr2="{ \"bool\":"+exprstr+"}"
+                            exprstr3=exprstr2.replace("\\'","'").replace("\"bool\":{'","\"bool\":{ {'").replace("}':","}}':")
+                            expressions[j]= { exprstr3 : "$%nothing%$"}
                     or_statement= " \"should\" : "+str([ expressions[i] for i in or_indices])+",\"minimum_should_match\" : 1"
                     expressions[max(expressions.keys()) + 1] = or_statement
                     and_indices.append(max(expressions.keys()))
@@ -907,7 +913,10 @@ class ElasticSearchDriver(DriverInterface):
                                 query.update(expressions[i])
                 else:
                     for e in expressions.values():
-                        query.update({" \"must\" : "+ str(e) : "$%nothing%$" })
+                        if (str(e).find("must_not") == -1 ):
+                            query.update({" \"must\" : "+ str(e) : "$%nothing%$" })
+                        else:
+                            query.update(e)
                 # append query and used mapping
                 if not (query, p) in queries:
                     queries.append((query, p))
