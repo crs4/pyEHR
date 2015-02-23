@@ -165,9 +165,9 @@ class FullBloodCount(ArchetypeBuilder):
         self.mchc = mchc or randint(25, 50)
         self.mcv = mcv or randint(80, 100)
         self.mch = mch or randint(30, 40)
-        self.lymphocytes = lymphocytes or '%.2f' % uniform(2, 5)
-        self.basophils = basophils or '%.2f' % uniform(1, 3)
-        self.monocytes = monocytes or '%.2f' % uniform(0, 1.5)
+        self.lymphocytes = lymphocytes or round(uniform(2, 5), 2)
+        self.basophils = basophils or round(uniform(1, 3), 2)
+        self.monocytes = monocytes or round(uniform(0, 1.5), 2)
         self.eosinophils = eosinophils or randint(3, 7)
         self.multimedia_representation = multimedia_representation or None
         self.laboratory_result_id = laboratory_result_id or None
@@ -228,7 +228,7 @@ class Lipids(ArchetypeBuilder):
         self.tryglicerides = tryglicerides or randint(140, 550)
         self.hdl = hdl or randint(50, 120)
         self.ldl = ldl or randint(50, 120)
-        self.hdl_ldl_ratio = hdl_ldl_ratio or {'numerator' : randint(1,4), 'denominator' : randint(1,4)}
+        self.hdl_ldl_ratio = hdl_ldl_ratio or {'numerator': randint(1, 4), 'denominator': randint(1, 4)}
         self.laboratory_result_id = laboratory_result_id or None
         self.result_datetime = result_datetime or None
         super(Lipids, self).__init__(archetype_id, archetype_dir)
@@ -329,13 +329,13 @@ class Thyroid(ArchetypeBuilder):
                  placer_id=None, filler_id=None, laboratory_result_id=None, result_datetime=None ):
         archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-thyroid.v1'
         self.test_name = test_name or None
-        self.tsh = tsh or '%.2f' %uniform(0, 4.5)
-        self.ft3 = ft3 or '%.2f' %uniform(3,7)
-        self.total_t3 = total_t3 or '%.2f' %uniform(3,7)
-        self.ft4 = ft4 or '%.2f' %uniform(3,20)
-        self.total_t4 = total_t4 or '%.2f' %uniform(3,20)
-        self.ft3_index = ft3_index or {'numerator' : randint(1,4), 'denominator' : randint(1,4)}
-        self.fti = fti or {'numerator' : randint(1,4), 'denominator' : randint(1,4)}
+        self.tsh = tsh or round(uniform(0, 4.5), 2)
+        self.ft3 = ft3 or round(uniform(3,7), 2)
+        self.total_t3 = total_t3 or round(uniform(3, 7), 2)
+        self.ft4 = ft4 or round(uniform(3,20), 2)
+        self.total_t4 = total_t4 or round(uniform(3, 20), 2)
+        self.ft3_index = ft3_index or {'numerator': randint(1, 4), 'denominator': randint(1, 4)}
+        self.fti = fti or {'numerator': randint(1, 4), 'denominator': randint(1, 4)}
         self.placer_id = placer_id or None
         self.filler_id = filler_id or None
         self.laboratory_result_id = laboratory_result_id or None
@@ -381,16 +381,16 @@ class Thyroid(ArchetypeBuilder):
 class UreaAndElectrolytes(ArchetypeBuilder):
 
     def __init__(self, archetype_dir,test_name=None, sodum=None, potassium=None, chloride=None, bicarbonate=None, urea=None, creatinine=None, \
-                sp_ratio=None, laboratory_result_id=None, result_datetime=None ):
+                 sp_ratio=None, laboratory_result_id=None, result_datetime=None):
         archetype_id = 'openEHR-EHR-OBSERVATION.lab_test-urea_and_electrolytes.v1'
         self.test_name = test_name or None
         self.sodum = sodum or randint(125, 150)
-        self.potassium = potassium or '%.2f' %uniform(3,5.5)
+        self.potassium = potassium or round(uniform(3, 5.5), 2)
         self.chloride = chloride or randint(90, 120)
         self.bicarbonate = bicarbonate or randint(20, 30)
-        self.urea = urea or '%.2f' %uniform(1.5, 8)
-        self.creatinine = creatinine or '%.2f' %uniform(0.1, 0.3)
-        self.sp_ratio = sp_ratio or {'numerator' : randint(3,4), 'denominator' : randint(1,4)}
+        self.urea = urea or round(uniform(1.5, 8), 2)
+        self.creatinine = creatinine or round(uniform(0.1, 0.3), 2)
+        self.sp_ratio = sp_ratio or {'numerator': randint(3, 4), 'denominator': randint(1, 4)}
         self.laboratory_result_id = laboratory_result_id or None
         self.result_datetime = result_datetime or None
         super(UreaAndElectrolytes, self).__init__(archetype_id, archetype_dir)
