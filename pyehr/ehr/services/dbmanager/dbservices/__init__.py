@@ -3,7 +3,7 @@ from pyehr.utils import get_logger
 from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError, RedundantUpdateError,\
-    RecordRestoreUnecessaryError, OperationNotAllowedError
+    RecordRestoreUnecessaryError, OperationNotAllowedError, ConfigurationError
 from pyehr.ehr.services.dbmanager.dbservices.version_manager import VersionManager
 
 
@@ -69,6 +69,10 @@ class DBServices(object):
             logger=self.logger
         )
 
+    def _check_index_service(self):
+        if not self.index_service:
+            raise ConfigurationError('Operation not allowed, missing IndexService')
+
     def set_index_service(self, url, database, user, passwd):
         """
         Add a :class:`IndexService` to the current :class:`DBService` that will be used
@@ -113,6 +117,7 @@ class DBServices(object):
         :type record_moved: bool
         :return: the :class:`ClinicalRecord` and the :class:`PatientRecord`
         """
+        self._check_index_service()
         drf = self._get_drivers_factory(self.ehr_repository)
         ehr_record.bind_to_patient(patient_record)
         if ehr_record.is_persistent:
@@ -144,6 +149,7 @@ class DBServices(object):
         :return: a list with the saved :class:`ClinicalRecord`, the updated :class:`PatientRecord`
           and a list containing any records that caused a duplicated key error
         """
+        self._check_index_service()
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             for r in ehr_records:
