@@ -125,10 +125,6 @@ class MongoDriver(DriverInterface):
 
     def _encode_clinical_record(self, clinical_record):
         ehr_data = clinical_record.ehr_data.to_json()
-        if self.index_service:
-            structure_id = self.index_service.get_structure_id(ehr_data)
-        else:
-            structure_id = None
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = self._normalize_keys(ehr_data, original_value, encoded_value)
         encoded_record = {
@@ -139,10 +135,10 @@ class MongoDriver(DriverInterface):
             'ehr_data': ehr_data,
             '_version': clinical_record.version
         }
+        if clinical_record.structure_id:
+            encoded_record['ehr_structure_id'] = clinical_record.structure_id
         if clinical_record.record_id:
             encoded_record['_id'] = clinical_record.record_id
-        if structure_id:
-            encoded_record['ehr_structure_id'] = structure_id
         return encoded_record
 
     def _encode_clinical_record_revision(self, clinical_record_revision):

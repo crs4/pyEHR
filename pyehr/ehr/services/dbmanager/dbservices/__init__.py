@@ -103,6 +103,11 @@ class DBServices(object):
             patient_record.record_id = driver.add_record(driver.encode_record(patient_record))
             return patient_record
 
+    def _set_structure_id(self, ehr_record):
+        ehr_data = ehr_record.ehr_data.to_json()
+        structure_id = self.index_service.get_structure_id(ehr_data)
+        ehr_record.structure_id = structure_id
+
     def save_ehr_record(self, ehr_record, patient_record, record_moved=False):
         """
         Save a clinical record into the DB and link it to a patient record
@@ -129,6 +134,8 @@ class DBServices(object):
         else:
             # saving a new record, this is the first revision
             ehr_record.increase_version()
+            # calculate and set the structure ID for the given record
+            self._set_structure_id(ehr_record)
             with drf.get_driver() as driver:
                 driver.add_record(driver.encode_record(ehr_record))
         patient_record = self._add_ehr_record(patient_record, ehr_record)
@@ -153,6 +160,8 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             for r in ehr_records:
+                # calculate and set the structure ID for the given record
+                self._set_structure_id(r)
                 r.bind_to_patient(patient_record)
                 if not r.is_persistent:
                     r.increase_version()

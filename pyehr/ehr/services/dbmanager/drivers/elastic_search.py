@@ -154,10 +154,6 @@ class ElasticSearchDriver(DriverInterface):
             return normalized_doc
 
         ehr_data = clinical_record.ehr_data.to_json()
-        if self.index_service:
-            structure_id = self.index_service.get_structure_id(ehr_data)
-        else:
-            structure_id = None
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = normalize_keys(ehr_data, original_value, encoded_value)
         encoded_record = {
@@ -168,8 +164,8 @@ class ElasticSearchDriver(DriverInterface):
             'ehr_data': ehr_data,
             '_id' : clinical_record.record_id
         }
-        if structure_id:
-            encoded_record['ehr_structure_id'] = structure_id
+        if clinical_record.structure_id:
+            encoded_record['ehr_structure_id'] = clinical_record.structure_id
         return encoded_record
 
     def encode_record(self, record):
