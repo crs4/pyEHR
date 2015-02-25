@@ -31,10 +31,10 @@ def build_record(record_description, archetypes_dir, forced_values=None):
 def build_patient_dataset(dataset_conf, structures, archetypes_dir):
     """
     {
+      "records_count": 50
       "records_distribution": {
         2: 1,
         3: 0,
-        "no_match": 49
       },
       "hits": {
         2: {
@@ -52,14 +52,6 @@ def build_patient_dataset(dataset_conf, structures, archetypes_dir):
     """
     patient_label = 'PATIENT_%s' % uuid4().hex
     records = []
-    # first of all, create non matching records
-    no_match_count = dataset_conf['records_distribution'].pop('no_match')
-    for _ in xrange(no_match_count):
-        r = build_record(
-            choice(structures['no_match']),
-            archetypes_dir
-        )
-        records.append(r.to_json())
     # build records that will match queries
     for level in sorted(dataset_conf['records_distribution'], reverse=True):
         level_records_count = 0
@@ -81,6 +73,12 @@ def build_patient_dataset(dataset_conf, structures, archetypes_dir):
             )
             records.append(r.to_json())
             level_records_count += 1
+    for _ in xrange(dataset_conf['records_count'] - len(records)):
+        r = build_record(
+            choice(structures['no_match']),
+            archetypes_dir
+        )
+        records.append(r.to_json())
     return {patient_label: records}
 
 
