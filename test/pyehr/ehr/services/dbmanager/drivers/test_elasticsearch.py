@@ -75,7 +75,7 @@ class TestElasticSearchDriver(unittest.TestCase):
             for x in xrange(0, 20)
         ]
         with ElasticSearchDriver([{"host": "localhost", "port": 9200}], 'test_database', 'test_collection') as driver:
-            record_ids = driver.add_records(records)
+            record_ids, _ = driver.add_records(records)
             even_recs = list(driver.get_records_by_value('even', True))
             self.assertEqual(len(even_recs), 10)
             self.assertEqual(driver.count(), 20)

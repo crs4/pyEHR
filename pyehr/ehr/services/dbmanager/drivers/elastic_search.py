@@ -446,12 +446,12 @@ class ElasticSearchDriver(DriverInterface):
                     errtype.append(str(b['create']['error']))
                     nerrors += 1
                 else:
-                    notduplicatedlist.append(str(b['create']['_id']))
-            if(nerrors and not skip_existing_duplicated):
-                raise DuplicatedKeyError('Record with these id already exist: %s \n List of Errors found %s' %(err,errtype) )
+                    notduplicatedlist.append(b['create']['_id'])
+                if(nerrors and not skip_existing_duplicated):
+                    raise DuplicatedKeyError('Record with these id already exist: %s \n List of Errors found %s' %(err,errtype) )
             return notduplicatedlist,err
          else:
-            return [str(b['create']['_id']) for b in bulkanswer['items']],[]
+            return [b['create']['_id'] for b in bulkanswer['items']],[]
 
     def add_records2(self, records, skip_existing_duplicated=False):
         """
@@ -586,7 +586,7 @@ class ElasticSearchDriver(DriverInterface):
                 myquery="{\"query\" : { \"term\" : { \"_id\" : \""+newid+"\"}}}"
                 self.delete_records_by_query(myquery)
             else:
-                myquery="{\"query\" : { \"term\" : { \"_id\" : \""+record_id+"\"}}}"
+                myquery="{\"query\" : { \"term\" : { \"_id\" : \""+str(record_id)+"\"}}}"
                 self.delete_records_by_query(myquery)
         except elasticsearch.NotFoundError:
             return None
@@ -663,7 +663,8 @@ class ElasticSearchDriver(DriverInterface):
             self.logger.debug('No record found with ID %r', record_id)
             return None
         else:
-            self._select_doc_type(record_to_update['ehr_structure_id'])
+            if not self._is_patient_record(record_to_update):
+                self._select_doc_type(record_to_update['ehr_structure_id'])
             record_to_update[field_label]= field_value
             if update_timestamp_label:
                 last_update = time.time()
@@ -685,8 +686,11 @@ class ElasticSearchDriver(DriverInterface):
                                     version=record_to_update['_version'],version_type="external")
                     self.logger.debug('updated %s document',res[u'_id'].rsplit('_', 1)[0])
                 else:
-                    res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,\
+                    if record_to_update.has_key('_version'):
+                        res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,\
                                     version=record_to_update['_version'],version_type="external")
+                    else:
+                        res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id)
                     self.logger.debug('updated %s document', res[u'_id'])
             return last_update
 
@@ -809,18 +813,10 @@ class ElasticSearchDriver(DriverInterface):
         right = cast_right_operand(right.strip())
         left = left.strip()
         if operand == '=':
-#            return {"{\"term\" : "+str({left : right})+"}" : pippo}
-#            return "{\"term\" : "+str({left : right})+"}"
             return {"{\"match\" : "+str({left : right})+"}" : "$%nothing%$"}
         elif operand == "!=":
-#            return  { "{\"filter\" : { \"not\" : { \"term\" : "+str({left : right})+"}}}" :
-#                          "pippo"}
-#            return   "{\"filter\" : { \"not\" : { \"term\" : "+str({left : right})+"}}}"
             return   { "  \"must_not\" : { \"match\" : "+str({left : right})+"}" : "$%nothing%$" }
         elif operand in operands_map:
-#            return {"{\"range\" :  "+str({left: {operands_map[operand]: right}})+"}" :
-#            "pippo" }
-#            return "{\"range\" :  "+str({left: {operands_map[operand]: right}})+"}"
             return { "{ \"range\" :  "+str({left: {operands_map[operand]: right}})+"}" : "$%nothing%$" }
         else:
             raise ValueError('The operand %s is not supported' % operand)
@@ -873,7 +869,6 @@ class ElasticSearchDriver(DriverInterface):
                 # bind fields to archetypes
                 for k in aliases.keys():
                     query.update({"\"must\" :{ \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "$%nothing%$" })
-#                    query.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
                 expressions = dict()
                 or_indices = list()
                 and_indices = list()
