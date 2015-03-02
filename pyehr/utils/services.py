@@ -6,14 +6,16 @@ from logging.handlers import RotatingFileHandler
 
 class ServiceConfig(object):
 
-    def __init__(self, db_driver, db_host, db_database, db_port, db_user, db_passwd,
-                 db_patients_repository, db_ehr_repository, db_ehr_versioning_repository,
+    def __init__(self, db_driver, db_host, db_database, db_versioning_database,
+                 db_port, db_user, db_passwd, db_patients_repository,
+                 db_ehr_repository, db_ehr_versioning_repository,
                  index_url, index_database, index_user, index_passwd,
                  db_service_host, db_service_port, db_service_server_engine,
                  query_service_host, query_service_port, query_service_server_engine):
         self.db_driver = db_driver
         self.db_host = db_host
         self.db_database = db_database
+        self.db_versioning_database = db_versioning_database
         self.db_port = int(db_port)
         self.db_user = db_user
         self.db_passwd = db_passwd
@@ -36,6 +38,7 @@ class ServiceConfig(object):
             'driver': self.db_driver,
             'host': self.db_host,
             'database': self.db_database,
+            'versioning_database': self.db_versioning_database,
             'port': self.db_port,
             'user': self.db_user,
             'passwd': self.db_passwd,
@@ -77,6 +80,7 @@ def get_service_configuration(configuration_file, logger=None):
             parser.get('db', 'driver'),
             parser.get('db', 'host'),
             parser.get('db', 'database'),
+            parser.get('db', 'versioning_database'),
             parser.get('db', 'port'),
             parser.get('db', 'user'),
             parser.get('db', 'passwd'),

@@ -9,12 +9,14 @@ class QueryManager(object):
     TODO: add documentation here
     """
 
-    def __init__(self, driver, host, database, patients_repository=None,
-                 ehr_repository=None, ehr_versioning_repository=None,
-                 port=None, user=None, passwd=None, logger=None):
+    def __init__(self, driver, host, database, versioning_database=None,
+                 patients_repository=None, ehr_repository=None,
+                 ehr_versioning_repository=None, port=None, user=None,
+                 passwd=None, logger=None):
         self.driver = driver
         self.host = host
         self.database = database
+        self.versioning_manager = versioning_database
         self.patients_repository = patients_repository
         self.ehr_repository = ehr_repository
         self.ehr_versioning_repository = ehr_versioning_repository

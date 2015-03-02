@@ -13,12 +13,14 @@ class VersionManager(object):
     TODO: add documentation here
     """
 
-    def __init__(self, driver, host, database, ehr_repository=None,
-                 ehr_versioning_repository=None, index_service=None,
-                 port=None, user=None, passwd=None, logger=None):
+    def __init__(self, driver, host, database, versioning_database=None,
+                 ehr_repository=None, ehr_versioning_repository=None,
+                 index_service=None, port=None, user=None, passwd=None,
+                 logger=None):
         self.driver = driver
         self.host = host
         self.database = database
+        self.versioning_database = versioning_database
         self.ehr_repository = ehr_repository
         self.ehr_versioning_repository = ehr_versioning_repository
         self.index_service = index_service
@@ -27,11 +29,17 @@ class VersionManager(object):
         self.passwd = passwd
         self.logger = logger or get_logger('version_manager')
 
-    def _get_drivers_factory(self, repository):
+    def _get_drivers_factory(self, write_on_archive=False):
+        if write_on_archive:
+            repository = self.ehr_versioning_repository
+            database = self.versioning_database or self.database
+        else:
+            repository = self.ehr_repository
+            database = self.database
         return DriversFactory(
             driver=self.driver,
             host=self.host,
-            database=self.database,
+            database=database,
             repository=repository,
             port=self.port,
             user=self.user,
@@ -54,7 +62,7 @@ class VersionManager(object):
                                       (current_revision.record_id, current_revision.version, version))
 
     def _get_current_revision(self, record_id):
-        drf = self._get_drivers_factory(self.ehr_repository)
+        drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
             rec = driver.get_record_by_id(record_id)
             if not rec:
@@ -64,7 +72,7 @@ class VersionManager(object):
 
     def _move_record_to_archive(self, record):
         record = record.convert_to_revision()
-        drf = self._get_drivers_factory(self.ehr_versioning_repository)
+        drf = self._get_drivers_factory(True)
         with drf.get_driver() as driver:
             record_id = driver.add_record(driver.encode_record(record))
             return record_id
@@ -72,7 +80,7 @@ class VersionManager(object):
     def get_revision(self, record_id, version_number, convert_to_clinical_record=False):
         if not isinstance(version_number, int) or version_number < 1:
             raise ValueError('%r is not a valid version number' % version_number)
-        drf = self._get_drivers_factory(self.ehr_versioning_repository)
+        drf = self._get_drivers_factory(True)
         with drf.get_driver() as driver:
             record = driver.get_record_by_version(record_id, version_number)
             if record:
@@ -85,7 +93,7 @@ class VersionManager(object):
                 return None
 
     def get_revisions(self, record_id, reverse_ordering=False):
-        drf = self._get_drivers_factory(self.ehr_versioning_repository)
+        drf = self._get_drivers_factory(True)
         with drf.get_driver() as driver:
             revisions = [driver.decode_record(rec) for rec in
                          driver.get_revisions_by_ehr_id(record_id)]
@@ -96,7 +104,7 @@ class VersionManager(object):
         self._check_redundant_update(new_record, current_revision)
         self._check_optimistic_lock(current_revision, new_record.version)
         self._move_record_to_archive(current_revision)
-        drf = self._get_drivers_factory(self.ehr_repository)
+        drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
             new_record.increase_version()
             last_update = driver.replace_record(new_record.record_id,
@@ -113,7 +121,7 @@ class VersionManager(object):
                                                                                        value))
         self._check_optimistic_lock(current_revision, record.version)
         self._move_record_to_archive(current_revision)
-        drf = self._get_drivers_factory(self.ehr_repository)
+        drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
             last_update = driver.update_field(record.record_id, field, value, last_update_label, True)
         record.last_update = last_update
@@ -125,7 +133,7 @@ class VersionManager(object):
         current_revision = self._get_current_revision(record.record_id)
         self._check_optimistic_lock(current_revision, record.version)
         self._move_record_to_archive(current_revision)
-        drf = self._get_drivers_factory(self.ehr_repository)
+        drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
             last_update = driver.add_to_list(record.record_id, list_label, element,
                                              last_update_label, True)
@@ -137,7 +145,7 @@ class VersionManager(object):
         current_revision = self._get_current_revision(record.record_id)
         self._check_optimistic_lock(current_revision, record.version)
         self._move_record_to_archive(current_revision)
-        drf = self._get_drivers_factory(self.ehr_repository)
+        drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
             last_update = driver.extend_list(record.record_id, list_label, elements,
                                              last_update_label, True)
@@ -149,7 +157,7 @@ class VersionManager(object):
         current_revision = self._get_current_revision(record.record_id)
         self._check_optimistic_lock(current_revision, record.version)
         self._move_record_to_archive(current_revision)
-        drf = self._get_drivers_factory(self.ehr_repository)
+        drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
             last_update = driver.remove_from_list(record.record_id, list_label, element,
                                                   last_update_label, True)
@@ -163,11 +171,11 @@ class VersionManager(object):
         if not original_record:
             raise MissingRevisionError('Unable to retrieve version %d for record %s' %
                                       (revision, record_id))
-        drf = self._get_drivers_factory(self.ehr_repository)
+        drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
             driver.delete_record(record_id)
             driver.add_record(driver.encode_record(original_record))
-        drf = self._get_drivers_factory(self.ehr_versioning_repository)
+        drf = self._get_drivers_factory(True)
         with drf.get_driver() as driver:
             del_count = driver.delete_later_versions(record_id, revision-1)
         return original_record, del_count
@@ -176,7 +184,7 @@ class VersionManager(object):
         return self.restore_revision(record_id, revision=1)
 
     def remove_revisions(self, record_id):
-        drf = self._get_drivers_factory(self.ehr_versioning_repository)
+        drf = self._get_drivers_factory(True)
         with drf.get_driver() as driver:
             del_count = driver.delete_later_versions(record_id)
         self.logger.debug('Removed %d revisions for record %s', del_count, record_id)
