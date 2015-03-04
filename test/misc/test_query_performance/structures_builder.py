@@ -166,7 +166,7 @@ def build_structures(builder_conf):
         structures[level] = []
         str_count = round((builder_conf['structures_count']/100.) *
                           builder_conf['matching_structures'][level]) - created_matching_str
-        min_depth = min(builder_conf['matching_structures'])
+        min_depth = level
         for depth, width in it.izip([int(i) for i in np.random.normal(builder_conf['mean_depth'],
                                                                       min_depth,
                                                                       str_count)],
