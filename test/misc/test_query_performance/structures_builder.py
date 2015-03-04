@@ -118,7 +118,9 @@ def check_builder_configuration(builder_conf):
 def get_forced_path(level, full_path):
     fpath_index = range(0, level-1)
     fpath_index.append(-1)
-    return list(operator.itemgetter(*fpath_index)(full_path))
+    forced_path = list(operator.itemgetter(*fpath_index)(full_path))
+    ignored_path = [x for x in full_path if x not in forced_path]
+    return forced_path, ignored_path
 
 
 def get_labels(labels_set_size=20):
@@ -170,13 +172,13 @@ def build_structures(builder_conf):
                                                                       str_count)],
                                     [int(i) for i in np.random.uniform(1, builder_conf['max_width'],
                                                                        str_count)]):
-            fpath = get_forced_path(level, builder_conf['full_query_path'])
+            fpath, ignore_path = get_forced_path(level, builder_conf['full_query_path'])
             if depth < min_depth:
                 depth = min_depth
             elif depth > builder_conf['mean_depth'] + (builder_conf['mean_depth']-1):
                 depth = builder_conf['mean_depth'] + (builder_conf['mean_depth']-1)
-            structures[level].append(build_structure(depth, width, labels,
-                                                     forced_path=fpath))
+            structures[level].append(build_structure(depth, width, labels, forced_path=fpath,
+                                                     ignored_compositions=ignore_path))
         created_matching_str += str_count
     non_matching_structures = builder_conf['structures_count'] - created_matching_str
     for depth, width in it.izip([int(i) for i in np.random.normal(builder_conf['mean_depth'], 1,
