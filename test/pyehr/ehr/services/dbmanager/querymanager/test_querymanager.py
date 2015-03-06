@@ -5,6 +5,8 @@ from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
     ClinicalRecord, ArchetypeInstance
 from pyehr.utils.services import get_service_configuration
+#from profilehooks import profile
+import os
 
 CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
 
@@ -14,6 +16,7 @@ class TestQueryManager(unittest.TestCase):
     def __init__(self, label):
         super(TestQueryManager, self).__init__(label)
 
+#    @profile
     def setUp(self):
         if CONF_FILE is None:
             sys.exit('ERROR: no configuration file provided')
@@ -24,6 +27,7 @@ class TestQueryManager(unittest.TestCase):
         self.qmanager.set_index_service(**sconf.get_index_configuration())
         self.patients = list()
 
+#    @profile
     def tearDown(self):
         for p in self.patients:
             self.dbs.delete_patient(p, cascade_delete=True)
@@ -31,6 +35,7 @@ class TestQueryManager(unittest.TestCase):
         self.patients = None
         pass
 
+#    @profile
     def _delete_index_db(self):
         self.dbs.index_service.connect()
         self.dbs.index_service.basex_client.delete_database()
@@ -42,6 +47,7 @@ class TestQueryManager(unittest.TestCase):
             'units': units
         }
 
+#    @profile
     def _get_blood_pressure_data(self, systolic=None, dyastolic=None, mean_arterial=None, pulse=None):
         archetype_id = 'openEHR-EHR-OBSERVATION.blood_pressure.v1'
         bp_doc = {"data": {"at0001": [{"events": [{"at0006": {"data": {"at0003": [{"items": {}}]}}}]}]}}
@@ -59,11 +65,13 @@ class TestQueryManager(unittest.TestCase):
                 {'value': self._get_quantity(pulse, 'mm[Hg]')}
         return archetype_id, bp_doc
 
+#    @profile
     def _get_encounter_data(self, archetypes):
         archetype_id = 'openEHR-EHR-COMPOSITION.encounter.v1'
         enc_doc = {'context': {'event_context': {'other_context': {'at0001': [{'items': {'at0002': archetypes}}]}}}}
         return archetype_id, enc_doc
 
+#    @profile
     def _build_patients_batch(self, num_patients, num_ehr, systolic_range=None, dyastolic_range=None):
         records_details = dict()
         for x in xrange(0, num_patients):
@@ -79,6 +87,7 @@ class TestQueryManager(unittest.TestCase):
             self.patients.append(p)
         return records_details
 
+#    @profile
     def _build_patients_batch_mixed(self, num_patients, num_ehr, systolic_range=None, dyastolic_range=None):
         records_details = dict()
         for x in xrange(0, num_patients):
@@ -110,11 +119,10 @@ class TestQueryManager(unittest.TestCase):
         for k, v in batch_details.iteritems():
             details_results.extend(v)
         res = list(results.results)
-        print "\n-----------------------"
         print res
-        print "------------------------"
         self.assertEqual(sorted(details_results), sorted(res))
 
+#    @profile
     def test_deep_select_query(self):
         query = """
         SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
@@ -267,7 +275,6 @@ class TestQueryManager(unittest.TestCase):
             results = self.qmanager.execute_aql_query(query, {'ehrUid': patient_label})
             res = list(results.results)
             print res
-            print "--------"
             self.assertEqual(sorted(records), sorted(res))
 
     def test_simple_patients_selection(self):

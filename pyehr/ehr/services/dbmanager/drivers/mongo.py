@@ -778,7 +778,7 @@ class MongoDriver(DriverInterface):
                 if ce.predicate:
                     query.update(self._compute_predicate(ce.predicate))
         else:
-            raise MissiongLocationExpressionError("Query must have a location expression")
+            raise MissingLocationExpressionError("Query must have a location expression")
         structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
         if len(structure_ids) == 0:
             return None, None, None

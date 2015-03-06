@@ -49,7 +49,7 @@ class TestVersionManager(unittest.TestCase):
         self.dbs.index_service.basex_client.delete_database()
         self.dbs.index_service.disconnect()
         self.dbs = None
-        pass
+
 
     def test_record_update(self):
         crec = self.build_dataset()

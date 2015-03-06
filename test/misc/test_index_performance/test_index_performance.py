@@ -1,4 +1,4 @@
-import sys, argparse
+import sys,argparse
 from lxml import etree
 from random import randint
 from copy import deepcopy
@@ -8,7 +8,7 @@ from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance,\
 from pyehr.utils.services import get_service_configuration, get_logger
 from pyehr.aql.parser import Parser
 from pyehr.ehr.services.dbmanager.errors import IndexServiceConnectionError
-
+from pyehr.ehr.services.dbmanager.errors import UnknownDriverError
 
 class TestIndexPerformance(object):
 
@@ -87,9 +87,16 @@ class TestIndexPerformance(object):
             self.logger.info('-- Executing query')
             aql = self.build_aql_query(p)
             qm = parser.parse(aql)
-            indices, _ = self.dbs.index_service.map_aql_contains(qm.location.containers)
-            # hardwired on MongoDB
-            q = {'ehr_structure_id': {'$in': indices}}
+            indices = self.dbs.index_service.get_matching_ids(qm.location.containers)
+            if self.dbs.driver == 'mongodb':
+                q = {'ehr_structure_id': {'$in': indices}}
+            elif self.dbs.driver == 'elasticsearch':
+                indices_elastic = []
+                for ind in indices:
+                    indices_elastic.append(ind.lower())
+                q = {"query": { "terms" : {"ehr_structure_id":indices_elastic}}}
+            else:
+                raise UnknownDriverError('Unknown driver: %s' % self.driver)
             drf = self.dbs._get_drivers_factory(self.dbs.ehr_repository)
             with drf.get_driver() as driver:
                 results = list(driver.get_records_by_query(q))
@@ -129,7 +136,7 @@ def get_parser():
                         help='Clean data when job is completed')
     parser.add_argument('--loglevel', default='INFO', type=str, help='logging level',
                         choices=['INFO', 'DEBUG', 'ERROR', 'WARNING', 'CRITICAL'])
-    parser.add_argument('--logfile', type=str, help='log file (deafault=stderr)')
+    parser.add_argument('--logfile', type=str, help='log file (default=stderr)')
     return parser
 
 

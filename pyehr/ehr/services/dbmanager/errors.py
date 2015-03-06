@@ -50,7 +50,7 @@ class MissingOperatorError(Exception):
     pass
 
 
-class MissiongLocationExpressionError(Exception):
+class MissingLocationExpressionError(Exception):
     pass
 
 
