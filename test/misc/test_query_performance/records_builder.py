@@ -1,5 +1,4 @@
 from random import randint, choice
-from uuid import uuid4
 from inspect import ismethod, isbuiltin, isfunction
 import json
 
@@ -28,7 +27,7 @@ def build_record(record_description, archetypes_dir, forced_values=None):
         return ArchetypeInstance(*archetype_builder.BUILDERS[record_description](archetypes_dir, **kw).build())
 
 
-def build_patient_dataset(dataset_conf, structures, archetypes_dir):
+def build_patient_dataset(patient_label, dataset_conf, structures, archetypes_dir):
     """
     {
       "records_count": 50
@@ -50,35 +49,36 @@ def build_patient_dataset(dataset_conf, structures, archetypes_dir):
       }
     }
     """
-    patient_label = 'PATIENT_%s' % uuid4().hex
     records = []
     # build records that will match queries
     for level in sorted(dataset_conf['records_distribution'], reverse=True):
         level_records_count = 0
         # build hits
-        for _ in xrange(dataset_conf['hits'][level]['hits_count'] - level_records_count):
-            r = build_record(
-                choice(structures[level]),
-                archetypes_dir,
-                dataset_conf['hits'][level]['hit_condition']
-            )
-            records.append(r.to_json())
-            level_records_count += 1
+        if level in dataset_conf['hits'] and 'hits_count' in dataset_conf['hits'][level]:
+            for _ in xrange(dataset_conf['hits'][level]['hits_count'] - level_records_count):
+                r = build_record(
+                    choice(structures[level]),
+                    archetypes_dir,
+                    dataset_conf['hits'][level]['hit_condition']
+                )
+                records.append((level, r.to_json()))
+                level_records_count += 1
         # matching structures but no hits for where clause
-        for _ in xrange(dataset_conf['records_distribution'][level] - level_records_count):
-            r = build_record(
-                choice(structures[level]),
-                archetypes_dir,
-                dataset_conf['hits'][level]['no_hit_condition']
-            )
-            records.append(r.to_json())
-            level_records_count += 1
+        if level in dataset_conf['records_distribution']:
+            for _ in xrange(dataset_conf['records_distribution'][level] - level_records_count):
+                r = build_record(
+                    choice(structures[level]),
+                    archetypes_dir,
+                    dataset_conf['hits'][level]['no_hit_condition']
+                )
+                records.append((level, r.to_json()))
+                level_records_count += 1
     for _ in xrange(dataset_conf['records_count'] - len(records)):
         r = build_record(
             choice(structures['no_match']),
             archetypes_dir
         )
-        records.append(r.to_json())
+        records.append(('no_match', r.to_json()))
     return {patient_label: records}
 
 
