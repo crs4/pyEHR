@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from pyehr.ehr.services.dbmanager.errors import *
-import re
-from itertools import izip
+import re, json
+from hashlib import md5
 
 
 class DriverInterface(object):
@@ -230,12 +230,11 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def _build_paths(self, aliases):
+    def _build_paths(self, containment_mapping):
         encoded_paths = dict()
-        for var, details in aliases.iteritems():
-            for path in details['paths']:
-                p = self._build_path(path)
-                encoded_paths.setdefault(var, []).append(p)
+        for arch, path in containment_mapping.iteritems():
+            p = self._build_path(path)
+            encoded_paths[arch] = p
         return encoded_paths
 
     @abstractmethod
@@ -247,7 +246,7 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def _calculate_condition_expression(self, condition, aliases):
+    def _calculate_condition_expression(self, condition, variables_map, containment_map):
         pass
 
     @abstractmethod
@@ -260,8 +259,8 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def _calculate_location_expression(self, location, query_params, patients_collection,
-                                       ehr_collection):
+    def _calculate_location_expression(self, locatiom, query_params, patients_collection,
+                                       ehr_collection, aliases_mapping):
         pass
 
     @abstractmethod
@@ -269,7 +268,7 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def _calculate_selection_expression(self, selection, aliases, ehr_alias):
+    def _calculate_selection_expression(self, selection, aliases, containment_mapping):
         pass
 
     @abstractmethod
@@ -282,49 +281,68 @@ class DriverInterface(object):
 
     @abstractmethod
     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
-        if not query_params:
-            query_params = dict()
+        query_params = query_params or dict()
         selection = query_model.selection
         location = query_model.location
         condition = query_model.condition
         # TODO: add ORDER RULES and TIME CONSTRAINTS
-        queries = []
-        location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
-                                                                                 patients_repository,
-                                                                                 ehr_repository)
-        if not location_query:
-            return queries, []
-        if condition:
-            condition_results = self._calculate_condition_expression(condition, aliases)
-            for condition_query, mappings in condition_results:
-                selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
-                                                                                         ehr_alias)
-                queries.append(
-                    {
-                        'query': (condition_query, selection_filter),
-                        'results_aliases': results_aliases
-                    }
-                )
-        else:
-            paths = self._build_paths(aliases)
-            for a in izip(*paths.values()):
-                for p in [dict(izip(paths.keys(), a))]:
-                    q = dict()
-                    for k in aliases.keys():
-                        q.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
-                    selection_filter, results_aliases = self._calculate_selection_expression(selection, p,
-                                                                                             ehr_alias)
-                    queries.append(
-                        {
-                            'query': (q, selection_filter),
-                            'results_aliases': results_aliases
-                        }
-                    )
-        return queries, location_query
+        queries = dict()
+        # get aliases map and paths map for structures that match the CONTAINS statement
+        structures_map, aliases_map = self.index_service.map_aql_contains(location.containers)
+        for structure_id, archetype_paths in structures_map.iteritems():
+            # location_query simply maps EHR section, this will be shared among all structure paths
+            location_query = self._calculate_location_expression(location, query_params, patients_repository,
+                                                                 ehr_repository, aliases_map)
+            for arch_path in archetype_paths:
+                apat_query = dict()
+                # build selection section of the query
+                selection_query, result_aliases = self._calculate_selection_expression(selection, aliases_map,
+                                                                                       arch_path)
+                apat_query['selection'] = selection_query
+                apat_query['aliases'] = result_aliases
+                # build condition section of the query
+                if condition:
+                    condition_query = self._calculate_condition_expression(condition, aliases_map, arch_path)
+                    apat_query['condition'] = condition_query
+                else:
+                    # set and empty dictionary as 'condition', it will be filled later with rules to match
+                    # ClinicalRecord structure ID
+                    apat_query['condition'] = dict()
+                apat_query['condition'].update(location_query)
+                queries.setdefault(structure_id, list()).append(apat_query)
+        return queries
 
     @abstractmethod
-    def execute_query(self, query_model, patients_repository, ehr_repository,
-                      query_parameters):
+    def _get_query_hash(self, query):
+        query_hash = md5()
+        query_hash.update(json.dumps(query))
+        return query_hash.hexdigest()
+
+    @abstractmethod
+    def _get_queries_hash_map(self, queries):
+        queries_hash_map = dict()
+        for _, qs in queries.iteritems():
+            for q in qs:
+                q_hash = self._get_query_hash(q)
+                if q_hash not in queries_hash_map:
+                    queries_hash_map[q_hash] = q
+        return queries_hash_map
+
+    @abstractmethod
+    def _get_structures_hash_map(self, queries):
+        structures_hash_map = dict()
+        for str_id, qs in queries.iteritems():
+            for q in qs:
+                q_hash = self._get_query_hash(q)
+                structures_hash_map.setdefault(q_hash, list()).append(str_id)
+        return structures_hash_map
+
+    @abstractmethod
+    def _aggregate_queries(self, queries):
+        pass
+
+    @abstractmethod
+    def execute_query(self, query_model, patients_repository, ehr_repository, query_params):
         """
         Execute a query expressed as a :class:pyehr.aql.model.QueryModel` object
         """
