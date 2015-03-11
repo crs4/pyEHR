@@ -7,7 +7,6 @@ from pyehr.utils import *
 import pymongo
 import pymongo.errors
 import time
-from itertools import izip
 from hashlib import md5
 import json
 
@@ -48,7 +47,7 @@ class MongoDriver(DriverInterface):
                 self.client = pymongo.MongoClient(self.host, self.port)
             except pymongo.errors.ConnectionFailure:
                 raise DBManagerNotConnectedError('Unable to connect to MongoDB at %s:%s' %
-                                                (self.host, self.port))
+                                                 (self.host, self.port))
             self.logger.debug('binding to database %s', self.database_name)
             self.database = self.client[self.database_name]
             if self.user:
@@ -71,7 +70,7 @@ class MongoDriver(DriverInterface):
         self.client = None
 
     def init_structure(self, structure_def):
-        # MongoDB doesn't need structures initilization
+        # MongoDB doesn't need structures initialization
         pass
 
     @property
@@ -82,7 +81,7 @@ class MongoDriver(DriverInterface):
         :rtype: boolean
         :return: True if the connection is open, False if it is closed.
         """
-        return not self.client is None
+        return self.client is not None
 
     def _check_connection(self):
         if not self.is_connected:
@@ -320,7 +319,7 @@ class MongoDriver(DriverInterface):
             raise DuplicatedKeyError('The following IDs are already in use: %s' % duplicated_ids)
         try:
             return self.collection.insert([x for k, x in records_map.iteritems() if k not in duplicated_ids]),\
-                   [records_map[x] for x in duplicated_ids]
+                [records_map[x] for x in duplicated_ids]
         except pymongo.errors.InvalidOperation:
             # empty bulk insert
             return [], [records_map[x] for x in duplicated_ids]
@@ -658,8 +657,8 @@ class MongoDriver(DriverInterface):
         tmp_path = '.archetype_details.'.join([self._normalize_path(x) for x in path])
         return '%s.archetype_details' % tmp_path
 
-    def _build_paths(self, aliases):
-        return super(MongoDriver, self)._build_paths(aliases)
+    def _build_paths(self, containment_mapping):
+        return super(MongoDriver, self)._build_paths(containment_mapping)
 
     def _extract_path_alias(self, path):
         return super(MongoDriver, self)._extract_path_alias(path)
@@ -669,47 +668,37 @@ class MongoDriver(DriverInterface):
         path_pieces[-1] = 'archetype_class'
         return '.'.join(path_pieces)
 
-    def _calculate_condition_expression(self, condition, aliases):
-        queries = list()
-        paths = self._build_paths(aliases)
-        for a in izip(*paths.values()):
-            for p in [dict(izip(paths.keys(), a))]:
-                query = dict()
-                # bind fields to archetypes
-                for k in aliases.keys():
-                    query.update({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})
-                expressions = dict()
-                or_indices = list()
-                and_indices = list()
-                for i, cseq_element in enumerate(condition.condition.condition_sequence):
-                    if isinstance(cseq_element, PredicateExpression):
-                        l_op_var, l_op_path = self._extract_path_alias(cseq_element.left_operand)
-                        expressions[i] = self._map_operand('%s.%s' % (p[l_op_var],
-                                                                      self._normalize_path(l_op_path)),
-                                                           cseq_element.right_operand,
-                                                           cseq_element.operand)
-                    elif isinstance(cseq_element, ConditionOperator):
-                        if cseq_element.op == 'OR':
-                            or_indices.extend([i-1, i+1])
-                        elif cseq_element.op == 'AND':
-                            if (i-1) not in or_indices:
-                                and_indices.extend([i-1, i+1])
-                            else:
-                                and_indices.append(i+1)
-                if len(or_indices) > 0:
-                    or_statement = {'$or': [expressions[i] for i in or_indices]}
-                    expressions[max(expressions.keys()) + 1] = or_statement
-                    and_indices.append(max(expressions.keys()))
-                if len(and_indices) > 0:
-                    for i in and_indices:
-                        query.update(expressions[i])
-                else:
-                    for e in expressions.values():
-                        query.update(e)
-                # append query and used mapping
-                if not (query, p) in queries:
-                    queries.append((query, p))
-        return queries
+    def _calculate_condition_expression(self, condition, variables_map, containment_mapping):
+        query = dict()
+        paths = self._build_paths(containment_mapping)
+        expressions = dict()
+        or_indices = list()
+        and_indices = list()
+        for i, cseq in enumerate(condition.condition.condition_sequence):
+            if isinstance(cseq, PredicateExpression):
+                left_op_var, left_op_path = self._extract_path_alias(cseq.left_operand)
+                expressions[i] = self._map_operand('%s.%s' % (paths[variables_map[left_op_var]],
+                                                              self._normalize_path(left_op_path)),
+                                                   cseq.right_operand, cseq.operand)
+            elif isinstance(cseq, ConditionOperator):
+                if cseq.op == 'OR':
+                    or_indices.extend([i-1, i+1])
+                elif cseq.op == 'AND':
+                    if (i-1) not in or_indices:
+                        and_indices.extend([i-1, i+1])
+                    else:
+                        and_indices.append(i+1)
+        if len(or_indices) > 0:
+            or_statement = {'$or': [expressions[i] for i in or_indices]}
+            expressions[max(expressions.keys())+1] = or_statement
+            and_indices.append(max(expressions.keys()))
+        if len(and_indices) > 0:
+            for ai in and_indices:
+                query.update(expressions[ai])
+        else:
+            for e in expressions.values():
+                query.update(e)
+        return query
 
     def _compute_predicate(self, predicate):
         query = dict()
@@ -762,28 +751,22 @@ class MongoDriver(DriverInterface):
         return query
 
     def _calculate_location_expression(self, location, query_params, patients_collection,
-                                       ehr_collection):
+                                       ehr_collection, aliases_mapping):
         query = dict()
-        # Here is where the collection has been chosen according to the selection
-        self.logger.debug("LOCATION: %s", str(location))
-        ehr_alias = None
         if location.class_expression:
             ce = location.class_expression
             if ce.class_name.upper() == 'EHR':
                 query.update(self._calculate_ehr_expression(ce, query_params,
                                                             patients_collection,
                                                             ehr_collection))
-                ehr_alias = ce.variable_name
+                if 'EHR' not in aliases_mapping:
+                    aliases_mapping['EHR'] = ce.variable_name
             else:
                 if ce.predicate:
                     query.update(self._compute_predicate(ce.predicate))
         else:
             raise MissiongLocationExpressionError("Query must have a location expression")
-        structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
-        if len(structure_ids) == 0:
-            return None, None, None
-        query.update({'ehr_structure_id': {'$in': structure_ids}})
-        return query, aliases_mapping, ehr_alias
+        return query
 
     def _map_ehr_selection(self, path, ehr_var):
         path = path.replace('%s.' % ehr_var, '')
@@ -792,22 +775,22 @@ class MongoDriver(DriverInterface):
         if path == 'uid.value':
             return {'_id': True}
 
-    def _calculate_selection_expression(self, selection, aliases, ehr_alias):
+    def _calculate_selection_expression(self, selection, variables_map, containment_mapping):
         query = {'_id': False}
-        results_aliases = dict()
-        for v in selection.variables:
-            path = self._normalize_path(v.variable.path.value)
-            if v.variable.variable == ehr_alias:
-                q = self._map_ehr_selection(path, ehr_alias)
+        paths = self._build_paths(containment_mapping)
+        results_aliases = {}
+        for var in selection.variables:
+            path = self._normalize_path(var.variable.path.value)
+            if var.variable.variable == variables_map['EHR']:
+                q = self._map_ehr_selection(path, variables_map['EHR'])
                 query.update(q)
-                results_aliases[q.keys()[0]] = v.label or '%s%s' % (v.variable.variable,
-                                                                    v.variable.path.value)
+                results_aliases[q.keys()[0]] = var.label or '%s%s' % (var.variable.variable,
+                                                                      var.variable.path.value)
             else:
-                path = '%s.%s' % (aliases[v.variable.variable], path)
-                query[path] = True
-                # use alias or ADL path
-                results_aliases[path] = v.label or '%s%s' % (v.variable.variable,
-                                                             v.variable.path.value)
+                var_path = '%s.%s' % (paths[variables_map[var.variable.variable]], path)
+                query[var_path] = True
+                results_aliases[var_path] = var.label or '%s%s' % (var.variable.variable,
+                                                                   var.variable.path.value)
         return query, results_aliases
 
     def _split_results(self, query_result):
@@ -852,6 +835,31 @@ class MongoDriver(DriverInterface):
         return super(MongoDriver, self).build_queries(query_model, patients_repository, ehr_repository,
                                                       query_params)
 
+    def _get_query_hash(self, query):
+        return super(MongoDriver, self)._get_query_hash(query)
+
+    def _get_queries_hash_map(self, queries):
+        return super(MongoDriver, self)._get_queries_hash_map(queries)
+
+    def _get_structures_hash_map(self, queries):
+        return super(MongoDriver, self)._get_structures_hash_map(queries)
+
+    def _get_structures_selector(self, structure_ids):
+        if len(structure_ids) == 1:
+            return {'ehr_structure_id': structure_ids[0]}
+        else:
+            return {'ehr_structure_id': {'$in': structure_ids}}
+
+    def _aggregate_queries(self, queries):
+        aggregated_queries = list()
+        queries_hash_map = self._get_queries_hash_map(queries)
+        structures_hash_map = self._get_structures_hash_map(queries)
+        for qhash, structures in structures_hash_map.iteritems():
+            query = queries_hash_map[qhash]
+            query['condition'].update(self._get_structures_selector(structures))
+            aggregated_queries.append(query)
+        return aggregated_queries
+
     def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
         """
         Execute a query parsed with the :class:`pyehr.aql.parser.Parser` object and expressed
@@ -866,31 +874,12 @@ class MongoDriver(DriverInterface):
         :return: a :class:`pyehr.ehr.services.dbmanager.querymanager.query.ResultSet` object
                  containing results for the given query
         """
-        def get_selection_hash(selection):
-            sel_hash = md5()
-            sel_hash.update(json.dumps(selection))
-            return sel_hash.hexdigest()
-
-        query_mappings = list()
-        queries, location_query = self.build_queries(query_model, patients_repository, ehr_repository, query_params)
-        for x in queries:
-            if x not in query_mappings:
-                query_mappings.append(x)
-        # reduce number of queries based on the selection filter
-        selection_mappings = dict()
-        filter_mappings = dict()
-        for qm in query_mappings:
-            selection_key = get_selection_hash(qm['query'][1])
-            if selection_key not in selection_mappings:
-                selection_mappings[selection_key] = {'selection_filter': qm['query'][1],
-                                                     'aliases': qm['results_aliases']}
-            q = qm['query'][0]
-            filter_mappings.setdefault(selection_key, []).append(q)
+        queries = self.build_queries(query_model, patients_repository, ehr_repository,
+                                     query_params)
+        aggregated_queries = self._aggregate_queries(queries)
         total_results = ResultSet()
-        for sk, sm in selection_mappings.iteritems():
-            q = {'$or': filter_mappings[sk]}
-            q.update(location_query)
-            results = self._run_aql_query(q, sm['selection_filter'], aliases=sm['aliases'],
-                                          collection=ehr_repository)
+        for query in aggregated_queries:
+            results = self._run_aql_query(query=query['condition'], fields=query['selection'],
+                                          aliases=query['aliases'], collection=ehr_repository)
             total_results.extend(results)
         return total_results
