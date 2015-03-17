@@ -127,6 +127,10 @@ def get_labels(labels_set_size=20):
     return ['lbl-%05d' % x for x in xrange(0, labels_set_size)]
 
 
+def normalize_keys(dict_to_normalize):
+    return dict((int(k), v) for k, v in dict_to_normalize.iteritems())
+
+
 def build_structures(builder_conf):
     """
     builder_conf field is a dictionary used to describe how the run is configured.
@@ -162,6 +166,7 @@ def build_structures(builder_conf):
     structures = {}
     created_matching_str = 0
     labels = get_labels()
+    builder_conf['matching_structures'] = normalize_keys(builder_conf['matching_structures'])
     for level in sorted(builder_conf['matching_structures'], reverse=True):
         structures[level] = []
         str_count = round((builder_conf['structures_count']/100.) *
