@@ -1,10 +1,10 @@
-from random import randint, choice
+from random import choice
 from inspect import ismethod, isbuiltin, isfunction
-import json
+import json, os, gzip
 
 import archetype_builder
+from structures_builder import normalize_keys
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance
-from archetype_builder import Composition
 
 
 def build_record(record_description, archetypes_dir, forced_values=None):
@@ -91,12 +91,12 @@ def build_dataset(dataset_conf):
     {
       "records_count": 1000,
       "patients_count": 10,
+      "hit_condition": {"blood_pressure": {"systolic": (randint, 10, 20)}},
+      "no_hit_condition": {"blood_pressure": {"systolic": (randint, 200, 250)}}
       "records_distribution": {
         2: {
           "matches": 10, // percentage on records_count
           "hits": 5,     // percentage on records_count
-          "hit_condition": {"blood_pressure": {"systolic": (randint, 10, 20)}},
-          "no_hit_condition": {"blood_pressure": {"systolic": (randint, 200, 250)}}
         }
       }
     }
@@ -116,6 +116,7 @@ def build_dataset(dataset_conf):
     # get hits distribution
     previous_level_hits = 0
     previous_level_matches = 0
+    dataset_conf['records_distribution'] = normalize_keys(dataset_conf['records_distribution'])
     for level, conf in sorted(dataset_conf['records_distribution'].iteritems(), reverse=True):
         hits_count = (resolve_percentage(conf['hits'], dataset_conf['records_count'])) - previous_level_hits
         if hits_count < 0:
@@ -127,8 +128,8 @@ def build_dataset(dataset_conf):
             hmap['records_distribution'].setdefault(level, 0)
             hmap['hits'][level]['hits_count'] += 1
             hmap['records_distribution'][level] += 1
-            hmap['hits'][level].setdefault('hit_condition', conf['hit_condition'])
-            hmap['hits'][level].setdefault('no_hit_condition', conf['no_hit_condition'])
+            hmap['hits'][level].setdefault('hit_condition', dataset_conf['hit_condition'])
+            hmap['hits'][level].setdefault('no_hit_condition', dataset_conf['no_hit_condition'])
         previous_level_hits += hits_count
         # get matches  distribution
         matches_count = (resolve_percentage(conf['matches'], dataset_conf['records_count'])) -\
@@ -144,65 +145,23 @@ def build_dataset(dataset_conf):
             # set NO MATCH condition for current level
             if level not in patients_map[patient_key]['hits']:
                 patients_map[patient_key]['hits'].setdefault(
-                    level, {'no_hit_condition': conf['no_hit_condition']}
+                    level, {'no_hit_condition': dataset_conf['no_hit_condition']}
                 )
         previous_level_matches += matches_count
     return patients_map
 
 
-def contains_archetype(structure_description, archetype_label):
-    element_label = archetype_label[0]
-    if isinstance(structure_description, dict):
-        for k, v in structure_description.iteritems():
-            if not k.startswith('composition'):
-                raise ValueError('Container type %s unknown' % k)
-            if k == element_label:
-                to_be_checked = archetype_label[1:]
-            else:
-                to_be_checked = archetype_label
-            for child in v:
-                matched, leaf = contains_archetype(child, to_be_checked)
-                if matched:
-                    return True, leaf
+def get_patient_records(patient_datasets, structures, archetype_dir):
+    for patient, dataset_conf in patient_datasets.iteritems():
+        yield build_patient_dataset(patient, dataset_conf, structures, archetype_dir)
+
+
+def patient_records_to_json(patient_datasets, structures, archetype_dir, json_output_file,
+                            compression_enabled=False):
+    if compression_enabled:
+        f = gzip.open(json_output_file, 'wb')
     else:
-        if structure_description == element_label:
-            return True, element_label
-    return False, None
-
-
-def _build_record_full_random(max_width, height, archetypes_dir):
-    def _get_random_builder(_builders):
-        builder_idx = randint(0, len(_builders)-1)
-        cls = archetype_builder.get_builder( _builders[builder_idx] )
-        return cls
-
-    if height < 1:
-        raise ValueError('Height must be greater than 0')
-
-    builders = archetype_builder.BUILDERS.keys()
-
-    if height == 1: # if height is zero it creates a leaf archetype (i.e an Observation)
-        # deletes the composition from the possible builders
-        leaf_builders = [b for b in builders if b != 'composition']
-        children = []
-        for i in xrange(max_width):
-            cls = _get_random_builder(leaf_builders)
-            arch = ArchetypeInstance(*cls(archetypes_dir).build())
-            children.append(arch)
-
-    else:
-        width = randint(1, max_width)
-        arch = _build_record_full_random(width, height - 1, archetypes_dir)
-        children = [arch]
-
-        # creates the other children. They can be Composition or Observation
-        for i in xrange(max_width - 1):
-            cls = _get_random_builder(builders)
-            if cls == Composition:
-                width = randint(1, max_width)
-                arch = _build_record_full_random(width, height - 1, archetypes_dir)
-            else:
-                arch = ArchetypeInstance( *cls(archetypes_dir).build() )
-            children.append(arch)
-
-    return ArchetypeInstance(*Composition(archetypes_dir, children).build())
+        f = open(json_output_file, 'w')
+    for patient_records in get_patient_records(patient_datasets, structures, archetype_dir):
+        f.write(json.dumps(patient_records) + os.linesep)
+    f.close()
