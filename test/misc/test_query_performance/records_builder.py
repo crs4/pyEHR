@@ -1,8 +1,8 @@
 from random import choice
-from inspect import ismethod, isbuiltin, isfunction
 import json, os, gzip
 
 import archetype_builder
+from value_setters import set_value
 from structures_builder import normalize_keys
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance
 
@@ -20,10 +20,7 @@ def build_record(record_description, archetypes_dir, forced_values=None):
         kw = {}
         if forced_values and record_description in forced_values:
             for k, v in forced_values[record_description].iteritems():
-                if isfunction(v[0]) or ismethod(v[0]) or isbuiltin(v[0]):
-                    kw[k] = (v[0])(*v[1:])
-                else:
-                    kw[k] = v[0]  # only take the first element of the tuple
+                kw[k] = set_value(*v)
         return ArchetypeInstance(*archetype_builder.BUILDERS[record_description](archetypes_dir, **kw).build())
 
 
