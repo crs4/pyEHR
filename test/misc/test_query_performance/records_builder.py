@@ -4,7 +4,6 @@ import json, os, gzip
 import archetype_builder
 from value_setters import set_value
 from structures_builder import normalize_keys
-from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance
 from pyehr.utils import decode_dict
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance, ClinicalRecord, PatientRecord
 
@@ -132,7 +131,7 @@ def build_dataset(dataset_conf):
         previous_level_hits += hits_count
         # get matches  distribution
         matches_count = (resolve_percentage(conf['matches'], dataset_conf['records_count'])) -\
-                        previous_level_matches - previous_level_hits
+            previous_level_matches - previous_level_hits
         if matches_count < 0:
             matches_count = 0
         for x in xrange(int(matches_count)):
@@ -162,9 +161,9 @@ def get_patient_records_from_file(patient_datasets_file, compressed_file=False):
         f = open(patient_datasets_file)
     for row in f.readlines():
         patient_dataset = normalize_keys(decode_dict(json.loads(row)))
-        for patient, conf in patient_dataset.iteritems():
+        for patient_id, conf in patient_dataset.iteritems():
             clinical_records = [ClinicalRecord(ArchetypeInstance(**c[1])) for c in conf]
-            patient_record = PatientRecord(patient)
+            patient_record = PatientRecord(patient_id)
             yield patient_record, clinical_records
 
 

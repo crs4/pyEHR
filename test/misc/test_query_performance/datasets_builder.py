@@ -69,7 +69,6 @@ def main(argv):
     args = parser.parse_args(argv)
     logger = get_logger('datasets_builder', log_level=args.log_level, log_file=args.log_file)
 
-    logger.info('Creating structures file from definition in %s' % args.structures_config_file)
     structures = create_structures(args.structures_config_file, args.structures_out_file,
                                    args.overwrite_structures_file, logger)
     create_datasets(args.datasets_config_file, args.archetypes_dir, structures,
