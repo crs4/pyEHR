@@ -6,6 +6,8 @@ from voluptuous import Schema, Required
 
 import archetype_builder
 
+from pyehr.utils import decode_dict
+
 
 def get_composition_label(labels):
     return 'composition.%s' % labels[randint(0, len(labels) - 1)]
@@ -210,3 +212,8 @@ def build_structures(builder_conf):
 def structures_to_json(structures, json_output_file):
     with open(json_output_file, 'w') as f:
         f.write(json.dumps(structures))
+
+
+def get_structures_from_file(structures_file):
+    with open(structures_file) as f:
+        return normalize_keys(decode_dict(json.loads(f.read())))

@@ -1,6 +1,6 @@
 import os, argparse, sys, time, json
 
-from structures_builder import build_structures, structures_to_json, normalize_keys
+from structures_builder import build_structures, structures_to_json, get_structures_from_file
 from records_builder import build_dataset, patient_records_to_json
 
 from pyehr.utils import get_logger, decode_dict
@@ -34,17 +34,16 @@ def get_parser():
 def create_structures(structs_conf_file, structs_out_file, overwrite, logger):
     with open(structs_conf_file) as f:
         structs_conf = decode_dict(json.loads(f.read()))
-    if not os.path.isfile(structs_out_file) or overwrite:
+    if os.path.isfile(structs_out_file) and not overwrite:
+        logger.info('No need to build new structures file, loading existing ones from %s' % structs_out_file)
+        structures = get_structures_from_file(structs_out_file)
+    else:
         logger.info('Start building structures')
         start_time = time.time()
         structures = build_structures(structs_conf)
         logger.info('Structures building completed in %f seconds' % (time.time() - start_time))
         logger.info('Serializing structures into %s' % structs_out_file)
         structures_to_json(structures, structs_out_file)
-    else:
-        logger.info('No need to build new structures file, loading exising ones from %s' % structs_out_file)
-        with open(structs_out_file) as f:
-            structures = normalize_keys(decode_dict(json.loads(f.read())))
     return structures
 
 
