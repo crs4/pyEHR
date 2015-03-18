@@ -128,7 +128,13 @@ def get_labels(labels_set_size=20):
 
 
 def normalize_keys(dict_to_normalize):
-    return dict((int(k), v) for k, v in dict_to_normalize.iteritems())
+    normalized_dict = dict()
+    for k, v in dict_to_normalize.iteritems():
+        try:
+            normalized_dict[int(k)] = v
+        except ValueError:
+            normalized_dict[k] = v
+    return normalized_dict
 
 
 def build_structures(builder_conf):
