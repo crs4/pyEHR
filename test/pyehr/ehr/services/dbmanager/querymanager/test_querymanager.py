@@ -163,7 +163,7 @@ class TestQueryManager(unittest.TestCase):
     def test_single_where_query2(self):
         query = """
         SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS diastolic
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude != 180
@@ -182,7 +182,7 @@ class TestQueryManager(unittest.TestCase):
     def test_single_where_query(self):
         query = """
         SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS diastolic
         FROM Ehr e
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
         WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
@@ -222,7 +222,7 @@ class TestQueryManager(unittest.TestCase):
     def test_deep_where_query2(self):
         query = """
         SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS diastolic
         FROM Ehr e
         CONTAINS Composition c[openEHR-EHR-COMPOSITION.encounter.v1]
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
@@ -234,7 +234,7 @@ class TestQueryManager(unittest.TestCase):
         details_results = list()
         for k,v in batch_details.iteritems():
             for x in v:
-                if x['systolic'] >= 180 or x['dyastolic'] != 110:
+                if x['systolic'] >= 180 or x['diastolic'] != 110:
                     details_results.append(x)
         res = list(results.results)
         print sorted(res)
@@ -244,7 +244,7 @@ class TestQueryManager(unittest.TestCase):
     def test_deeper_where_query(self):
         query = """
         SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
-        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS dyastolic
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS diastolic
         FROM Ehr e
         CONTAINS Composition c[openEHR-EHR-COMPOSITION.encounter.v1]
         CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
@@ -257,7 +257,7 @@ class TestQueryManager(unittest.TestCase):
         details_results = list()
         for k,v in batch_details.iteritems():
             for x in v:
-                if x['systolic'] >= 180 and x['dyastolic'] != 81:
+                if x['systolic'] >= 180 and x['diastolic'] != 81:
                     details_results.append(x)
         res = list(results.results)
         print sorted(res)

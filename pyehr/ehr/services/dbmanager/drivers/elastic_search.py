@@ -39,12 +39,11 @@ class ElasticSearchDriver(DriverInterface):
     ENCODINGS_MAP = {}
 #    @profile
     def __init__(self, host, database,collection,
-                 port=elasticsearch.Urllib3HttpConnection, user=None, passwd=None,
+                 port=None, user=None, passwd=None,
                  index_service=None, logger=None):
         self.client = None
         self.host = host
-        #usare port per transportclass ?   self.transportclass
-        self.transportclass=port
+        self.transportclass=elasticsearch.Urllib3HttpConnection
         #cosa usare per parametri opzionali???? self.others
         self.user = user
         self.passwd = passwd
@@ -68,6 +67,7 @@ class ElasticSearchDriver(DriverInterface):
         self.database_ids="lookup"
         self.doc_ids="table"
         self.scrolltime="3m"
+        self.grbq="scan" # "scan" or "from"
 
     def __enter__(self):
         self.connect()
@@ -90,18 +90,10 @@ class ElasticSearchDriver(DriverInterface):
             except elasticsearch.TransportError:
                 raise DBManagerNotConnectedError('Unable to connect to ElasticSearch at %s:%s' %
                                                 (self.host[0]['host'], self.host[0]['port']))
-            #self.logger.debug('binding to database %s', self.database_name)
             self.logger.debug('binding to database %s', self.database)
-            #self.database = self.client[self.database_name]
             #there is no authentication/authorization layer in elasticsearch
-            #if self.user:
-            #    self.logger.debug('authenticating with username %s', self.user)
-            #    self.database.authenticate(self.user, self.passwd)
             self.logger.debug('using collection %s', self.collection)
-            #self.collection = self.database[self.collection_name]
         else:
-            #self.logger.debug('Alredy connected to database %s, using collection %s',
-            #                  self.database_name, self.collection_name)
             self.logger.debug('Alredy connected to ElasticSearch')
 
 #    @profile
@@ -111,7 +103,6 @@ class ElasticSearchDriver(DriverInterface):
         There's not such thing so we erase the client pointer
         """
         self.logger.debug('disconnecting from host %s', self.host)
-        #self.client.disconnect()
         self.database = None
         self.collection = None
         self.client = None
@@ -633,7 +624,6 @@ class ElasticSearchDriver(DriverInterface):
         :rtype: dict or None
         """
         self.__check_connection()
-        #res = self.client.get(index=self.database,id=record_id,_source='true')
         try:
             #find in ids
             if isinstance(record_id,dict):
@@ -757,40 +747,6 @@ class ElasticSearchDriver(DriverInterface):
         if res != []:
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
-#    @profile
-    def get_records_by_query(self, query):
-        """
-        Retrieve all records matching the given query
-
-        :param selector: the selector (in MongoDB syntax) used to select data
-        :type selector: dictionary
-        :return: a list with the matching records
-        :rtype: list
-        """
-        self.__check_connection()
-        #add the size keyword to the query
-        query["size"]=self.threshold
-        scrolltime=self.scroll
-        #
-        restot=[]
-        pippo=False
-        sc_id=""
-        while not pippo:
-            if restot==[]:
-                resq = self.client.search(index=self.database,doc_type=self.collection,body=query,scroll=scrolltime)
-                for p in resq["hits"]["hits"]:
-                    restot.append(p)
-                sc_id=resq["_scroll_id"]
-                if resq["hits"]["hits"]==[]:
-                    pippo=True
-            else:
-                resqh = self.client.scroll(scroll_id=sc_id, scroll="10m")["hits"]["hits"]
-                for p in resqh:
-                    restot.append(p)
-                if resqh==[]:
-                    pippo=True
-        res = [p['_source'] for p in restot]
-        return ( decode_dict(res[i]) for i in range(0,len(res)) )
 
 #    @profile
     def delete_record(self, record_id):
@@ -1155,8 +1111,8 @@ class ElasticSearchDriver(DriverInterface):
         return '%s.archetype_details' % tmp_path
 
 #    @profile
-    def _build_paths(self, aliases):
-        return super(ElasticSearchDriver, self)._build_paths(aliases)
+    def _build_paths(self, containment_mapping):
+        return super(ElasticSearchDriver, self)._build_paths(containment_mapping)
 
 #    @profile
     def _extract_path_alias(self, path):
@@ -1169,62 +1125,51 @@ class ElasticSearchDriver(DriverInterface):
         return '.'.join(path_pieces)
 
 #    @profile
-    def _calculate_condition_expression(self, condition, aliases):
-        queries = list()
-        paths = self._build_paths(aliases)
-        for a in izip(*paths.values()):
-            for p in [dict(izip(paths.keys(), a))]:
-                query = dict()
-                # bind fields to archetypes
-                for k in aliases.keys():
-                    query.update({"\"must\" :{ \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "$%nothing%$" })
-                expressions = dict()
-                or_indices = list()
-                and_indices = list()
-                for i, cseq_element in enumerate(condition.condition.condition_sequence):
-                    if isinstance(cseq_element, PredicateExpression):
-                        l_op_var, l_op_path = self._extract_path_alias(cseq_element.left_operand)
-                        expressions[i] = self._map_operand('%s.%s' % (p[l_op_var],
-                                                                      self._normalize_path(l_op_path)),
-                                                           cseq_element.right_operand,
-                                                           cseq_element.operand)
-                    elif isinstance(cseq_element, ConditionOperator):
-                        if cseq_element.op == 'OR':
-                            or_indices.extend([i-1, i+1])
-                        elif cseq_element.op == 'AND':
-                            if (i-1) not in or_indices:
-                                and_indices.extend([i-1, i+1])
-                            else:
-                                and_indices.append(i+1)
-                if len(or_indices) > 0:
-                    for j in or_indices:
-                        if(str(expressions[j]).find("must_not") != -1):
-                            exprstr=self._clean_piece(expressions[j])
-                            exprstr2="{ \"bool\":"+exprstr+"}"
-                            exprstr3=exprstr2.replace("\\'","'").replace("\"bool\":{'","\"bool\":{ {'").replace("}':","}}':")
-                            expressions[j]= { exprstr3 : "$%nothing%$"}
-                    or_statement= " \"should\" : "+str([ expressions[i] for i in or_indices])+",\"minimum_should_match\" : 1"
-                    expressions[max(expressions.keys()) + 1] = or_statement
-                    and_indices.append(max(expressions.keys()))
-                if len(and_indices) > 0:
-                    for i in and_indices:
-                        if(isinstance(expressions[i],str)):
-                            query.update({str(expressions[i]) : "$%nothing%$" })
-                        else:
-                            if( str(expressions[i]).find("must_not") == -1 ):
-                                query.update({ " \"must\" : "+str(expressions[i]) : "$%nothing%$" })
-                            else:
-                                query.update(expressions[i])
+    def _calculate_condition_expression(self, condition, variables_map, containment_mapping):
+        query = dict()
+        paths = self._build_paths(containment_mapping)
+        expressions = dict()
+        or_indices = list()
+        and_indices = list()
+        for i, cseq in enumerate(condition.condition.condition_sequence):
+            if isinstance(cseq, PredicateExpression):
+                left_op_var, left_op_path = self._extract_path_alias(cseq.left_operand)
+                expressions[i] = self._map_operand('%s.%s' % (paths[variables_map[left_op_var]],
+                                                              self._normalize_path(left_op_path)),
+                                                   cseq.right_operand, cseq.operand)
+            elif isinstance(cseq, ConditionOperator):
+                if cseq.op == 'OR':
+                    or_indices.extend([i-1, i+1])
+                elif cseq.op == 'AND':
+                    if (i-1) not in or_indices:
+                        and_indices.extend([i-1, i+1])
+                    else:
+                        and_indices.append(i+1)
+        if len(or_indices) > 0:
+            for j in or_indices:
+                if(str(expressions[j]).find("must_not") != -1):
+                    exprstr=self._clean_piece(expressions[j])
+                    exprstr2="{ \"bool\":"+exprstr+"}"
+                    exprstr3=exprstr2.replace("\\'","'").replace("\"bool\":{'","\"bool\":{ {'").replace("}':","}}':")
+                    expressions[j]= { exprstr3 : "$%nothing%$"}
+            or_statement= " \"should\" : "+str([ expressions[i] for i in or_indices])+",\"minimum_should_match\" : 1"
+            expressions[max(expressions.keys()) + 1] = or_statement
+            and_indices.append(max(expressions.keys()))
+        if len(and_indices) > 0:
+            for ai in and_indices:
+                if(isinstance(expressions[ai],str)):
+                    query.update({str(expressions[ai]) : "$%nothing%$" })
+                elif (str(expressions[ai]).find("must_not") == -1 ):
+                    query.update({ " \"must\" : "+str(expressions[ai]) : "$%nothing%$" })
                 else:
-                    for e in expressions.values():
-                        if (str(e).find("must_not") == -1 ):
-                            query.update({" \"must\" : "+ str(e) : "$%nothing%$" })
-                        else:
-                            query.update(e)
-                # append query and used mapping
-                if not (query, p) in queries:
-                    queries.append((query, p))
-        return queries
+                    query.update(expressions[ai])
+        else:
+            for e in expressions.values():
+                if (str(e).find("must_not") == -1 ):
+                    query.update({" \"must\" : "+ str(e) : "$%nothing%$" })
+                else:
+                    query.update(e)
+        return query
 
 #    @profile
     def _compute_predicate(self, predicate):
@@ -1281,28 +1226,24 @@ class ElasticSearchDriver(DriverInterface):
 
 #    @profile
     def _calculate_location_expression(self, location, query_params, patients_collection,
-                                       ehr_collection):
+                                       ehr_collection, aliases_mapping):
         query = dict()
-        # Here is where the collection has been chosen according to the selection
-        self.logger.debug("LOCATION: %s", str(location))
-        ehr_alias = None
         if location.class_expression:
             ce = location.class_expression
             if ce.class_name.upper() == 'EHR':
                 query.update(self._calculate_ehr_expression(ce, query_params,
                                                             patients_collection,
                                                             ehr_collection))
-                ehr_alias = ce.variable_name
+                if 'EHR' not in aliases_mapping:
+                    aliases_mapping['EHR'] = ce.variable_name
             else:
                 if ce.predicate:
                     query.update(self._compute_predicate(ce.predicate))
         else:
-            raise MissingLocationExpressionError("Query must have a location expression")
-        structure_ids, aliases_mapping = self.index_service.map_aql_contains(location.containers)
-        if len(structure_ids) == 0:
-            return None, None, None
-        query.update({"\"must\" : {\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"execution\" : \"or\" } }" : "$%nothing%$"})
-        return query, aliases_mapping, ehr_alias
+            raise MissiongLocationExpressionError("Query must have a location expression")
+        return query
+
+#        query.update({"\"must\" : {\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"execution\" : \"or\" } }" : "$%nothing%$"})
 
 #    @profile
     def _map_ehr_selection(self, path, ehr_var):
@@ -1313,22 +1254,22 @@ class ElasticSearchDriver(DriverInterface):
             return {'_id': True}
 
 #    @profile
-    def _calculate_selection_expression(self, selection, aliases, ehr_alias):
+    def _calculate_selection_expression(self, selection, variables_map, containment_mapping):
         query = {'_id': False}
-        results_aliases = dict()
-        for v in selection.variables:
-            path = self._normalize_path(v.variable.path.value)
-            if v.variable.variable == ehr_alias:
-                q = self._map_ehr_selection(path, ehr_alias)
+        paths = self._build_paths(containment_mapping)
+        results_aliases = {}
+        for var in selection.variables:
+            path = self._normalize_path(var.variable.path.value)
+            if var.variable.variable == variables_map['EHR']:
+                q = self._map_ehr_selection(path, variables_map['EHR'])
                 query.update(q)
-                results_aliases[q.keys()[0]] = v.label or '%s%s' % (v.variable.variable,
-                                                                    v.variable.path.value)
+                results_aliases[q.keys()[0]] = var.label or '%s%s' % (var.variable.variable,
+                                                                      var.variable.path.value)
             else:
-                path = '%s.%s' % (aliases[v.variable.variable], path)
-                query[path] = True
-                # use alias or ADL path
-                results_aliases[path] = v.label or '%s%s' % (v.variable.variable,
-                                                             v.variable.path.value)
+                var_path = '%s.%s' % (paths[variables_map[var.variable.variable]], path)
+                query[var_path] = True
+                results_aliases[var_path] = var.label or '%s%s' % (var.variable.variable,
+                                                                   var.variable.path.value)
         return query, results_aliases
 
 #    @profile
@@ -1344,31 +1285,89 @@ class ElasticSearchDriver(DriverInterface):
             else:
                 yield key, value
 
-#    @profile
-    def get_records_by_query(self, query,**otherfields):
-        """
-        Retrieve all records for the query given with the otherfields extra parameters
 
-        :param otherfields: the parameters to pass to elasticsearch for the search
-        :type otherfield: dictionary
+    def get_records_by_query(self,query,fields=None):
+        if self.grbq == "from":
+            res=self.get_records_by_query_from(query,fields)
+        elif self.grbq == "scan":
+            res=self.get_records_by_query_scan(query,fields)
+        else:
+            print "\nbad grbq:"+self.grbq+" using scan instead"
+            res=self.get_records_by_query_scan(query,fields)
+        return res
+
+#    @profile
+    def get_records_by_query_scan(self, query,fields=None):
+        """
+        Retrieve all records matching the given query
+
+        :param fields: the fields to be retrieved
+        :type  fields: string
         :param query: the value that must be matched for the given field
         :type query: string
         :return: a list of records
         :rtype: list
         """
-        size = 100
+        size = self.threshold
+#        query["size"]=self.threshold
+        scrolltime=self.scrolltime
         restot = []
-        resu = self.client.search(index=self.database,size=size,body=query)['hits']
+        pippo=False
+        sc_id=""
+        while not pippo:
+            if restot==[]:
+                if fields:
+                    resu = self.client.search(index=self.database,_source_include=fields,size=size,body=query,scroll=scrolltime)
+                else:
+                    resu = self.client.search(index=self.database,size=size,body=query,scroll=scrolltime)
+                if resu['hits']['hits']==[]:
+                    pippo=True
+                else:
+                    sc_id=resu["_scroll_id"]
+                    number_of_results=resu['hits']['total']
+                    restot.extend(resu['hits']['hits'])
+            else:
+                resuh=self.client.scroll(scroll_id=sc_id, scroll=scrolltime)['hits']
+                if resuh['hits']==[]:
+                    pippo=True
+                else:
+                    restot.extend(resuh['hits'])
+        res = [p['_source'] for p in restot]
+        if res != []:
+            return ( decode_dict(res[i]) for i in range(0,len(res)) )
+        return None
+
+    def get_records_by_query_from(self, query,fields=None):
+        """
+        Retrieve all records matching the given query
+
+        :param fields: the fields to be retrieved
+        :type  fields: string
+        :param query: the value that must be matched for the given field
+        :type query: string
+        :return: a list of records
+        :rtype: list
+        """
+        size = self.threshold
+        restot = []
+        if fields:
+            resu = self.client.search(index=self.database,_source_include=fields,size=size,body=query)['hits']
+        else:
+            resu = self.client.search(index=self.database,size=size,body=query)['hits']
         number_of_results=resu['total']
         restot.extend(resu['hits'])
         if number_of_results > size:
             for i in range(1, (number_of_results-1)/size+1):
-                resu = self.client.search(index=self.database,size=size,from_=i*size,body=query)['hits']
+                if fields:
+                    resu = self.client.search(index=self.database,_source_include=fields,size=size,from_=i*size,body=query)['hits']
+                else:
+                    resu = self.client.search(index=self.database,size=size,from_=i*size,body=query)['hits']
                 restot.extend(resu['hits'])
         res = [p['_source'] for p in restot]
         if res != []:
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
+
 
 #    @profile
     def _run_aql_query(self, query, fields, aliases, collection):
@@ -1384,7 +1383,9 @@ class ElasticSearchDriver(DriverInterface):
             close_conn_after_done = True
         self.connect()
         self.select_collection(collection)
-        query_results = self.get_records_by_query(query)
+        selected_fields=self._collate_selected_fields(fields)
+#        query_results = self.get_records_by_query(query)
+        query_results = self.get_records_by_query(query,selected_fields)
         if close_conn_after_done:
             self.disconnect()
         else:
@@ -1394,10 +1395,18 @@ class ElasticSearchDriver(DriverInterface):
                 record = dict()
                 for x in self._split_results(q):
                     record[x[0]] = x[1]
-                record_sel_al = self.apply_selection(record,fields)
-                rr = ResultRow(record_sel_al)
+#                record_sel_al = self.apply_selection(record,fields)
+#                rr = ResultRow(record_sel_al)
+                rr = ResultRow(record)
                 rs.add_row(rr)
         return rs
+
+    def _collate_selected_fields(self,sfields):
+        lfields=[]
+        for sf in sfields:
+            if sfields[sf] == True:
+                lfields.append(sf)
+        return ",".join(lfields)
 
 #    @profile
     def apply_selection(self,record,fields):
@@ -1420,48 +1429,87 @@ class ElasticSearchDriver(DriverInterface):
                         q.update({f : record[f]})
         return q
 
+    def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
+        return super(ElasticSearchDriver, self).build_queries(query_model, patients_repository, ehr_repository,
+                                                      query_params)
+
+    def _get_query_hash(self, query):
+        return super(ElasticSearchDriver, self)._get_query_hash(query)
+
+    def _get_queries_hash_map(self, queries):
+        return super(ElasticSearchDriver, self)._get_queries_hash_map(queries)
+
+    def _get_structures_hash_map(self, queries):
+        return super(ElasticSearchDriver, self)._get_structures_hash_map(queries)
+
+    def _get_structures_selector(self, structure_ids):
+        if len(structure_ids) == 1:
+            return {"\"must\" : {\"term\" : {\"ehr_structure_id\" : \""+str(structure_ids[0])+"\"} }": "$%nothing%$"}
+        else:
+            return {"\"must\" : {\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"execution\" : \"or\" } }" : "$%nothing%$"}
+
+    def _aggregate_queries(self, queries):
+        aggregated_queries = list()
+        queries_hash_map = self._get_queries_hash_map(queries)
+        structures_hash_map = self._get_structures_hash_map(queries)
+        for qhash, structures in structures_hash_map.iteritems():
+            ql=[]
+            query = queries_hash_map[qhash]
+            q1=self._clean_piece(query['condition'])
+            ql.append(" \"query\" : { \"bool\" : "+str(q1)+"}")
+            q2=self._clean_piece(self._get_structures_selector(structures))
+            ql.append(" \"filter\" : { \"bool\" : "+str(q2)+"}")
+            qs=",".join(ql)
+            qtot=" \"query\" : { \"filtered\" : {"+qs + "}}"
+            qtot={ qtot : "$%nothing%$"}
+#            query['condition'].update(qtot)
+            query['condition']=qtot
+#            query['condition'].update(self._get_structures_selector(structures))
+            aggregated_queries.append(query)
+        return aggregated_queries
+
 
 #    @profile
-    def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
-        if not query_params:
-            query_params = dict()
-        selection = query_model.selection
-        location = query_model.location
-        condition = query_model.condition
-        # TODO: add ORDER RULES and TIME CONSTRAINTS
-        queries = []
-        location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
-                                                                                 patients_repository,
-                                                                                 ehr_repository)
-        if not location_query:
-            return queries, []
-        if condition:
-            condition_results = self._calculate_condition_expression(condition, aliases)
-            for condition_query, mappings in condition_results:
-                selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
-                                                                                         ehr_alias)
-                queries.append(
-                    {
-                        'query': (condition_query, selection_filter),
-                        'results_aliases': results_aliases
-                    }
-                )
-        else:
-            paths = self._build_paths(aliases)
-            for a in izip(*paths.values()):
-                for p in [dict(izip(paths.keys(), a))]:
-                    q = dict()
-                    for k in aliases.keys():
-                        q.update({"\"must\" : { \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "$%nothing%$" })
-                    selection_filter, results_aliases = self._calculate_selection_expression(selection, p,
-                                                                                             ehr_alias)
-                    queries.append(
-                        {
-                            'query': (q, selection_filter),
-                            'results_aliases': results_aliases
-                        }
-                    )
-        return queries, location_query
+#     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
+#         if not query_params:
+#             query_params = dict()
+#         selection = query_model.selection
+#         location = query_model.location
+#         condition = query_model.condition
+#         # TODO: add ORDER RULES and TIME CONSTRAINTS
+#         queries = []
+#         location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
+#                                                                                  patients_repository,
+#                                                                                  ehr_repository)
+#         if not location_query:
+#             return queries, []
+#         if condition:
+#             condition_results = self._calculate_condition_expression(condition, aliases)
+#             for condition_query, mappings in condition_results:
+#                 selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
+#                                                                                          ehr_alias)
+#                 queries.append(
+#                     {
+#                         'query': (condition_query, selection_filter),
+#                         'results_aliases': results_aliases
+#                     }
+#                 )
+#         else:
+#             paths = self._build_paths(aliases)
+#             for a in izip(*paths.values()):
+#                 for p in [dict(izip(paths.keys(), a))]:
+#                     q = dict()
+#                     for k in aliases.keys():
+#                         q.update({"\"must\" : { \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "$%nothing%$" })
+#                     selection_filter, results_aliases = self._calculate_selection_expression(selection, p,
+#                                                                                              ehr_alias)
+#                     queries.append(
+#                         {
+#                             'query': (q, selection_filter),
+#                             'results_aliases': results_aliases
+#                         }
+#                     )
+#         return queries, location_query
 
 #    @profile
     def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
@@ -1478,40 +1526,16 @@ class ElasticSearchDriver(DriverInterface):
         :return: a :class:`pyehr.ehr.services.dbmanager.querymanager.query.ResultSet` object
                  containing results for the given query
         """
-        def get_selection_hash(selection):
-            sel_hash = md5()
-            sel_hash.update(json.dumps(selection))
-            return sel_hash.hexdigest()
-
-        query_mappings = list()
-        queries, location_query = self.build_queries(query_model, patients_repository, ehr_repository, query_params)
-        for x in queries:
-            if x not in query_mappings:
-                query_mappings.append(x)
-        # reduce number of queries based on the selection filter
-        selection_mappings = dict()
-        filter_mappings = dict()
-        for qm in query_mappings:
-            selection_key = get_selection_hash(qm['query'][1])
-            if selection_key not in selection_mappings:
-                selection_mappings[selection_key] = {'selection_filter': qm['query'][1],
-                                                     'aliases': qm['results_aliases']}
-            q = qm['query'][0]
-            filter_mappings.setdefault(selection_key, []).append(q)
+        queries = self.build_queries(query_model, patients_repository, ehr_repository,
+                                     query_params)
+        aggregated_queries = self._aggregate_queries(queries)
         total_results = ResultSet()
-        querylist=[]
-        for sk, sm in selection_mappings.iteritems():
-            q1 = self._clean_piece(filter_mappings[sk][0])
-            querylist.append("{ \"query\" : { \"bool\" : "+str(q1)+"}")
-            q2 = self._clean_piece(location_query)
-            querylist.append("\"filter\" : { \"bool\" : "+str(q2)+"}}")
-            qs = ",".join(querylist)
-            qtot="{ \"query\" : { \"filtered\" : " + qs+ "}}"
-            qtot=self._final_check(qtot)
-            results = self._run_aql_query(qtot, sm['selection_filter'], aliases=sm['aliases'],
-                                          collection=ehr_repository)
+        for query in aggregated_queries:
+            query_string=self._clean_piece(query['condition'])
+            query_string=self._final_check(query_string)
+            results = self._run_aql_query(query_string, fields=query['selection'],
+                                          aliases=query['aliases'], collection=ehr_repository)
             total_results.extend(results)
-            querylist[:] = []
         return total_results
 
 #    @profile
@@ -1574,7 +1598,7 @@ class ElasticSearchDriver(DriverInterface):
                     if( positionc == -1):
                         print "not found colon for a given nothing :D"
                         print "bad piece to cleanup: %s" % newp
-                        exit(1)
+                        raise QueryCreationException()
                     else:
                         positionc=len(newpr)-positionc-1
                         poscolon.append(positionc)
@@ -1585,7 +1609,7 @@ class ElasticSearchDriver(DriverInterface):
                     if( position==-1 and position2==-1):
                         print "not found parenthesis for a given nothing :D"
                         print "bad piece to cleanup: %s" % newp
-                        exit(1)
+                        raise QueryCreationException()
                     else:
                         if(position2 != -1):
                             if(position == -1):

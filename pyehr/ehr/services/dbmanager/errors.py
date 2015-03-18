@@ -80,3 +80,6 @@ class MissingRevisionError(Exception):
 
 class OperationNotAllowedError(Exception):
     pass
+
+class QueryCreationException(Exception):
+    pass
