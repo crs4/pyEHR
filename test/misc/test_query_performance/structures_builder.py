@@ -162,11 +162,11 @@ def build_structures(builder_conf):
     because all the structures that match the query for the level "key" automatically will
     match query for level "key-1".
     """
+    builder_conf['matching_structures'] = normalize_keys(builder_conf['matching_structures'])
     check_builder_configuration(builder_conf)
     structures = {}
     created_matching_str = 0
     labels = get_labels()
-    builder_conf['matching_structures'] = normalize_keys(builder_conf['matching_structures'])
     for level in sorted(builder_conf['matching_structures'], reverse=True):
         structures[level] = []
         str_count = round((builder_conf['structures_count']/100.) *
