@@ -5,6 +5,8 @@ import archetype_builder
 from value_setters import set_value
 from structures_builder import normalize_keys
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance
+from pyehr.utils import decode_dict
+from pyehr.ehr.services.dbmanager.dbservices.wrappers import ArchetypeInstance, ClinicalRecord, PatientRecord
 
 
 def build_record(record_description, archetypes_dir, forced_values=None):
@@ -151,6 +153,19 @@ def build_dataset(dataset_conf):
 def get_patient_records(patient_datasets, structures, archetype_dir):
     for patient, dataset_conf in patient_datasets.iteritems():
         yield build_patient_dataset(patient, dataset_conf, structures, archetype_dir)
+
+
+def get_patient_records_from_file(patient_datasets_file, compressed_file=False):
+    if compressed_file:
+        f = gzip.open(patient_datasets_file, 'rb')
+    else:
+        f = open(patient_datasets_file)
+    for row in f.readlines():
+        patient_dataset = normalize_keys(decode_dict(json.loads(row)))
+        for patient, conf in patient_dataset.iteritems():
+            clinical_records = [ClinicalRecord(ArchetypeInstance(**c[1])) for c in conf]
+            patient_record = PatientRecord(patient)
+            yield patient_record, clinical_records
 
 
 def patient_records_to_json(patient_datasets, structures, archetype_dir, json_output_file,
