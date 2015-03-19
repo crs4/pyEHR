@@ -50,6 +50,7 @@ class TestVersionManager(unittest.TestCase):
         self.dbs.index_service.disconnect()
         self.dbs = None
 
+
     def test_record_update(self):
         crec = self.build_dataset()
         crec.ehr_data.archetype_details['data']['at0001'] = random.randint(100, 200)
@@ -88,7 +89,7 @@ class TestVersionManager(unittest.TestCase):
         self.assertEqual(crec.ehr_data.archetype_details['data']['at0001'],
                          original_value)
 
-    def test_record_restore_previuos_revision(self):
+    def test_record_restore_previous_revision(self):
         crec = self.build_dataset()
         crec_rev_1 = crec.to_json()
         crec.ehr_data.archetype_details['data']['at0001'] = random.randint(100, 200)
@@ -187,7 +188,7 @@ def suite():
     suite.addTest(TestVersionManager('test_record_update'))
     suite.addTest(TestVersionManager('test_record_restore'))
     suite.addTest(TestVersionManager('test_record_restore_original'))
-    suite.addTest(TestVersionManager('test_record_restore_previuos_revision'))
+    suite.addTest(TestVersionManager('test_record_restore_previous_revision'))
     suite.addTest(TestVersionManager('test_get_revision'))
     suite.addTest(TestVersionManager('test_get_revisions'))
     suite.addTest(TestVersionManager('test_optimistic_lock_error'))

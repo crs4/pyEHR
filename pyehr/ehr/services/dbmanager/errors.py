@@ -50,7 +50,7 @@ class MissingOperatorError(Exception):
     pass
 
 
-class MissiongLocationExpressionError(Exception):
+class MissingLocationExpressionError(Exception):
     pass
 
 
@@ -79,4 +79,7 @@ class MissingRevisionError(Exception):
 
 
 class OperationNotAllowedError(Exception):
+    pass
+
+class QueryCreationException(Exception):
     pass

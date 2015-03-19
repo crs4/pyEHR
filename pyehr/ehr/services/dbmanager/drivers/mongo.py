@@ -445,7 +445,7 @@ class MongoDriver(DriverInterface):
         :type update_condition: dictionary
         """
         self._check_connection()
-        self.logger.debug('Updading record with ID %r, with condition %r', record_id,
+        self.logger.debug('Updating record with ID %r, with condition %r', record_id,
                           update_condition)
         res = self.collection.update({'_id': record_id}, update_condition)
         self.logger.debug('updated %d documents', res[u'n'])
@@ -819,6 +819,7 @@ class MongoDriver(DriverInterface):
         self.connect()
         self.select_collection(collection)
         query_results = self.get_records_by_query(query, fields)
+
         if close_conn_after_done:
             self.disconnect()
         else:
