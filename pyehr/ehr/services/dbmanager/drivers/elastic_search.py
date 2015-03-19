@@ -1326,12 +1326,16 @@ class ElasticSearchDriver(DriverInterface):
                     sc_id=resu["_scroll_id"]
                     number_of_results=resu['hits']['total']
                     restot.extend(resu['hits']['hits'])
+                    if len(resu['hits']['hits']) < size:
+                        pippo=True
             else:
                 resuh=self.client.scroll(scroll_id=sc_id, scroll=scrolltime)['hits']
                 if resuh['hits']==[]:
                     pippo=True
                 else:
                     restot.extend(resuh['hits'])
+                    if len(resuh['hits']) < size:
+                        pippo=True
         res = [p['_source'] for p in restot]
         if res != []:
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
@@ -1467,49 +1471,6 @@ class ElasticSearchDriver(DriverInterface):
 #            query['condition'].update(self._get_structures_selector(structures))
             aggregated_queries.append(query)
         return aggregated_queries
-
-
-#    @profile
-#     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
-#         if not query_params:
-#             query_params = dict()
-#         selection = query_model.selection
-#         location = query_model.location
-#         condition = query_model.condition
-#         # TODO: add ORDER RULES and TIME CONSTRAINTS
-#         queries = []
-#         location_query, aliases, ehr_alias = self._calculate_location_expression(location, query_params,
-#                                                                                  patients_repository,
-#                                                                                  ehr_repository)
-#         if not location_query:
-#             return queries, []
-#         if condition:
-#             condition_results = self._calculate_condition_expression(condition, aliases)
-#             for condition_query, mappings in condition_results:
-#                 selection_filter, results_aliases = self._calculate_selection_expression(selection, mappings,
-#                                                                                          ehr_alias)
-#                 queries.append(
-#                     {
-#                         'query': (condition_query, selection_filter),
-#                         'results_aliases': results_aliases
-#                     }
-#                 )
-#         else:
-#             paths = self._build_paths(aliases)
-#             for a in izip(*paths.values()):
-#                 for p in [dict(izip(paths.keys(), a))]:
-#                     q = dict()
-#                     for k in aliases.keys():
-#                         q.update({"\"must\" : { \"match\" : "+str({self._get_archetype_class_path(p[k]): aliases[k]['archetype_class']})+"}" : "$%nothing%$" })
-#                     selection_filter, results_aliases = self._calculate_selection_expression(selection, p,
-#                                                                                              ehr_alias)
-#                     queries.append(
-#                         {
-#                             'query': (q, selection_filter),
-#                             'results_aliases': results_aliases
-#                         }
-#                     )
-#         return queries, location_query
 
 #    @profile
     def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
