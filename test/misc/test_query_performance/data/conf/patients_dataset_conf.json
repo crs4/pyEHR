@@ -1,0 +1,28 @@
+{
+  "records_count": 10000,
+  "patients_count": 100,
+  "hit_condition": {
+    "blood_pressure": {
+      "systolic": ["SET_INT_VALUE", 100]
+    }
+  },
+  "no_hit_condition": {
+    "blood_pressure": {
+      "systolic": ["SET_RANDOM_INT", 150, 200]
+    }
+  },
+  "records_distribution": {
+    "2": {
+      "matches": 20,
+      "hits": 10
+    },
+    "3": {
+      "matches": 10,
+      "hits": 5
+    },
+    "4": {
+      "matches": 5,
+      "hits": 1
+    }
+  }
+}

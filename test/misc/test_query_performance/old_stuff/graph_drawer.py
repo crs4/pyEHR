@@ -10,18 +10,18 @@ def get_structures(fname):
 
 def get_colors():
     colors = {
-        'blood_pressure' : 'olive',
-        'blood_glucose' : 'navy',
-        'full_blood_count' : 'green',
-        'lipids' : 'orange',
-        'liver_function': 'yellow',
-        'thyroid' : 'grey',
-        'urea_and_electrolytes' : 'white',
-        'urin_analysis' : 'black',
-        'root' : 'blue'
+        'blood_pressure' : '#57B4E6',
+        'blood_glucose' : '#57B4E6',
+        'full_blood_count' : '#57B4E6',
+        'lipids' : '#57B4E6',
+        'liver_function': '#57B4E6',
+        'thyroid' : '#57B4E6',
+        'urea_and_electrolytes' : '#57B4E6',
+        'urin_analysis' : '#57B4E6',
+        'root' : '#464F4F'
     }
     for i in xrange(20):
-        colors['composition.lbl-%05d' % i] = '#EC1E%02x' % (i * 10)
+        colors['composition.lbl-%05d' % i] = '#943B3B'
     return colors
 
 def create_graph(graph, parent, structure, colors, child=0):
@@ -62,19 +62,24 @@ def draw_graph(data, label):
     node_colors = [G.node[k]['color'] for k in G.nodes()]
     # same layout using matplotlib with no labels
     plt.title("draw_networkx")
-    prog = 'neato'
+    prog = 'dot'
 
     pos = nx.graphviz_layout(G, prog=prog)
-    nx.draw(G, pos=pos, with_labels=False, arrows=False, node_color=node_colors)
-    #nx.write_dot(G, 'test%s%s.dot' % (p, i))
+    nx.draw(G, pos=pos, node_size=1000, with_labels=False,
+            arrows=False, node_color=node_colors, K=10)
+    nx.write_dot(G, 'test%s.dot' % i)
+    # plt.show()
+    fig = plt.gcf()
+    fig.set_size_inches(18.5,10.5)
     plt.savefig('nx_test%s%s.png' % (label, prog))
     plt.clf()
 
 
 if __name__ == '__main__':
     strs = get_structures('structures_file.json')
-    graphs_num = 1
-    for i, g in enumerate(strs[:50]):
+
+    graphs_num = 10
+    for i, g in enumerate(strs[:graphs_num]):
         draw_graph(g, i)
     # draw_graph(strs[1], 1)
     # draw_graph(strs[50], 50)
