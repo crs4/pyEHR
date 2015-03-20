@@ -1,0 +1,16 @@
+{
+  "mean_depth": 5,
+  "max_width": 4,
+  "structures_count": 150,
+  "full_query_path": [
+    "composition.lbl-00001",
+    "composition.lbl-00002",
+    "composition.lbl-00003",
+    "blood_pressure"
+  ],
+  "matching_structures": {
+    "2": 30,
+    "3": 20,
+    "4": 10
+  }
+}
