@@ -1,10 +1,33 @@
-import argparse, sys, time
+import argparse, sys, time, multiprocessing
 
 from records_builder import get_patient_records_from_file
 
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.errors import DuplicatedKeyError
 from pyehr.utils.services import get_service_configuration, get_logger
+
+
+class DataLoaderThread(multiprocessing.Process):
+    def __init__(self, db_service, patient, patient_dataset, logger):
+        multiprocessing.Process.__init__(self)
+        self.db_service = db_service
+        self.patient = patient
+        self.dataset = patient_dataset
+        self.logger = logger
+
+    def run(self):
+        self.logger.info('Saving data for patient %s' % self.patient.record_id)
+        try:
+            patient = self.db_service.save_patient(self.patient)
+        except DuplicatedKeyError:
+            self.logger.info('Patient with ID %s already exists, adding ClinicalRecords to it' % self.patient)
+            patient = self.db_service.get_patient(self.patient, fetch_ehr_records=False)
+        self.logger.info('Saving %d ClinicalRecord objects (patient %s)' %
+                         (len(self.dataset), self.patient.record_id))
+        start_time = time.time()
+        self.db_service.save_ehr_records(self.dataset, patient)
+        self.logger.info('ClinicalRecords saved in %f seconds (patient %s)' %
+                         ((time.time() - start_time), self.patient.record_id))
 
 
 def get_parser():
@@ -17,6 +40,8 @@ def get_parser():
                         help='pyEHR config file')
     parser.add_argument('--clean_db', action='store_true',
                         help='clean pyEHR databases before dumping new records')
+    parser.add_argument('--parallel_processes', type=int, default=1,
+                        help='The number of parallel processes used to load data (tool is single process by default)')
     parser.add_argument('--log_file', type=str, help='LOG file (default=stderr)')
     parser.add_argument('--log_level', type=str, default='INFO',
                         help='LOG level (default=INFO)')
@@ -26,7 +51,7 @@ def get_parser():
 def get_db_service(conf_file):
     cfg = get_service_configuration(conf_file)
     dbcfg = cfg.get_db_configuration()
-    icfg = cfg.get_db_service_configuration()
+    icfg = cfg.get_index_configuration()
     dbs = DBServices(**dbcfg)
     dbs.set_index_service(**icfg)
     return dbs
@@ -37,7 +62,7 @@ def clean_database(db_service, logger):
     patients = db_service.get_patients(fetch_ehr_records=False)
     for i, p in enumerate(patients):
         logger.info('Cleaning data for patient %s (%d of %d)' % (p.record_id, i+1, len(patients)))
-        db_service.delete_patient(p)
+        db_service.delete_patient(p, cascade_delete=True)
     logger.info('Cleaning index')
     db_service.index_service.connect()
     db_service.index_service.basex_client.delete_database()
@@ -45,9 +70,10 @@ def clean_database(db_service, logger):
     logger.info('Cleanup completed')
 
 
-def dump_records(dataset_file, db_service, logger):
+def dump_records(dataset_file, compressed_file, db_service, logger):
     logger.info('Dumping records to database')
-    for patient, crecs in get_patient_records_from_file(dataset_file):
+    total_dump_start_time = time.time()
+    for patient, crecs in get_patient_records_from_file(dataset_file, compressed_file):
         logger.info('Creating patient %s' % patient.record_id)
         try:
             patient = db_service.save_patient(patient)
@@ -58,7 +84,30 @@ def dump_records(dataset_file, db_service, logger):
         start_time = time.time()
         db_service.save_ehr_records(crecs, patient)
         logger.info('ClinicalRecords saved in %f seconds' % (time.time() - start_time))
-    logger.info('Dump completed')
+    logger.info('Dump completed in %f seconds' % (time.time() - total_dump_start_time))
+
+
+def dump_records_multiprocess(dataset_file, compressed_file, db_service,
+                              max_active_processes, logger):
+    logger.info('Dumping records to database')
+    total_dump_start_time = time.time()
+    active_processes = list()
+    for patient, crecs in get_patient_records_from_file(dataset_file, compressed_file):
+        proc = DataLoaderThread(db_service, patient, crecs, logger)
+        active_processes.append(proc)
+        if len(active_processes) == max_active_processes:
+            for p in active_processes:
+                p.start()
+            # wait until all processes completed their runs
+            for p in active_processes:
+                p.join()
+            active_processes = list()
+    # check if there are hanging processes that didn't run
+    for p in active_processes:
+        p.start()
+    for p in active_processes:
+        p.join()
+    logger.info('Dump completed in %f seconds' % (time.time() - total_dump_start_time))
 
 
 def main(argv):
@@ -69,7 +118,11 @@ def main(argv):
     dbservice = get_db_service(args.pyehr_config)
     if args.clean_db:
         clean_database(dbservice, logger)
-    dump_records(args.datasets_file, dbservice, logger)
+    if args.parallel_processes == 1:
+        dump_records(args.datasets_file, args.compression_enabled, dbservice, logger)
+    else:
+        dump_records_multiprocess(args.datasets_file, args.compression_enabled, dbservice,
+                                  args.parallel_processes, logger)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
