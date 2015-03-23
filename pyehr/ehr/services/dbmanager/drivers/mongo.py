@@ -861,6 +861,33 @@ class MongoDriver(DriverInterface):
             aggregated_queries.append(query)
         return aggregated_queries
 
+    def _get_query_hash_by_section(self, query, section):
+        query_hash = md5()
+        query_hash.update(json.dumps(query[section]))
+        return query_hash.hexdigest()
+
+    def _get_selection_maps(self, queries):
+        selections_map = dict()
+        queries_by_sel_map = dict()
+        for q in queries:
+            q_hash = self._get_query_hash_by_section(q, 'selection')
+            queries_by_sel_map.setdefault(q_hash, list()).append(q)
+            if q_hash not in selections_map:
+                selections_map[q_hash] = q['selection']
+        return selections_map, queries_by_sel_map
+
+    def _aggregate_queries_by_selection(self, queries):
+        aggregated_queries = list()
+        sel_map, queries_map = self._get_selection_maps(queries)
+        for sel_hash, mapped_queries in queries_map.iteritems():
+            condition = {'$or': [q['condition'] for q in mapped_queries]}
+            aggregated_queries.append({
+                'condition': condition,
+                'aliases': mapped_queries[0]['aliases'],
+                'selection': sel_map[sel_hash]
+            })
+        return aggregated_queries
+
     def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
         """
         Execute a query parsed with the :class:`pyehr.aql.parser.Parser` object and expressed
@@ -878,6 +905,8 @@ class MongoDriver(DriverInterface):
         queries = self.build_queries(query_model, patients_repository, ehr_repository,
                                      query_params)
         aggregated_queries = self._aggregate_queries(queries)
+        if len(aggregated_queries) > 1:
+            aggregated_queries = self._aggregate_queries_by_selection(aggregated_queries)
         total_results = ResultSet()
         for query in aggregated_queries:
             results = self._run_aql_query(query=query['condition'], fields=query['selection'],
