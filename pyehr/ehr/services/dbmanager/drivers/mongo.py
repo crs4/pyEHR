@@ -431,7 +431,7 @@ class MongoDriver(DriverInterface):
         :rtype: int
         """
         self._check_connection()
-        res = self.collection.find(filter=selector)
+        res = self.collection.find(selector)
         return res.count()
 
     def delete_record(self, record_id):
