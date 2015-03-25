@@ -64,9 +64,11 @@ class ElasticSearchDriver(DriverInterface):
         self.regtrue = re.compile("([ :])True([ \]},])")
         self.regfalse = re.compile("([ :])False([ \]},])")
         self.threshold = 1000
-        self.database_ids="lookup"
+        self.database_ids_suffix="lookup"
+        baseidids=self.database.rsplit('_', 1)[0]
+        self.database_ids=baseidids+"_"+self.database_ids_suffix
         self.doc_ids="table"
-        self.scrolltime="3m"
+        self.scrolltime="1m"
         self.grbq="scan" # "scan" or "from"
 
     def __enter__(self):
@@ -407,7 +409,9 @@ class ElasticSearchDriver(DriverInterface):
 
     def _get_ids(self,baseid):
         try:
-            return self.client.get_source(index=self.database_ids,doc_type=self.doc_ids,id=baseid)
+            if self.client.exists(index=self.database_ids,doc_type=self.doc_ids,id=baseid):
+                return self.client.get_source(index=self.database_ids,doc_type=self.doc_ids,id=baseid)
+            return None
         except elasticsearch.NotFoundError:
             return None
     def _store_ids(self,record):
@@ -418,6 +422,7 @@ class ElasticSearchDriver(DriverInterface):
         ind=self.database
         doct=self.collection_name
         existing_record=self._get_ids(baseid)
+#        self._select_lookup_db(self.database)
         if existing_record:
             old_value=existing_record['ids']
             old_value.append([record['_id'],ind,doct])
@@ -489,49 +494,67 @@ class ElasticSearchDriver(DriverInterface):
             puzzle=self.regfalse.sub("\\1false\\2",puzzle)
         return puzzle
 
-#    @profile
-    def add_records(self, records,skip_existing_duplicated=False):
-         """
-         Save a list of records within ElasticSearch and return records' IDs
 
-         :param records: the list of records that is going to be saved
-         :type record: list
-         :return: a list of records' IDs
-         :rtype: list
-         """
-         self.__check_connection()
-         #create a bulk list
-         if self._is_patient_record(records[0]):
+    def _is_id_taken(self,indextc,collection_nametc,idtc):
+        return self.client.exists(index=indextc,doc_type=collection_nametc,id=idtc)
+
+#    @profile
+    def add_records(self,records,skip_existing_duplicated=False):
+        """
+        Save a list of records within ElasticSearch and return records' IDs
+
+        :param records: the list of records that is going to be saved
+        :type record: list
+        :return: a list of records' IDs
+        :rtype: list
+        """
+        self.__check_connection()
+        if self._is_patient_record(records[0]):
             rectype_clinical= False
-         else:
+        else:
              rectype_clinical= True
-         bulklist = self.pack_record(records,rectype_clinical)
-         bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh='true')
-         notduplicatedlist=[]
-         err=[]
-         errtype=[]
-         nerrors=0
-         if(bulkanswer['errors']): # there are errors
+        duplicatedlist=[]
+        notduplicatedlist=[]
+        duplicatedlistid=[]
+        for r in records:
+            myid=r['_id']
+            if(not self._is_patient_record(r)):
+                self._select_doc_type(r['ehr_structure_id'])
+            if(self._is_id_taken(self.database,self.collection_name,myid)):
+                duplicatedlist.append(r)
+                duplicatedlistid.append(myid)
+            else:
+                notduplicatedlist.append(r)
+        if duplicatedlist and not skip_existing_duplicated:
+            raise DuplicatedKeyError('The following IDs are already in use: %s' % duplicatedlistid)
+        records_map = {r['_id']: r for r in records}
+        #create a bulk list
+        bulklist = self.pack_record(notduplicatedlist,rectype_clinical)
+        bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh='true')
+        failuresid=[]
+        errtype=[]
+        nerrors=0
+        successfulid=[]
+        if(bulkanswer['errors']): # there are errors
             for b in bulkanswer['items']:
                 if(b['create'].has_key('error')):
-                    err.append(str(b['create']['_id']))
+                    failuresid.append(str(b['create']['_id']))
                     errtype.append(str(b['create']['error']))
                     nerrors += 1
                 else:
-                    for r in records:
-                        if rectype_clinical:
-                            self._select_doc_type(r['ehr_structure_id'])
-                        self._store_ids(r)
-                    notduplicatedlist.append(b['create']['_id'])
-                if(nerrors and not skip_existing_duplicated):
-                    raise DuplicatedKeyError('Record with these id already exist: %s \n List of Errors found %s' %(err,errtype) )
-            return notduplicatedlist,err
-         else:
-            for r in records:
+                    successfulid.append(b['create']['_id'])
+            for s in successfulid:
+                r=records_map[s]
                 if rectype_clinical:
                     self._select_doc_type(r['ehr_structure_id'])
                 self._store_ids(r)
-            return [b['create']['_id'] for b in bulkanswer['items']],[]
+            return successfulid,duplicatedlist.extend([records_map[e] for e in failuresid])
+        else:
+            for r in notduplicatedlist:
+                if rectype_clinical:
+                    self._select_doc_type(r['ehr_structure_id'])
+                self._store_ids(r)
+            return [b['create']['_id'] for b in bulkanswer['items']],duplicatedlist
 
     def add_records2(self, records, skip_existing_duplicated=False):
         """
@@ -822,6 +845,7 @@ class ElasticSearchDriver(DriverInterface):
         baseid=rid.rsplit('_', 1)[0]
         existing_record=self._get_ids(baseid)
         counter=0
+#        self._select_lookup_db(self.database)
         if existing_record:
             er=existing_record['ids']
             new_er=[]
@@ -1243,7 +1267,6 @@ class ElasticSearchDriver(DriverInterface):
             raise MissiongLocationExpressionError("Query must have a location expression")
         return query
 
-#        query.update({"\"must\" : {\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"execution\" : \"or\" } }" : "$%nothing%$"})
 
 #    @profile
     def _map_ehr_selection(self, path, ehr_var):
