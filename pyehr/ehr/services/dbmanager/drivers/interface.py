@@ -364,7 +364,7 @@ class DriverInterface(object):
 
     @abstractmethod
     def execute_query(self, query_model, patients_repository, ehr_repository, query_params,
-                      query_processes):
+                      count_only, query_processes):
         """
         Execute a query expressed as a :class:pyehr.aql.model.QueryModel` object
         """
