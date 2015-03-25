@@ -1473,7 +1473,8 @@ class ElasticSearchDriver(DriverInterface):
         return aggregated_queries
 
 #    @profile
-    def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
+    def execute_query(self, query_model, patients_repository, ehr_repository,
+                      query_params=None, query_processes=1):
         """
         Execute a query parsed with the :class:`pyehr.aql.parser.Parser` object and expressed
         as a :class:`pyehr.aql.model.QueryModel`. If the query is a parametric one, query parameters

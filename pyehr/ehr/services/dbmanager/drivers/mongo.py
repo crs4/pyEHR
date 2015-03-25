@@ -9,6 +9,30 @@ import pymongo.errors
 import time
 from hashlib import md5
 import json
+from multiprocessing import Pool
+
+
+class MultiprocessQueryRunner(object):
+
+    def __init__(self, host, database, collection,
+                 port, user, passwd):
+        self.host = host
+        self.database = database
+        self.collection_name = collection
+        self.port = port
+        self.user = user
+        self.passwd = passwd
+
+    def __call__(self, query_description):
+        driver_instance = MongoDriver(
+            self.host, self.database, self.collection_name,
+            self.port, self.user, self.passwd
+        )
+        results = driver_instance._run_aql_query(
+            query_description['condition'], query_description['selection'],
+            query_description['aliases'], self.collection_name
+        )
+        return results
 
 
 class MongoDriver(DriverInterface):
@@ -56,7 +80,7 @@ class MongoDriver(DriverInterface):
             self.logger.debug('using collection %s', self.collection_name)
             self.collection = self.database[self.collection_name]
         else:
-            self.logger.debug('Alredy connected to database %s, using collection %s',
+            self.logger.debug('Already connected to database %s, using collection %s',
                               self.database_name, self.collection_name)
 
     def disconnect(self):
@@ -888,7 +912,8 @@ class MongoDriver(DriverInterface):
             })
         return aggregated_queries
 
-    def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
+    def execute_query(self, query_model, patients_repository, ehr_repository,
+                      query_params=None, query_processes=1):
         """
         Execute a query parsed with the :class:`pyehr.aql.parser.Parser` object and expressed
         as a :class:`pyehr.aql.model.QueryModel`. If the query is a parametric one, query parameters
@@ -908,8 +933,18 @@ class MongoDriver(DriverInterface):
         if len(aggregated_queries) > 1:
             aggregated_queries = self._aggregate_queries_by_selection(aggregated_queries)
         total_results = ResultSet()
-        for query in aggregated_queries:
-            results = self._run_aql_query(query=query['condition'], fields=query['selection'],
-                                          aliases=query['aliases'], collection=ehr_repository)
-            total_results.extend(results)
+        if query_processes == 1 or len(aggregated_queries) == 1:
+            for query in aggregated_queries:
+                results = self._run_aql_query(query=query['condition'], fields=query['selection'],
+                                              aliases=query['aliases'], collection=ehr_repository)
+                total_results.extend(results)
+        else:
+            queries_pool = Pool(query_processes)
+            results = queries_pool.imap_unordered(
+                MultiprocessQueryRunner(self.host, self.database_name,
+                                        ehr_repository, self.port, self.user, self.passwd),
+                aggregated_queries
+            )
+            for r in results:
+                total_results.extend(r)
         return total_results
