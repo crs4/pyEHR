@@ -431,7 +431,6 @@ class MongoDriver(DriverInterface):
         :rtype: int
         """
         self._check_connection()
-        print self.collection
         res = self.collection.find(filter=selector)
         return res.count()
 
