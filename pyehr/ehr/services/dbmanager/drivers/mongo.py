@@ -952,17 +952,15 @@ class MongoDriver(DriverInterface):
             close_conn_after_done = True
         self.connect()
         self.select_collection(ehr_repository)
-        results_counter = self.count_records_by_query({'$or': queries})
+        if len(queries) == 1:
+            results_counter = self.count_records_by_query(queries[0])
+        else:
+            results_counter = self.count_records_by_query({'$or': queries})
         if close_conn_after_done:
             self.disconnect()
         else:
             self.select_collection(original_collection)
-        results = ResultSet()
-        rr = ResultRow({'count': results_counter})
-        results.add_row(rr)
-        rc = ResultColumnDef('count', 'count')
-        results.add_column_definition(rc)
-        return results
+        return results_counter
 
     def execute_query(self, query_model, patients_repository, ehr_repository,
                       query_params=None, count_only=False, query_processes=1):
