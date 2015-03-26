@@ -66,6 +66,15 @@ def get_index_service_time(qmanager, query, logger):
     return index_time
 
 
+def get_expected_results_count(qmanager, expected_results_percentage, logger):
+    drf = qmanager._get_drivers_factory(qmanager.ehr_repository)
+    with drf.get_driver() as driver:
+        total_records_count = driver.documents_count
+    logger.info('Collection %s contains %d records' % (qmanager.ehr_repository,
+                                                       total_records_count))
+    return int(round((expected_results_percentage * total_records_count) / 100.))
+
+
 def save_report(report_file, results_map):
     with open(report_file, 'w') as f:
         for query in sorted(results_map):
@@ -84,7 +93,10 @@ def main(argv):
 
     results_map = dict()
     for query_label, query_conf in sorted(queries.iteritems()):
-        logger.info('Running query "%s"' % query_label)
+        expected_results = get_expected_results_count(query_manager,
+                                                      query_conf['expected_results_percentage'],
+                                                      logger)
+        logger.info('Running query "%s" (expected results: %d)' % (query_label, expected_results))
         count_results, count_exec_time = run_query(query_manager, query_conf['query'],
                                                    args.query_processes, True, logger)
         if count_results <= args.fetch_threshold:
@@ -103,11 +115,10 @@ def main(argv):
             },
             'index_service_time': index_time,
             'query_results_count': count_results,
-            'expected_results_count': query_conf['expected_results_count']
+            'expected_results_count': expected_results
         }
-        if count_results != int(query_conf['expected_results_count']):
-            logger.warning('Retrieved %d results, expected %s' %
-                           (count_results, query_conf['expected_results_count']))
+        if count_results != expected_results:
+            logger.warning('Retrieved %d results, expected %s' % (count_results, expected_results))
 
     logger.info('Writing output file %s' % args.results_file)
     save_report(args.results_file, results_map)
