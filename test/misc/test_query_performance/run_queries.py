@@ -1,6 +1,6 @@
 import argparse, sys, time, json, os
 
-from pyehr.ehr.services.dbmanager.querymanager import QueryManager
+from pyehr.ehr.services.dbmanager.querymanager import QueryManager, Parser
 from pyehr.utils.services import get_service_configuration
 from pyehr.utils import get_logger, decode_dict
 
@@ -13,6 +13,10 @@ def get_parser():
                         help='pyEHR config file')
     parser.add_argument('--results_file', type=str, required=True,
                         help='The output file where results and times will be reported')
+    parser.add_argument('--query_processes', type=int, default=1,
+                        help='The number of parallel processes used to run each query (default is single-process)')
+    parser.add_argument('--fetch_threshold', type=int, default=10000,
+                        help='Fetch only result sets whose size is lesser or equal to this value (default 10000)')
     parser.add_argument('--log_file', type=str, help='LOG file (default=stderr)')
     parser.add_argument('--log_level', type=str, default='INFO',
                         help='LOG level (default=INFO)')
@@ -37,13 +41,29 @@ def load_queries(queries_file):
     return queries
 
 
-def run_query(qmanager, query, logger):
+def run_query(qmanager, query, query_processes, count_only, logger):
+    logger.info('QUERY PROCESSES: %d --- COUNT ONLY: %s' % (query_processes, count_only))
     start_time = time.time()
-    results = qmanager.execute_aql_query(query, None)
+    results = qmanager.execute_aql_query(query, None, count_only, query_processes)
     execution_time = time.time() - start_time
-    logger.info('Query executed in %f seconds, retrieved %d results' %
-                (execution_time, results.total_results))
+    if count_only:
+        logger.info('Query executed in %f seconds' % execution_time)
+    else:
+        logger.info('Query executed in %f seconds, retrieved %d results' %
+                    (execution_time, results.total_results))
     return results, execution_time
+
+
+def get_index_service_time(qmanager, query, logger):
+    query_parser = Parser()
+    query_model = query_parser.parse(query)
+    drf = qmanager._get_drivers_factory(qmanager.ehr_repository)
+    with drf.get_driver() as driver:
+        start_time = time.time()
+        _, _ = driver.index_service.map_aql_contains(query_model.location.containers)
+        index_time = time.time() - start_time
+    logger.info('Index time search took %f seconds' % index_time)
+    return index_time
 
 
 def save_report(report_file, results_map):
@@ -65,15 +85,29 @@ def main(argv):
     results_map = dict()
     for query_label, query_conf in sorted(queries.iteritems()):
         logger.info('Running query "%s"' % query_label)
-        results, exec_time = run_query(query_manager, query_conf['query'], logger)
+        count_results, count_exec_time = run_query(query_manager, query_conf['query'],
+                                                   args.query_processes, True, logger)
+        if count_results <= args.fetch_threshold:
+            fetch_results, fetch_exec_time = run_query(query_manager, query_conf['query'],
+                                                       args.query_processes, False, logger)
+        else:
+            fetch_results, fetch_exec_time = None, None
+        if fetch_results:
+            # safety check
+            assert count_results == fetch_results.total_results
+        index_time = get_index_service_time(query_manager, query_conf['query'], logger)
         results_map[query_label] = {
-            'execution_time': exec_time,
-            'query_results_count': results.total_results,
+            'execution_time': {
+                'count': count_exec_time,
+                'fetch': fetch_exec_time
+            },
+            'index_service_time': index_time,
+            'query_results_count': count_results,
             'expected_results_count': query_conf['expected_results_count']
         }
-        if results.total_results != int(query_conf['expected_results_count']):
+        if count_results != int(query_conf['expected_results_count']):
             logger.warning('Retrieved %d results, expected %s' %
-                           (results.total_results, query_conf['expected_results_count']))
+                           (count_results, query_conf['expected_results_count']))
 
     logger.info('Writing output file %s' % args.results_file)
     save_report(args.results_file, results_map)
