@@ -1,5 +1,10 @@
 from random import choice
-import json, os, gzip
+import os, gzip
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 import archetype_builder
 from value_setters import set_value
