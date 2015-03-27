@@ -1,0 +1,65 @@
+{
+  "level_2_match": {
+    "query": [
+      "SELECT e/ehr_id/value AS patient_identifier",
+      "FROM Ehr e",
+      "CONTAINS Composition c0[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00001]",
+      "CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]"
+    ],
+    "expected_results_percentage": 20
+  },
+  "level_2_hit": {
+    "query": [
+      "SELECT e/ehr_id/value AS patient_identifier",
+      "FROM Ehr e",
+      "CONTAINS Composition c0[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00001]",
+      "CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]",
+      "WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude = 100"
+    ],
+    "expected_results_percentage": 10
+  },
+  "level_3_match": {
+    "query": [
+      "SELECT e/ehr_id/value AS patient_identifier",
+      "FROM Ehr e",
+      "CONTAINS Composition c0[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00001]",
+      "CONTAINS Composition c1[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00002]",
+      "CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]"
+    ],
+    "expected_results_percentage": 10
+  },
+  "level_3_hit": {
+    "query": [
+      "SELECT e/ehr_id/value AS patient_identifier",
+      "FROM Ehr e",
+      "CONTAINS Composition c0[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00001]",
+      "CONTAINS Composition c1[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00002]",
+      "CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]",
+      "WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude = 100"
+    ],
+    "expected_results_percentage": 5
+  },
+  "level_4_match": {
+    "query": [
+      "SELECT e/ehr_id/value AS patient_identifier",
+      "FROM Ehr e",
+      "CONTAINS Composition c0[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00001]",
+      "CONTAINS Composition c1[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00002]",
+      "CONTAINS Composition c2[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00003]",
+      "CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]"
+    ],
+    "expected_results_percentage": 5
+  },
+  "level_4_hit": {
+    "query": [
+      "SELECT e/ehr_id/value AS patient_identifier",
+      "FROM Ehr e",
+      "CONTAINS Composition c0[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00001]",
+      "CONTAINS Composition c1[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00002]",
+      "CONTAINS Composition c2[openEHR-EHR-COMPOSITION.encounter.v1.lbl-00003]",
+      "CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]",
+      "WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude = 100"
+    ],
+    "expected_results_percentage": 1
+  }
+}

@@ -63,7 +63,7 @@ class ResultSet(object):
                 self.columns.append(c)
 
     def add_column_definition(self, colum_def):
-        if not colum_def in self.columns:
+        if colum_def not in self.columns:
             self.columns.append(colum_def)
 
     def add_row(self, row):

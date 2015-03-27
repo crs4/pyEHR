@@ -54,7 +54,7 @@ class QueryManager(object):
         """
         self.index_service = IndexService(database, url, user, passwd, self.logger)
 
-    def execute_aql_query(self, query, query_params=None):
+    def execute_aql_query(self, query, query_params=None, count_only=False, query_processes=1):
         """
         Execute an AQL query and return a :class:`pyehr.ehr.services.dbmanager.querymanager.results_wrappers.ResultSet`
         object that maps the obtained results.
@@ -76,6 +76,7 @@ class QueryManager(object):
         query_model = parser.parse(query)
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
-            results_set = driver.execute_query(query_model, self.patients_repository,
-                                               self.ehr_repository, query_params)
+            # the count_only field will be retrieved parsing AQL query
+            results_set = driver.execute_query(query_model, self.patients_repository, self.ehr_repository,
+                                               query_params, count_only, query_processes)
         return results_set

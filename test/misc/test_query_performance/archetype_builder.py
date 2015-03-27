@@ -127,10 +127,10 @@ class BloodGlucose(ArchetypeBuilder):
 
 class BloodPressure(ArchetypeBuilder):
 
-    def __init__(self, archetype_dir, systolic=None, dyastolic=None, mean_arterial=None, pulse=None):
+    def __init__(self, archetype_dir, systolic=None, diastolic=None, mean_arterial=None, pulse=None):
         archetype_id = 'openEHR-EHR-OBSERVATION.blood_pressure.v1'
         self.systolic = systolic or randint(80, 250)
-        self.dyastolic = dyastolic or randint(60, 100)
+        self.diastolic = diastolic or randint(60, 100)
         self.mean_arterial = mean_arterial or randint(0, 1000)
         self.pulse = pulse or randint(0,1000)
         super(BloodPressure, self).__init__(archetype_id, archetype_dir)
@@ -141,9 +141,9 @@ class BloodPressure(ArchetypeBuilder):
         if self.systolic:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0004'] =\
                 {'value': self._get_quantity(self.systolic, 'mm[Hg]')}
-        if self.dyastolic:
+        if self.diastolic:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0005'] =\
-                {'value': self._get_quantity(self.dyastolic, 'mm[Hg]')}
+                {'value': self._get_quantity(self.diastolic, 'mm[Hg]')}
         if self.mean_arterial:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1006'] =\
                 {'value': self._get_quantity(self.mean_arterial, 'mm[Hg]')}

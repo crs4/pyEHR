@@ -14,8 +14,9 @@ import pyehr.ehr.services.dbmanager.errors as pyehr_errors
 
 class DBService(object):
 
-    def __init__(self, driver, host, database, patients_repository=None,
-                 ehr_repository=None, ehr_versioning_repository=None,
+    def __init__(self, driver, host, database, versioning_database=None,
+                 patients_repository=None, ehr_repository=None,
+                 ehr_versioning_repository=None,
                  port=None, user=None, passwd=None,
                  log_file=None, log_level='INFO'):
         if not log_file:
@@ -23,8 +24,9 @@ class DBService(object):
         else:
             self.logger = get_rotating_file_logger('db_service_daemon', log_file,
                                                    log_level=log_level)
-        self.dbs = DBServices(driver, host, database, patients_repository,
-                              ehr_repository, ehr_versioning_repository,
+        self.dbs = DBServices(driver, host, database, versioning_database,
+                              patients_repository, ehr_repository,
+                              ehr_versioning_repository,
                               port, user, passwd, self.logger)
         #######################################################
         # Web Service methods

@@ -748,6 +748,7 @@ class ElasticSearchDriver(DriverInterface):
         if res != []:
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
+
 #    @profile
     def get_records_by_values(self, field, values):
         """
@@ -770,6 +771,12 @@ class ElasticSearchDriver(DriverInterface):
         if res != []:
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
+
+    def count_records_by_query(self, selector):
+        """
+        Retrieve all records matching the given query
+        """
+        raise NotImplementedError()
 
 #    @profile
     def delete_record(self, record_id):
@@ -1496,7 +1503,8 @@ class ElasticSearchDriver(DriverInterface):
         return aggregated_queries
 
 #    @profile
-    def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
+    def execute_query(self, query_model, patients_repository, ehr_repository,
+                      query_params=None, count_only=False, query_processes=1):
         """
         Execute a query parsed with the :class:`pyehr.aql.parser.Parser` object and expressed
         as a :class:`pyehr.aql.model.QueryModel`. If the query is a parametric one, query parameters

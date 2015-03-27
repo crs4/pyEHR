@@ -33,6 +33,7 @@ before_install:
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then export SERVICE_CONFIG_FILE=./config/services.mongodb.conf; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export SERVICE_CONFIG_FILE=./config/services.elasticsearch.conf; fi
   - pip install nose-exclude
+  - pip install coveralls
 
 install:
   - python setup.py install
@@ -43,4 +44,7 @@ before_script:
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE="query*|.*mongo*"; fi
 
 script:
-  - nosetests -v test --ignore-file=$EXCLUDE_TEST_MODULE
+  - nosetests -v test --ignore-file=$EXCLUDE_TEST_MODULE --with-coverage --cover-package pyehr
+
+after_success:
+  - coveralls

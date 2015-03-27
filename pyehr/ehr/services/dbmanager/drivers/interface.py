@@ -121,6 +121,27 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
+    def get_records_by_value(self, field, value):
+        """
+        Retrieve all records whose field *field* matches the given value
+        """
+        pass
+
+    @abstractmethod
+    def get_records_by_query(self, selector, fields):
+        """
+        Retrieve all records matching the given query
+        """
+        pass
+
+    @abstractmethod
+    def count_records_by_query(self, selector):
+        """
+        Retrieve the number of records matching the given query
+        """
+        pass
+
+    @abstractmethod
     def delete_record(self, record_id):
         """
         Delete a record from the backend server by giving the record ID
@@ -342,7 +363,8 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def execute_query(self, query_model, patients_repository, ehr_repository, query_params):
+    def execute_query(self, query_model, patients_repository, ehr_repository, query_params,
+                      count_only, query_processes):
         """
         Execute a query expressed as a :class:pyehr.aql.model.QueryModel` object
         """

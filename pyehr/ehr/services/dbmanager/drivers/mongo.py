@@ -9,6 +9,30 @@ import pymongo.errors
 import time
 from hashlib import md5
 import json
+from multiprocessing import Pool
+
+
+class MultiprocessQueryRunner(object):
+
+    def __init__(self, host, database, collection,
+                 port, user, passwd):
+        self.host = host
+        self.database = database
+        self.collection_name = collection
+        self.port = port
+        self.user = user
+        self.passwd = passwd
+
+    def __call__(self, query_description):
+        driver_instance = MongoDriver(
+            self.host, self.database, self.collection_name,
+            self.port, self.user, self.passwd
+        )
+        results = driver_instance._run_aql_query(
+            query_description['condition'], query_description['selection'],
+            query_description['aliases'], self.collection_name
+        )
+        return results
 
 
 class MongoDriver(DriverInterface):
@@ -56,7 +80,7 @@ class MongoDriver(DriverInterface):
             self.logger.debug('using collection %s', self.collection_name)
             self.collection = self.database[self.collection_name]
         else:
-            self.logger.debug('Alredy connected to database %s, using collection %s',
+            self.logger.debug('Already connected to database %s, using collection %s',
                               self.database_name, self.collection_name)
 
     def disconnect(self):
@@ -397,6 +421,18 @@ class MongoDriver(DriverInterface):
         """
         self._check_connection()
         return (decode_dict(rec) for rec in self.collection.find(selector, fields))
+
+    def count_records_by_query(self, selector):
+        """
+        Retrieve the number of records matching the given query
+
+        :param selector: the selector (in MongoDB syntax) used to select data
+        :return: the number of records that match the given query
+        :rtype: int
+        """
+        self._check_connection()
+        res = self.collection.find(selector)
+        return res.count()
 
     def delete_record(self, record_id):
         """
@@ -861,7 +897,73 @@ class MongoDriver(DriverInterface):
             aggregated_queries.append(query)
         return aggregated_queries
 
-    def execute_query(self, query_model, patients_repository, ehr_repository, query_params=None):
+    def _get_query_hash_by_section(self, query, section):
+        query_hash = md5()
+        query_hash.update(json.dumps(query[section]))
+        return query_hash.hexdigest()
+
+    def _get_selection_maps(self, queries):
+        selections_map = dict()
+        queries_by_sel_map = dict()
+        for q in queries:
+            q_hash = self._get_query_hash_by_section(q, 'selection')
+            queries_by_sel_map.setdefault(q_hash, list()).append(q)
+            if q_hash not in selections_map:
+                selections_map[q_hash] = q['selection']
+        return selections_map, queries_by_sel_map
+
+    def _aggregate_queries_by_selection(self, queries):
+        aggregated_queries = list()
+        sel_map, queries_map = self._get_selection_maps(queries)
+        for sel_hash, mapped_queries in queries_map.iteritems():
+            condition = {'$or': [q['condition'] for q in mapped_queries]}
+            aggregated_queries.append({
+                'condition': condition,
+                'aliases': mapped_queries[0]['aliases'],
+                'selection': sel_map[sel_hash]
+            })
+        return aggregated_queries
+
+    def _find_by_aql_queries(self, queries, ehr_repository, query_processes):
+        if len(queries) > 1:
+            queries = self._aggregate_queries_by_selection(queries)
+        total_results = ResultSet()
+        if query_processes == 1 or len(queries) == 1:
+            for query in queries:
+                results = self._run_aql_query(query=query['condition'], fields=query['selection'],
+                                              aliases=query['aliases'], collection=ehr_repository)
+                total_results.extend(results)
+        else:
+            queries_pool = Pool(query_processes)
+            results = queries_pool.imap_unordered(
+                MultiprocessQueryRunner(self.host, self.database_name,
+                                        ehr_repository, self.port, self.user, self.passwd),
+                queries
+            )
+            for r in results:
+                total_results.extend(r)
+        return total_results
+
+    def _count_by_aql_queries(self, queries, ehr_repository):
+        if self.is_connected:
+            original_collection = self.collection_name
+            close_conn_after_done = False
+        else:
+            close_conn_after_done = True
+        self.connect()
+        self.select_collection(ehr_repository)
+        if len(queries) == 1:
+            results_counter = self.count_records_by_query(queries[0])
+        else:
+            results_counter = self.count_records_by_query({'$or': queries})
+        if close_conn_after_done:
+            self.disconnect()
+        else:
+            self.select_collection(original_collection)
+        return results_counter
+
+    def execute_query(self, query_model, patients_repository, ehr_repository,
+                      query_params=None, count_only=False, query_processes=1):
         """
         Execute a query parsed with the :class:`pyehr.aql.parser.Parser` object and expressed
         as a :class:`pyehr.aql.model.QueryModel`. If the query is a parametric one, query parameters
@@ -878,9 +980,8 @@ class MongoDriver(DriverInterface):
         queries = self.build_queries(query_model, patients_repository, ehr_repository,
                                      query_params)
         aggregated_queries = self._aggregate_queries(queries)
-        total_results = ResultSet()
-        for query in aggregated_queries:
-            results = self._run_aql_query(query=query['condition'], fields=query['selection'],
-                                          aliases=query['aliases'], collection=ehr_repository)
-            total_results.extend(results)
-        return total_results
+        if not count_only:
+            return self._find_by_aql_queries(aggregated_queries, ehr_repository, query_processes)
+        else:
+            return self._count_by_aql_queries([aq['condition'] for aq in aggregated_queries],
+                                              ehr_repository)
