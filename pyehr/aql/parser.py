@@ -5,7 +5,7 @@ from pyehr.aql.model import *
 from pyehr.utils import get_logger
 
 
-class Parser():
+class Parser(object):
 
     KEYWORDS = ('EHR', 'COMPOSITION', 'OBSERVATION', 'CONTAINS')
 
