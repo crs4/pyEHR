@@ -1,7 +1,9 @@
 import re
 from errors import InvalidAQLError, ParsingError, ParsePredicateExpressionError,\
     ParsePathError, ParseSelectionError, ParseLocationError, ParseConditionError
-from pyehr.aql.model import *
+from pyehr.aql.model import QueryModel, NodePredicate, Predicate, ArchetypePredicate, IdentifiedPath, Selection, \
+    Variable, Path, NodePath, ClassExpression, Container, Location, Condition, ConditionSequence, ConditionOperator,\
+    PredicateExpression
 from pyehr.utils import get_logger
 
 
@@ -87,7 +89,9 @@ class Parser(object):
             query.timeConstraints = self.parse_time_constraints(self.time_constraints)
         return query
 
-    ''' This function return a predicate object, given a string
+    def parse_predicate_expression(self, expression):
+        """
+        This function return a predicate object, given a string
         AQL has three types of Predicates: standard predicate, archetype predicate, and node predicate.
 
         Standard predicate always has left operand, operator and right operand, e.g. [ehr_id/value='123456']:
@@ -105,8 +109,7 @@ class Parser(object):
          - containing an archetype node id and a shortcut of name value criteria;
          - The above three forms are the most common node predicates. A more advanced form is to include a general criteria instead of the name/value criteria within the predicate. The general criteria consists of left operand, operator, and right operand.
         Node predicate defines criteria on fine-grained data. It is only used within an identified path.
-    '''
-    def parse_predicate_expression(self, expression):
+        """
         if expression:
             predicate_expr = PredicateExpression()
             operator = re.search('>=|>|<=|<|!=|=', expression)
@@ -166,16 +169,16 @@ class Parser(object):
         # 3 - consisting an AQL variable name followed by a predicate and an openEHR path, e.g.
         if var:
             path.variable = var.strip()
-            str = identified_path_string[len(var):]
+            st = identified_path_string[len(var):]
             # calculating case 2 and 3
-            if str.startswith('['):
-                end = re.search(']', str)
+            if st.startswith('['):
+                end = re.search(']', st)
                 if end:
-                    path.predicate = str[1:end.start()]
-                    path.path = self.parse_path(str[end.start()+1:])
+                    path.predicate = st[1:end.start()]
+                    path.path = self.parse_path(st[end.start()+1:])
             else:
                 # case 1
-                path.path = self.parse_path(str)
+                path.path = self.parse_path(st)
             return path
         else:
             raise ParsePathError("An error occured while parsing the path: "+identified_path_string)
