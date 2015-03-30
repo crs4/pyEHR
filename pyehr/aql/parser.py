@@ -44,7 +44,6 @@ class Parser(object):
                     optional_text = text[location_end:]
                     where_result = re.search(' WHERE ', optional_text.upper())
                     if where_result:
-                        #print optionalText
                         condition_start = where_result.start()+7
                         other_option_result = re.search(' ORDER BY | TIMEWINDOW ', optional_text.upper())
                         if other_option_result and other_option_result.start() > condition_start:
@@ -235,17 +234,17 @@ class Parser(object):
             if tokens[0].startswith('['):
                 class_expression.predicate = self.parse_predicate(tokens[0].lstrip('[').rstrip(']'))
             else:
-            #... otherwise is a variable definition...
+                # ... otherwise is a variable definition...
                 pred = re.search('\[', tokens[0])
                 if pred:
-                    #... followed by a predicate expression.
+                    # ... followed by a predicate expression.
                     class_expression.variable_name = tokens[0][:pred.start()]
                     predicate = tokens[0][pred.start():]
                     if not is_openehr_variable(tokens[0]):
                         predicate = predicate.lstrip('[').rstrip(']')
                     class_expression.predicate = self.parse_predicate(predicate)
                 else:
-                    #... without a predicate expression.
+                    # ... without a predicate expression.
                     class_expression.variable_name = tokens[0]
                 if len(tokens) > 1:
                     class_expression.predicate = self.parse_predicate(tokens[1].lstrip('[').rstrip(']'))
@@ -256,7 +255,6 @@ class Parser(object):
             raise ParsingError(msg)
 
     def parse_containers(self, text):
-        #c = re.search(' CONTAINS ', text.upper())
         conts = list(re.finditer('CONTAINS ', text.upper()))
         containers = []
         for i in xrange(len(conts)):
@@ -280,11 +278,11 @@ class Parser(object):
         Its function is similar as the FROM clause of an SQL expression.
         """
         try:
-            # A simple FROM clause consists of three parts: keyword - FROM, class expression and/or containment constraints.
+            # A simple FROM clause consists of three parts: keyword - FROM,
+            # class expression and/or containment constraints.
             #
             # Checking the keyword expression
             matching_obj = re.match('EHR |COMPOSITION |OBSERVATION ', location_string.upper())
-            leaves = []
             if matching_obj:
                 location = Location()
                 # Looking for containment expressions
@@ -315,9 +313,6 @@ class Parser(object):
         try:
             cond = Condition()
             tokens = condition.split()
-            block = False
-            end = True
-            buf = ""
             if len(tokens) == 1:
                 pred_expr = self.parse_predicate_expression(tokens[0])
                 cond.condition = pred_expr
