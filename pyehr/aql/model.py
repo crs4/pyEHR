@@ -13,9 +13,7 @@ class PredicateExpression(object):
         self.right_operand = None
 
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("PREDICATE_EXPRESSION")
+        str_list = ["PREDICATE_EXPRESSION"]
         if self.left_operand:
             str_list.append(" -> LEFT_OPERAND: %s" % str(self.left_operand))
         if self.operand:
@@ -31,9 +29,7 @@ class Predicate(object):
         self.predicate_expression = None
 
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("PREDICATE")
+        str_list = ["PREDICATE"]
         if self.predicate_expression:
             str_list.append(" -> EXPRESSION: %s" % str(self.predicate_expression))
         s = "\n".join(str_list)
@@ -47,9 +43,7 @@ class NodePredicate(Predicate):
         self.predicate_expression_list = []
 
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("NODE_PREDICATE")
+        str_list = ["NODE_PREDICATE"]
         if self.archetype_id:
             str_list.append(" -> ARCHETYPE_ID: %s" % str(self.archetype_id))
         for n in self.predicate_expression_list:
@@ -64,9 +58,7 @@ class ArchetypePredicate(Predicate):
         self.archetype_id = None
 
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("ARCHETYPE_PREDICATE")
+        str_list = ["ARCHETYPE_PREDICATE"]
         if self.archetype_id:
             str_list.append(" -> ARCHETYPE_ID: %s" % str(self.archetype_id))
         s = "\n".join(str_list)
@@ -79,9 +71,7 @@ class NodePath(object):
         self.predicate = None
 
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("PATH")
+        str_list = ["PATH"]
         if self.attribute_name:
             str_list.append(" -> ATTRIBUTE_NAME: %s" % str(self.attribute_name))
         if self.attribute_name:
@@ -98,9 +88,7 @@ class Path(object):
         self.node_list = []
 
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("PATH")
+        str_list = ["PATH"]
         if self.value:
             str_list.append(" -> VALUE: %s" % str(self.value))
         for n in self.node_list:
@@ -118,9 +106,7 @@ class IdentifiedPath(Primitive):
         self.variable = None
 
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("- IDENTIFIEDPATH -")
+        str_list = ["IDENTIFIED PATH"]
         if self.variable:
             str_list.append(" -> VARIABLE: %s" % str(self.variable))
         if self.predicate:
@@ -156,18 +142,8 @@ class Variable(object):
         self.variable = None
         self.label = None
 
-    def _print_(self):
-        print ""
-        print "VARIABLE"
-        if self.variable:
-            print " -> VARIABLE: %s" % str(self.variable)
-        if self.label:
-            print " -> LABEL: %s" % self.label
-
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("VARIABLE")
+        str_list = ["VARIABLE"]
         if self.variable:
             str_list.append(" -> VARIABLE: %s" % str(self.variable))
         if self.label:
@@ -191,20 +167,8 @@ class ClassExpression(object):
     def class_name(self, value):
         self._class_name = value.strip()
 
-    def _print_(self):
-        print ""
-        print "CLASS_EXPRESSION"
-        if self.class_name:
-            print " -> CLASS_NAME: %s" % self.class_name
-        if self.variable_name:
-            print " -> VARIABLE_NAME: %s" % self.variable_name
-        if self.predicate:
-            print " -> PREDICATE: %s" % self.predicate
-
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("CLASS_EXPRESSION")
+        str_list = ["CLASS_EXPRESSION"]
         if self.variable_name:
             str_list.append(" -> VARIABLE_NAME: %s" % self.variable_name)
         if self.class_name:
@@ -219,20 +183,11 @@ class Container(object):
     def __init__(self):
         self.class_expression = None
 
-    def _print_(self):
-        print "-------------------------------------------"
-        print "CONTAINER"
-        if self.class_expression:
-            self.class_expression._print_()
-        print "-------------------------------------------"
-
     def __str__(self):
-        str_list = []
-        str_list.append("-------------------------------------------")
+        str_list = ["CONTAINER"]
         str_list.append("CONTAINER")
         if self.class_expression:
             str_list.append(str(self.class_expression))
-        str_list.append("-------------------------------------------")
         s = "\n".join(str_list)
         return s
 
@@ -242,19 +197,10 @@ class Selection(object):
         self.top = -1
         self.variables = []
 
-    def _print_(self):
-        print "SELECTION"
-        print " -> TOP: %d" % self.top
-        for v in self.variables:
-            print " -> VARIABLE: %s" % v._print_()
-
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("SELECTION")
-        str_list.append(" -> TOP: %d" % self.top)
+        str_list = ["SELECTION", " -> TOP: %d" % self.top]
         for v in self.variables:
-           str_list.append(" -> VARIABLE: %s" % str(v))
+            str_list.append(" -> VARIABLE: %s" % str(v))
         s = "\n".join(str_list)
         return s
 
@@ -264,7 +210,7 @@ class Location(object):
         self.class_expression = None
         self.containers = []
 
-    def getVariableList(self):
+    def get_variables_list(self):
         variable_list = []
         if self.class_expression:
             if self.class_expression.variable_name:
@@ -274,18 +220,8 @@ class Location(object):
                 variable_list.append(cont.class_expr.variable_name)
         return variable_list
 
-    def _print_(self):
-        print ""
-        print "LOCATION"
-        if self.class_expression:
-            print " -> CLASS: %s" % self.class_expression
-        for c in self.containers:
-            c._print_()
-
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("LOCATION")
+        str_list = ["LOCATION"]
         if self.class_expression:
             str_list.append(" -> CLASS: %s" % self.class_expression)
         for c in self.containers:
@@ -299,16 +235,8 @@ class ConditionExpression(PredicateExpression):
         super(ConditionExpression, self).__init__()
         self.expression = None
 
-    def _print_(self):
-        print ""
-        print "CONDITION_EXPRESSION"
-        if self.expression:
-            print " -> EXPRESSION: %s" % self.expression
-
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("CONDITION_EXPRESSION")
+        str_list = ["CONDITION_EXPRESSION"]
         if self.expression:
             str_list.append(" -> EXPRESSION: %s" % self.expression)
         s = "\n".join(str_list)
@@ -340,16 +268,8 @@ class ConditionOperator(object):
     def op(self):
         self._op = None
 
-    def _print_(self):
-        print ""
-        print "CONDITION_OPERATOR"
-        if self._op:
-            print "OPERATOR: %s" % self._op
-
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("CONDITION_OPERATOR")
+        str_list = ["CONDITION_OPERATOR"]
         if self._op:
             str_list.append(" -> OPERATOR: %s" % self._op)
         s = "\n".join(str_list)
@@ -379,11 +299,7 @@ class Condition(object):
             raise ConditionNotSupported("Unknown condition %s", value)
 
     def __str__(self):
-        str_list = []
-        str_list.append("")
-        str_list.append("CONDITION")
-        str_list.append("")
-        str_list.append(str(self._condition))
+        str_list = ["CONDITION", str(self._condition)]
         s = "\n".join(str_list)
         return s
 
@@ -392,18 +308,12 @@ class OrderRules(object):
     def __init__(self):
         pass
 
-    def _print_(self):
-        pass
-
     def __str__(self):
         return "None"
 
 
 class TimeConstraints(object):
     def __init__(self):
-        pass
-
-    def _print_(self):
         pass
 
     def __str__(self):
@@ -418,51 +328,17 @@ class QueryModel(object):
         self.order_rules = None
         self.time_constraints = None
 
-    def _print_(self):
-        print "========================================================================="
-        print "SELECTION"
-        print "-------------------------------------------------------------------------"
-        self.selection._print_()
-        print "========================================================================="
-        print "LOCATION"
-        print "-------------------------------------------------------------------------"
-        self.location._print_()
-        print "========================================================================="
-        print "CONDITION"
-        print "-------------------------------------------------------------------------"
-        self.condition._print_()
-        print "========================================================================="
-        print "ORDER_RULES"
-        print "-------------------------------------------------------------------------"
-        self.order_rules._print_()
-        print "========================================================================="
-        print "TIME_CONSTRAINTS"
-        print "-------------------------------------------------------------------------"
-        self.time_constraints._print_()
-        print "========================================================================="
-
     def __str__(self):
-        str_list = []
-        str_list.append("=========================================================================")
-        str_list.append("SELECTION")
-        str_list.append("-------------------------------------------------------------------------")
+        str_list = list()
+        str_list.append("-- SELECTION --")
         str_list.append(str(self.selection))
-        str_list.append("=========================================================================")
-        str_list.append("LOCATION")
-        str_list.append("-------------------------------------------------------------------------")
+        str_list.append("-- LOCATION --")
         str_list.append(str(self.location))
-        str_list.append("=========================================================================")
-        str_list.append("CONDITION")
-        str_list.append("-------------------------------------------------------------------------")
+        str_list.append("-- CONDITION --")
         str_list.append(str(self.condition))
-        str_list.append("=========================================================================")
-        str_list.append("ORDER_RULES")
-        str_list.append("-------------------------------------------------------------------------")
+        str_list.append("-- ORDER_RULES --")
         str_list.append(str(self.order_rules))
-        str_list.append("=========================================================================")
-        str_list.append("TIME_CONSTRAINTS")
-        str_list.append("-------------------------------------------------------------------------")
+        str_list.append("-- TIME_CONSTRAINTS --")
         str_list.append(str(self.time_constraints))
-        str_list.append("=========================================================================")
         s = "\n".join(str_list)
         return s
