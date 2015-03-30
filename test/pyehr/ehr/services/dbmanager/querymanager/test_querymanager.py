@@ -5,7 +5,6 @@ from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
     ClinicalRecord, ArchetypeInstance
 from pyehr.utils.services import get_service_configuration
-import os
 
 CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
 
@@ -111,7 +110,6 @@ class TestQueryManager(unittest.TestCase):
         for k, v in batch_details.iteritems():
             details_results.extend(v)
         res = list(results.results)
-        print res
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_deep_select_query(self):
@@ -128,7 +126,6 @@ class TestQueryManager(unittest.TestCase):
         for k, v in batch_details.iteritems():
             details_results.extend(v)
         res = list(results.results)
-        print res
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_simple_where_query(self):
@@ -148,7 +145,6 @@ class TestQueryManager(unittest.TestCase):
                 if x['systolic'] >= 180 or x['diastolic'] >= 110:
                     details_results.append(x)
         res = list(results.results)
-        print res
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_single_where_query2(self):
@@ -167,7 +163,6 @@ class TestQueryManager(unittest.TestCase):
                 if x['systolic'] != 180:
                     details_results.append(x)
         res = list(results.results)
-        print res
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_single_where_query(self):
@@ -186,7 +181,6 @@ class TestQueryManager(unittest.TestCase):
                 if x['systolic'] >= 180:
                     details_results.append(x)
         res = list(results.results)
-        print res
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_deep_where_query(self):
@@ -202,12 +196,11 @@ class TestQueryManager(unittest.TestCase):
         batch_details = self._build_patients_batch_mixed(10, 10, (0, 250), (0, 200))
         results = self.qmanager.execute_aql_query(query)
         details_results = list()
-        for k,v in batch_details.iteritems():
+        for k, v in batch_details.iteritems():
             for x in v:
                 if x['systolic'] >= 180 or x['diastolic'] >= 110:
                     details_results.append(x)
         res = list(results.results)
-        print sorted(res)
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_deep_where_query2(self):
@@ -223,12 +216,11 @@ class TestQueryManager(unittest.TestCase):
         batch_details = self._build_patients_batch_mixed(10, 10, (0, 250), (109, 110))
         results = self.qmanager.execute_aql_query(query)
         details_results = list()
-        for k,v in batch_details.iteritems():
+        for k, v in batch_details.iteritems():
             for x in v:
                 if x['systolic'] >= 180 or x['diastolic'] != 110:
                     details_results.append(x)
         res = list(results.results)
-        print sorted(res)
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_deeper_where_query(self):
@@ -245,12 +237,11 @@ class TestQueryManager(unittest.TestCase):
         pass
         results = self.qmanager.execute_aql_query(query)
         details_results = list()
-        for k,v in batch_details.iteritems():
+        for k, v in batch_details.iteritems():
             for x in v:
                 if x['systolic'] >= 180 and x['diastolic'] != 81:
                     details_results.append(x)
         res = list(results.results)
-        print sorted(res)
         self.assertEqual(sorted(details_results), sorted(res))
 
     def test_simple_parametric_query(self):
@@ -264,7 +255,6 @@ class TestQueryManager(unittest.TestCase):
         for patient_label, records in batch_details.iteritems():
             results = self.qmanager.execute_aql_query(query, {'ehrUid': patient_label})
             res = list(results.results)
-            print res
             self.assertEqual(sorted(records), sorted(res))
 
     def test_simple_patients_selection(self):
@@ -283,8 +273,39 @@ class TestQueryManager(unittest.TestCase):
                 if x['systolic'] >= 180 or x['diastolic'] >= 110:
                     details_results.add(k)
         res = list(results.get_distinct_results('patient_identifier'))
-        print res
         self.assertEqual(sorted(list(details_results)), sorted(res))
+
+    def test_count_query(self):
+        query = """
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS diastolic
+        FROM Ehr e
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
+        """
+        batch_details = self._build_patients_batch(10, 10, (0, 250), (0, 200))
+        results = self.qmanager.execute_aql_query(query, count_only=True)
+        results_count = 0
+        for k, v in batch_details.iteritems():
+            for x in v:
+                if x['systolic'] >= 180 or x['diastolic'] >= 110:
+                    results_count += 1
+        self.assertEqual(results_count, results)
+
+    def test_multiprocess_query(self):
+        query = """
+        SELECT o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude AS systolic,
+        o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude AS diastolic
+        FROM Ehr e
+        CONTAINS Observation o[openEHR-EHR-OBSERVATION.blood_pressure.v1]
+        WHERE o/data[at0001]/events[at0006]/data[at0003]/items[at0004]/value/magnitude >= 180
+        OR o/data[at0001]/events[at0006]/data[at0003]/items[at0005]/value/magnitude >= 110
+        """
+        _ = self._build_patients_batch_mixed(10, 10, (0, 250), (0, 200))
+        sp_results = self.qmanager.execute_aql_query(query)
+        mp_results = self.qmanager.execute_aql_query(query, query_processes=2)
+        self.assertEqual(sorted(sp_results.to_json()), sorted(mp_results.to_json()))
 
 
 def suite():
@@ -299,6 +320,8 @@ def suite():
     suite.addTest(TestQueryManager('test_simple_parametric_query'))
     suite.addTest(TestQueryManager('test_simple_patients_selection'))
     suite.addTest(TestQueryManager('test_deep_select_query'))
+    suite.addTest(TestQueryManager('test_count_query'))
+    suite.addTest(TestQueryManager('test_multiprocess_query'))
     return suite
 
 if __name__ == '__main__':

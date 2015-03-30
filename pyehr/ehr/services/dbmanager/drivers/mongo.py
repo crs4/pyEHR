@@ -8,8 +8,12 @@ import pymongo
 import pymongo.errors
 import time
 from hashlib import md5
-import json
 from multiprocessing import Pool
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 
 class MultiprocessQueryRunner(object):
