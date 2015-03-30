@@ -1,6 +1,10 @@
 from hashlib import md5
-import json
 from operator import attrgetter
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 from pyehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from pyehr.utils import get_logger

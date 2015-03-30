@@ -1,4 +1,3 @@
-
 from pyehr.aql.parser import *
 from pyehr.ehr.services.dbmanager.drivers.interface import DriverInterface
 from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import *
@@ -8,7 +7,12 @@ from itertools import izip
 from hashlib import md5
 from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import ResultSet,\
     ResultColumnDef, ResultRow
-import json
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
 import elasticsearch
 import time
 import re
