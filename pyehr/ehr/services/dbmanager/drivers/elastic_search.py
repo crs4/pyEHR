@@ -91,7 +91,7 @@ class ElasticSearchDriver(DriverInterface):
         if not self.client:
             self.logger.debug('connecting to host %s', self.host)
             try:
-                self.client = elasticsearch.Elasticsearch(self.host,connection_class=self.transportclass)
+                self.client = elasticsearch.Elasticsearch(hosts=self.host,connection_class=self.transportclass)
                 self.client.info()
             except elasticsearch.TransportError:
                 raise DBManagerNotConnectedError('Unable to connect to ElasticSearch at %s:%s' %
@@ -552,7 +552,8 @@ class ElasticSearchDriver(DriverInterface):
                 if rectype_clinical:
                     self._select_doc_type(r['ehr_structure_id'])
                 self._store_ids(r)
-            return successfulid,duplicatedlist.extend([records_map[e] for e in failuresid])
+            duplicatedlist.extend([records_map[e] for e in failuresid])
+            return successfulid,duplicatedlist
         else:
             for r in notduplicatedlist:
                 if rectype_clinical:
