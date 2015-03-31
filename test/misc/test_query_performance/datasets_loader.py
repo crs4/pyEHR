@@ -1,6 +1,6 @@
-import argparse, sys, time, multiprocessing
+import argparse, sys, time, multiprocessing, gzip
 
-from records_builder import get_patient_records_from_file
+from records_builder import get_patient_records_from_file, get_patient_records_from_file_row
 
 from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.errors import DuplicatedKeyError
@@ -8,30 +8,30 @@ from pyehr.utils.services import get_service_configuration, get_logger
 
 
 class DataLoaderThread(multiprocessing.Process):
-    def __init__(self, db_service_conf, index_service_conf, patient, patient_dataset, logger):
+    def __init__(self, db_service_conf, index_service_conf, file_row, logger):
         multiprocessing.Process.__init__(self)
         self.db_service = DBServices(**db_service_conf)
         self.db_service.set_index_service(**index_service_conf)
-        self.patient = patient
-        self.dataset = patient_dataset
+        self.dataset_row = file_row
         self.logger = logger
 
     def run(self):
-        self.logger.info('Saving data for patient %s' % self.patient.record_id)
-        patient = self.db_service.get_patient(self.patient.record_id,
-                                              fetch_ehr_records=False)
-        if not patient:
-            self.logger.info('Patient %s does not exist, creating it' % self.patient.record_id)
-            patient = self.db_service.save_patient(self.patient)
-        else:
-            self.logger.info('Patient %s already exists, appending ClinicalRecord objects' %
-                             patient.record_id)
-        self.logger.info('Saving %d ClinicalRecord objects (patient %s)' %
-                         (len(self.dataset), self.patient.record_id))
-        start_time = time.time()
-        self.db_service.save_ehr_records(self.dataset, patient)
-        self.logger.info('ClinicalRecords saved in %f seconds (patient %s)' %
-                         ((time.time() - start_time), self.patient.record_id))
+        for patient, dataset in get_patient_records_from_file_row(self.dataset_row):
+            self.logger.info('Saving data for patient %s' % patient.record_id)
+            p = self.db_service.get_patient(patient.record_id, fetch_ehr_records=False)
+            if not p:
+                self.logger.info('Patient %s does not exist, creating it' % patient.record_id)
+                patient = self.db_service.save_patient(patient)
+            else:
+                self.logger.info('Patient %s already exists, appending ClinicalRecord objects' %
+                                 patient.record_id)
+                patient = p
+            self.logger.info('Saving %d ClinicalRecord objects (patient %s)' %
+                             (len(dataset), patient.record_id))
+            start_time = time.time()
+            self.db_service.save_ehr_records(dataset, patient)
+            self.logger.info('ClinicalRecords saved in %f seconds (patient %s)' %
+                             ((time.time() - start_time), patient.record_id))
 
 
 def get_parser():
@@ -96,8 +96,12 @@ def dump_records_multiprocess(dataset_file, compressed_file, dbs_conf, index_con
     logger.info('Dumping records to database')
     total_dump_start_time = time.time()
     active_processes = list()
-    for patient, crecs in get_patient_records_from_file(dataset_file, compressed_file):
-        proc = DataLoaderThread(dbs_conf, index_conf, patient, crecs, logger)
+    if compressed_file:
+        f = gzip.open(dataset_file, 'rb')
+    else:
+        f = open(dataset_file)
+    for row in f.readlines():
+        proc = DataLoaderThread(dbs_conf, index_conf, row, logger)
         active_processes.append(proc)
         if len(active_processes) == max_active_processes:
             for p in active_processes:
@@ -111,6 +115,7 @@ def dump_records_multiprocess(dataset_file, compressed_file, dbs_conf, index_con
         p.start()
     for p in active_processes:
         p.join()
+    f.close()
     logger.info('Dump completed in %f seconds' % (time.time() - total_dump_start_time))
 
 

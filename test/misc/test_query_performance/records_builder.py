@@ -165,11 +165,16 @@ def get_patient_records_from_file(patient_datasets_file, compressed_file=False):
     else:
         f = open(patient_datasets_file)
     for row in f.readlines():
-        patient_dataset = normalize_keys(decode_dict(json.loads(row)))
-        for patient_id, conf in patient_dataset.iteritems():
-            clinical_records = [ClinicalRecord(ArchetypeInstance(**c[1])) for c in conf]
-            patient_record = PatientRecord(patient_id)
-            yield patient_record, clinical_records
+        for prec, crecs in get_patient_records_from_file_row(row):
+            yield prec, crecs
+
+
+def get_patient_records_from_file_row(file_row):
+    patient_dataset = normalize_keys(decode_dict(json.loads(file_row)))
+    for patient_id, conf in patient_dataset.iteritems():
+        clinical_records = [ClinicalRecord(ArchetypeInstance(**c[1])) for c in conf]
+        patient_record = PatientRecord(patient_id)
+        yield patient_record, clinical_records
 
 
 def patient_records_to_json(patient_datasets, structures, archetype_dir, json_output_file,
