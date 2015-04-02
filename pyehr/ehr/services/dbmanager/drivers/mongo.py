@@ -805,7 +805,7 @@ class MongoDriver(DriverInterface):
                 if ce.predicate:
                     query.update(self._compute_predicate(ce.predicate))
         else:
-            raise MissiongLocationExpressionError("Query must have a location expression")
+            raise MissingLocationExpressionError("Query must have a location expression")
         return query
 
     def _map_ehr_selection(self, path, ehr_var):
