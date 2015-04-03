@@ -7,6 +7,7 @@ from itertools import izip
 from hashlib import md5
 from pyehr.ehr.services.dbmanager.querymanager.results_wrappers import ResultSet,\
     ResultColumnDef, ResultRow
+from multiprocessing import Pool
 
 try:
     import simplejson as json
@@ -19,6 +20,30 @@ import re
 import sys
 import os
 #from profilehooks import profile
+
+
+class MultiprocessQueryRunner(object):
+
+    def __init__(self, host, database, collection,
+                 port, user, passwd):
+        self.host = host
+        self.database = database
+        self.collection = collection
+        self.collection_name = collection
+        self.port = port
+        self.user = user
+        self.passwd = passwd
+
+    def __call__(self, query_description):
+        driver_instance = ElasticSearchDriver(
+            self.host, self.database, self.collection_name,
+            self.port, self.user, self.passwd
+        )
+        results = driver_instance._run_aql_query(
+            query_description['condition'], query_description['selection'],
+            query_description['aliases'], self.collection_name
+        )
+        return results
 
 class ElasticSearchDriver(DriverInterface):
     """
@@ -41,28 +66,30 @@ class ElasticSearchDriver(DriverInterface):
     # This map is used to encode\decode data when writing\reading to\from ElasticSearch
     #ENCODINGS_MAP = {'.': '-'}   I NEED TO SEE THE QUERIES
     ENCODINGS_MAP = {}
+    HAS_UTF8 = re.compile(r'[\x80-\xff]')
+    ESCAPE_ASCII = re.compile(r'([\\"]|[^\ -~])')
+    ESCAPE_DCT = {
+        '\\': '\\\\',
+        '"': '\\"',
+        '\b': '\\b',
+        '\f': '\\f',
+        '\n': '\\n',
+        '\r': '\\r',
+        '\t': '\\t',
+    }
 #    @profile
     def __init__(self, host, database,collection,
                  port=None, user=None, passwd=None,
                  index_service=None, logger=None):
         self.client = None
         self.host = host
-        self.transportclass=elasticsearch.Urllib3HttpConnection
-        #cosa usare per parametri opzionali???? self.others
-        self.user = user
-        self.passwd = passwd
-
-        # self.client = None
-        # self.database = None
-        # self.collection = None
-        # self.host = host
-        #self.database_name = database
         self.database = database
         self.collection = collection
         self.collection_name = collection
-        # self.port = port
-        # self.user = user
-        # self.passwd = passwd
+        self.port = port
+        self.user = user
+        self.passwd = passwd
+        self.transportclass=elasticsearch.Urllib3HttpConnection
         self.index_service = index_service
         self.logger = logger or get_logger('elasticsearch-db-driver')
         self.regtrue = re.compile("([ :])True([ \]},])")
@@ -162,6 +189,17 @@ class ElasticSearchDriver(DriverInterface):
             encoded_record['_id'] = patient_record.record_id
         return encoded_record
 
+    def _to_json(self,doc):
+        return json.dumps(doc)
+
+    def _from_json(self,doc):
+        return json.loads('"'+doc+'"')
+
+    def my_decode(self,doc):
+#        docnew=self._from_json(doc)
+#        return decode_dict(docnew)
+        return decode_dict(doc)
+
 #    @profile
     def _normalize_keys(self, document, original, encoded):
         normalized_doc = {}
@@ -199,6 +237,7 @@ class ElasticSearchDriver(DriverInterface):
         ehr_data = clinical_record_revision.ehr_data.to_json()
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = self._normalize_keys(ehr_data, original_value, encoded_value)
+
         return {
             '_id': clinical_record_revision.record_id['_id']+"_"+str(clinical_record_revision.record_id['_version']),
             'ehr_structure_id': clinical_record_revision.structure_id,
@@ -223,7 +262,6 @@ class ElasticSearchDriver(DriverInterface):
         """
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
                 ClinicalRecord,ClinicalRecordRevision
-
         if isinstance(record, PatientRecord):
             return self._encode_patient_record(record)
         elif isinstance(record, ClinicalRecordRevision):
@@ -237,7 +275,7 @@ class ElasticSearchDriver(DriverInterface):
     def _decode_patient_record(self, record, loaded):
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord
 
-        record = decode_dict(record)
+        record = self.my_decode(record)
         if loaded:
             # by default, clinical records are attached as "unloaded"
             ehr_records = [self._decode_clinical_record({'_id': ehr}, loaded=False)
@@ -270,7 +308,7 @@ class ElasticSearchDriver(DriverInterface):
     def _decode_clinical_record(self, record, loaded):
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord,\
             ArchetypeInstance
-        record = decode_dict(record)
+        record = self.my_decode(record)
         if loaded:
             ehr_data = record['ehr_data']
             for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
@@ -308,7 +346,7 @@ class ElasticSearchDriver(DriverInterface):
     def _decode_clinical_record_revision(self, record):
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecordRevision, \
             ArchetypeInstance
-        record = decode_dict(record)
+        record = self.my_decode(record)
         ehr_data = record['ehr_data']
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = self._decode_keys(ehr_data, encoded_value, original_value)
@@ -372,41 +410,37 @@ class ElasticSearchDriver(DriverInterface):
         :return: the ID of the record
         """
         def clinical_add_withid():
-            return str(self.client.index(index=self.database,doc_type=self.collection_name,id=record['_id'],
-                                body=record,op_type='create',refresh='true')['_id'])
+            if self._is_id_taken(self.database,record['_id']):
+                raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
+            myid = str(self.client.index(index=self.database,doc_type=self.collection_name,id=record['_id'],
+                                body=self._to_json(record),op_type='create',refresh='true')['_id'])
+            self._store_ids(record)
+            return myid
 
         def clinical_add_withoutid():
-            return str(self.client.index(index=self.database,doc_type=self.collection_name,body=record,
+            myid = str(self.client.index(index=self.database,doc_type=self.collection_name,body=self._to_json(record),
                                 op_type='create',refresh='true')['_id'])
+            record['_id']=myid
+            self._store_ids(record)
+            return myid
 
         self.__check_connection()
         try:
             if self._is_patient_record(record):
                 if(record.has_key('_id')):
-                    myid=clinical_add_withid()
-                    self._store_ids(record)
-                    return myid
+                    return clinical_add_withid()
                 else:
-                    myid= clinical_add_withoutid()
-                    record['_id']=myid
-                    self._store_ids(record)
-                    return myid
+                    return clinical_add_withoutid()
             else:
                 self._select_doc_type(record['ehr_structure_id'])
                 if self._is_clinical_record(record):
                     if(record.has_key('_id')):
-                        myid=clinical_add_withid()
-                        self._store_ids(record)
-                        return myid
+                        return clinical_add_withid()
                     else:
-                        myid=clinical_add_withoutid()
-                        record['_id']=myid
-                        self._store_ids(record)
-                        return myid
+                        return clinical_add_withoutid()
                 else:
                     #clinical_revision_record
                     idreturned=clinical_add_withid()
-                    self._store_ids(record)
                     return {idreturned.rsplit('_', 1)[0],idreturned.rsplit('_', 1)[1]}
         except elasticsearch.ConflictError:
              raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
@@ -482,25 +516,19 @@ class ElasticSearchDriver(DriverInterface):
                 self._select_doc_type(dox['ehr_structure_id'])
             puzzle=puzzle+first+"\",\"_type\":\""+self.collection_name+"\""
             if(dox.has_key('_id')):
-                puzzle = puzzle+",\"_id\":\""+dox['_id']+"\"}}\n{"
+                puzzle = puzzle+",\"_id\":\""+dox['_id']+"\"}}\n"
             else:
-                puzzle=puzzle+"}}\n{"
-            for k in dox:
-                if(isinstance(dox[k],str)):
-                    puzzle=puzzle+"\""+k+"\":\""+str(dox[k])+"\","
-                else:
-                    if isinstance(dox[k],dict):
-                        puzzle=puzzle+"\""+k+"\":"+str(dox[k]).replace("'","\"")+","
-                    else:
-                        puzzle=puzzle+"\""+k+"\":"+str(dox[k])+","
-            puzzle=puzzle.strip(",")+"}\n"
-            puzzle=self.regtrue.sub("\\1true\\2",puzzle)
-            puzzle=self.regfalse.sub("\\1false\\2",puzzle)
+                puzzle=puzzle+"}}\n"
+            puzzle=puzzle+self._to_json(dox)
+            puzzle=puzzle+"\n"
         return puzzle
 
 
-    def _is_id_taken(self,indextc,collection_nametc,idtc):
-        return self.client.exists(index=indextc,doc_type=collection_nametc,id=idtc)
+    def _is_id_taken(self,indextc,idtc,collection_nametc=None):
+        if collection_nametc:
+            return self.client.exists(index=indextc,doc_type=collection_nametc,id=idtc)
+        else:
+            return self.client.exists(index=indextc,id=idtc)
 
 #    @profile
     def add_records(self,records,skip_existing_duplicated=False):
@@ -512,6 +540,8 @@ class ElasticSearchDriver(DriverInterface):
         :return: a list of records' IDs
         :rtype: list
         """
+        if len(records) == 0:
+            return [],[]
         self.__check_connection()
         if self._is_patient_record(records[0]):
             rectype_clinical= False
@@ -520,18 +550,23 @@ class ElasticSearchDriver(DriverInterface):
         duplicatedlist=[]
         notduplicatedlist=[]
         duplicatedlistid=[]
+        records_map={}
         for r in records:
             myid=r['_id']
-            if(not self._is_patient_record(r)):
-                self._select_doc_type(r['ehr_structure_id'])
-            if(self._is_id_taken(self.database,self.collection_name,myid)):
+            if myid in records_map:
                 duplicatedlist.append(r)
                 duplicatedlistid.append(myid)
             else:
-                notduplicatedlist.append(r)
+                records_map[myid]=r
+                if(not self._is_patient_record(r)):
+                    self._select_doc_type(r['ehr_structure_id'])
+                if(self._is_id_taken(self.database,myid)):
+                    duplicatedlist.append(r)
+                    duplicatedlistid.append(myid)
+                else:
+                    notduplicatedlist.append(r)
         if duplicatedlist and not skip_existing_duplicated:
             raise DuplicatedKeyError('The following IDs are already in use: %s' % duplicatedlistid)
-        records_map = {r['_id']: r for r in records}
         #create a bulk list
         bulklist = self.pack_record(notduplicatedlist,rectype_clinical)
         bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh='true')
@@ -540,6 +575,7 @@ class ElasticSearchDriver(DriverInterface):
         nerrors=0
         successfulid=[]
         if(bulkanswer['errors']): # there are errors
+            #manual roll back
             for b in bulkanswer['items']:
                 if(b['create'].has_key('error')):
                     failuresid.append(str(b['create']['_id']))
@@ -552,8 +588,10 @@ class ElasticSearchDriver(DriverInterface):
                 if rectype_clinical:
                     self._select_doc_type(r['ehr_structure_id'])
                 self._store_ids(r)
-            duplicatedlist.extend([records_map[e] for e in failuresid])
-            return successfulid,duplicatedlist
+                self.delete_record(s)
+#            duplicatedlist.extend([records_map[e] for e in failuresid])
+#            return successfulid,duplicatedlist
+            return [],duplicatedlist
         else:
             for r in notduplicatedlist:
                 if rectype_clinical:
@@ -593,7 +631,7 @@ class ElasticSearchDriver(DriverInterface):
                 res = self.client.get_source(index=self.database,id=newid)
             else:
                 res =self.client.get_source(index=self.database,id=record_id)
-            return decode_dict(res)
+            return self.my_decode(res)
         except elasticsearch.NotFoundError:
             return None
 
@@ -622,7 +660,7 @@ class ElasticSearchDriver(DriverInterface):
                 f=[elem for elem in er if elem[0]==rid]
                 if f:
                     found=f[0]
-                    return decode_dict(self.client.get_source(index=found[1],doc_type=found[2],id=found[0]))
+                    return self.my_decode(self.client.get_source(index=found[1],doc_type=found[2],id=found[0]))
                 else:
                     return None
             else:
@@ -634,7 +672,7 @@ class ElasticSearchDriver(DriverInterface):
                     if not f:
                         return None
                     found=f[0]
-                    return decode_dict(self.client.get_source(index=found[1],doc_type=found[2],id=found[0]))
+                    return self.my_decode(self.client.get_source(index=found[1],doc_type=found[2],id=found[0]))
                 else:
                     return None
         except elasticsearch.NotFoundError:
@@ -672,13 +710,13 @@ class ElasticSearchDriver(DriverInterface):
                     rec=self.client.get_source(index=found[1],doc_type=found[2],id=found[0])
                     if rec.has_key('version'):
                         if rec['version'] == version:
-                            return decode_dict(rec)
+                            return self.my_decode(rec)
                     return None
                 found=f[0]
                 rec=self.client.get_source(index=found[1],doc_type=found[2],id=found[0])
                 if rec.has_key('version'):
                     if rec['version'] == version:
-                        return decode_dict(rec)
+                        return self.my_decode(rec)
             return None
         except (elasticsearch.NotFoundError, elasticsearch.ConflictError,elasticsearch.TransportError) :
             return None
@@ -709,7 +747,7 @@ class ElasticSearchDriver(DriverInterface):
                 results=[]
                 for f in ff:
                     results.append(self.client.get_source(index=f[1],doc_type=f[2],id=f[0]))
-                return ( decode_dict(results[i]) for i in range(0,len(results)) )
+                return ( self.my_decode(results[i]) for i in range(0,len(results)) )
             return None
         except (elasticsearch.NotFoundError, elasticsearch.ConflictError,elasticsearch.TransportError) :
             return None
@@ -728,7 +766,7 @@ class ElasticSearchDriver(DriverInterface):
         restot = self.client.search(index=self.database,body=query)['hits']['hits']
         res = [p['_source'] for p in restot]
         if res != []:
-            return ( decode_dict(res[i]) for i in range(0,len(res)) )
+            return ( self.my_decode(res[i]) for i in range(0,len(res)) )
         return None
 
 #    @profile
@@ -751,7 +789,7 @@ class ElasticSearchDriver(DriverInterface):
         restot = self.client.search(index=self.database,body=myquery)['hits']['hits']
         res = [p['_source'] for p in restot]
         if res != []:
-            return ( decode_dict(res[i]) for i in range(0,len(res)) )
+            return ( self.my_decode(res[i]) for i in range(0,len(res)) )
         return None
 
 #    @profile
@@ -1276,7 +1314,7 @@ class ElasticSearchDriver(DriverInterface):
                 if ce.predicate:
                     query.update(self._compute_predicate(ce.predicate))
         else:
-            raise MissiongLocationExpressionError("Query must have a location expression")
+            raise MissingLocationExpressionError("Query must have a location expression")
         return query
 
 
@@ -1407,6 +1445,15 @@ class ElasticSearchDriver(DriverInterface):
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
 
+    def get_count_by_query(self, query):
+        """
+        Retrieve the count of all records matching the given query
+        :param query: the value that must be matched for the given field
+        :type query: string
+        :return: the count of all matching records
+        :rtype: integer
+        """
+        return self.client.search(index=self.database,body=query,search_type='count')['hits']['total']
 
 #    @profile
     def _run_aql_query(self, query, fields, aliases, collection):
@@ -1434,11 +1481,25 @@ class ElasticSearchDriver(DriverInterface):
                 record = dict()
                 for x in self._split_results(q):
                     record[x[0]] = x[1]
-#                record_sel_al = self.apply_selection(record,fields)
-#                rr = ResultRow(record_sel_al)
                 rr = ResultRow(record)
                 rs.add_row(rr)
         return rs
+
+    def _run_aql_count(self, query, collection):
+        self.logger.debug("Running count query\n%s\nwith filters\n%s", query)
+        if self.is_connected:
+            original_collection = self.collection
+            close_conn_after_done = False
+        else:
+            close_conn_after_done = True
+        self.connect()
+        self.select_collection(collection)
+        qcount = self.get_count_by_query(query)
+        if close_conn_after_done:
+            self.disconnect()
+        else:
+            self.select_collection(original_collection)
+        return qcount
 
     def _collate_selected_fields(self,sfields):
         lfields=[]
@@ -1526,15 +1587,44 @@ class ElasticSearchDriver(DriverInterface):
         queries = self.build_queries(query_model, patients_repository, ehr_repository,
                                      query_params)
         aggregated_queries = self._aggregate_queries(queries)
-        total_results = ResultSet()
+        total_queries=[]
+        #finalize queries creation
         for query in aggregated_queries:
+            single_query={}
             query_string=self._clean_piece(query['condition'])
             query_string=self._final_check(query_string)
-            results = self._run_aql_query(query_string, fields=query['selection'],
-                                          aliases=query['aliases'], collection=ehr_repository)
-            total_results.extend(results)
+            single_query.update({'condition':query_string})
+            single_query.update({'selection':query['selection']})
+            single_query.update({'aliases':query['aliases']})
+            total_queries.append(single_query)
+        if count_only:
+            return self._count_only_queries(total_queries,ehr_repository)
+        else:
+            return self._regular_queries(total_queries,ehr_repository,query_processes)
+
+    def _regular_queries(self,total_queries,ehr_repository,query_processes):
+
+        total_results = ResultSet()
+        if query_processes == 1 or len(total_queries) == 1:
+            for i in range(0,len(total_queries)):
+                results = self._run_aql_query(total_queries[i]['condition'], fields=total_queries[i]['selection'],
+                                          aliases=total_queries[i]['aliases'], collection=ehr_repository)
+                total_results.extend(results)
+        else:
+            queries_pool = Pool(query_processes)
+            results = queries_pool.imap_unordered( MultiprocessQueryRunner(self.host, self.database,
+                                                    ehr_repository, self.port, self.user,self.passwd),total_queries)
+            for r in results:
+                total_results.extend(r)
         return total_results
 
+    def _count_only_queries(self,total_queries,ehr_repository):
+
+        count=0
+        for i in range(0,len(total_queries)):
+            cresult = self._run_aql_count(total_queries[i]['condition'], collection=ehr_repository)
+            count=max(count,cresult)
+        return count
 #    @profile
     def _final_check(self,qtot):
         ql=list(qtot)

@@ -297,7 +297,7 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def _run_aql_query(self, query, fileds, aliases, collection):
+    def _run_aql_query(self, query, fields, aliases, collection):
         pass
 
     @abstractmethod
