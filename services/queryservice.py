@@ -30,6 +30,7 @@ class QueryService():
         # Web Service methods
         ###############################################
         post('/query/execute')(self.execute_query)
+        post('/query/execute_count')(self.execute_count_query)
         # utilities
         post('/check/status/querymanager')(self.test_server)
         get('/check/status/querymanager')(self.test_server)
@@ -71,22 +72,36 @@ class QueryService():
         response.status = return_code
         return body
 
-    @exception_handler
-    def execute_query(self):
-        params = request.forms
+    def _execute_query(self, params, count_only):
         aql_query = params.get('query')
         if not aql_query:
             self._missing_mandatory_field('query')
         query_params = params.get('query_params')
-        results = self.qmanager.execute_aql_query(aql_query, query_params)
+        results = self.qmanager.execute_aql_query(aql_query, query_params, count_only)
+        return results
+
+    @exception_handler
+    def execute_query(self):
+        params = request.forms
+        results = self._execute_query(params, count_only=False)
         response_body = {
             'SUCCESS': True,
             'RESULTS_SET': results.to_json()
         }
         return self._success(response_body)
 
+    @exception_handler
+    def execute_count_query(self):
+        params = request.forms
+        results = self._execute_query(params, count_only=True)
+        response_body = {
+            'SUCCESS': True,
+            'RESULTS_COUNTER': results
+        }
+        return self._success(response_body)
+
     def start_service(self, host, port, engine, debug=False):
-        self.logger.info('Starting QueryService daemon with DEBUG seto to %s', debug)
+        self.logger.info('Starting QueryService daemon with DEBUG set to %s', debug)
         try:
             run(host=host, port=port, server=engine, debug=debug)
         except Exception, e:
