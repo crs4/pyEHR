@@ -45,16 +45,16 @@ class TestQueryManager(unittest.TestCase):
     def _get_blood_pressure_data(self, systolic=None, diastolic=None, mean_arterial=None, pulse=None):
         archetype_id = 'openEHR-EHR-OBSERVATION.blood_pressure.v1'
         bp_doc = {"data": {"at0001": [{"events": [{"at0006": {"data": {"at0003": [{"items": {}}]}}}]}]}}
-        if not systolic is None:
+        if systolic is not None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0004'] = \
                 {'value': self._get_quantity(systolic, 'mm[Hg]')}
-        if not diastolic is None:
+        if diastolic is not None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at0005'] = \
                 {'value': self._get_quantity(diastolic, 'mm[Hg]')}
-        if not mean_arterial is None:
+        if mean_arterial is not None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1006'] = \
                 {'value': self._get_quantity(mean_arterial, 'mm[Hg]')}
-        if not pulse is None:
+        if pulse is not None:
             bp_doc['data']['at0001'][0]['events'][0]['at0006']['data']['at0003'][0]['items']['at1007'] = \
                 {'value': self._get_quantity(pulse, 'mm[Hg]')}
         return archetype_id, bp_doc
