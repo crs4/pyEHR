@@ -38,6 +38,7 @@ before_install:
 install:
   - python setup.py install
   - .travis-data/run_dbservice_daemon.sh
+  - .travis-data/run_queryservice_daemon.sh
 
 before_script:
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then export EXCLUDE_TEST_MODULE="elasticsearch|.*performance*"; fi
