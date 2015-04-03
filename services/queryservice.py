@@ -1,5 +1,10 @@
-import sys, argparse, json
+import sys, argparse
 from functools import wraps
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 from bottle import post, get, run, response, request, abort, HTTPError
 
@@ -77,6 +82,8 @@ class QueryService():
         if not aql_query:
             self._missing_mandatory_field('query')
         query_params = params.get('query_params')
+        if query_params:
+            query_params = json.loads(query_params)
         results = self.qmanager.execute_aql_query(aql_query, query_params, count_only)
         return results
 
