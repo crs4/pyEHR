@@ -66,17 +66,7 @@ class ElasticSearchDriver(DriverInterface):
     # This map is used to encode\decode data when writing\reading to\from ElasticSearch
     #ENCODINGS_MAP = {'.': '-'}   I NEED TO SEE THE QUERIES
     ENCODINGS_MAP = {}
-    HAS_UTF8 = re.compile(r'[\x80-\xff]')
-    ESCAPE_ASCII = re.compile(r'([\\"]|[^\ -~])')
-    ESCAPE_DCT = {
-        '\\': '\\\\',
-        '"': '\\"',
-        '\b': '\\b',
-        '\f': '\\f',
-        '\n': '\\n',
-        '\r': '\\r',
-        '\t': '\\t',
-    }
+
 #    @profile
     def __init__(self, host, database,collection,
                  port=None, user=None, passwd=None,
@@ -392,6 +382,18 @@ class ElasticSearchDriver(DriverInterface):
 #    @profile
     def _is_patient_record(self,record):
         return 'ehr_data' not in record
+
+    @property
+    def documents_count(self):
+        """
+        Get the number of documents within current collection
+
+        :return: the number of current collection's documents
+        :rtype: int
+        """
+        self.__check_connection()
+        query="{ \"query\" : { \"prefix\" : { \"_type\" : \""+self.collection+"\" }}}"
+        return self.client.search(index=self.database,search_type='count',body=query)['hits']['total']
 
 #    @profile
     def count(self):
@@ -814,12 +816,6 @@ class ElasticSearchDriver(DriverInterface):
         if res != []:
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
-
-    def count_records_by_query(self, selector):
-        """
-        Retrieve all records matching the given query
-        """
-        raise NotImplementedError()
 
 #    @profile
     def delete_record(self, record_id):
@@ -1445,7 +1441,7 @@ class ElasticSearchDriver(DriverInterface):
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
 
-    def get_count_by_query(self, query):
+    def count_records_by_query(self, query):
         """
         Retrieve the count of all records matching the given query
         :param query: the value that must be matched for the given field
@@ -1494,7 +1490,7 @@ class ElasticSearchDriver(DriverInterface):
             close_conn_after_done = True
         self.connect()
         self.select_collection(collection)
-        qcount = self.get_count_by_query(query)
+        qcount = self.count_records_by_query(query)
         if close_conn_after_done:
             self.disconnect()
         else:
@@ -1623,7 +1619,7 @@ class ElasticSearchDriver(DriverInterface):
         count=0
         for i in range(0,len(total_queries)):
             cresult = self._run_aql_count(total_queries[i]['condition'], collection=ehr_repository)
-            count=max(count,cresult)
+            count=count+cresult
         return count
 #    @profile
     def _final_check(self,qtot):
