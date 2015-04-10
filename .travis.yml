@@ -22,7 +22,7 @@ before_install:
   - ./basexhttp -S
   - popd
   # install Python dependencies
-  - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo; fi
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo==2.8; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then pip install elasticsearch; fi
   - pip install bottle
   - pip install requests
