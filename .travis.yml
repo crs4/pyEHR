@@ -42,7 +42,7 @@ install:
 
 before_script:
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then export EXCLUDE_TEST_MODULE="elasticsearch|.*performance*"; fi
-  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE="query*|.*mongo*"; fi
+  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE="mongo|.*performance*"; fi
 
 script:
   - nosetests -v test --ignore-file=$EXCLUDE_TEST_MODULE --with-coverage --cover-package pyehr
