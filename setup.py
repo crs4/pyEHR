@@ -3,7 +3,8 @@ from distutils.errors import DistutilsSetupError
 
 AUTHOR_INFO = [
     ('Paolo Anedda', 'paolo.anedda@crs4.it'),
-    ('Luca Lianas', 'luca.lianas@crs4.it')
+    ('Luca Lianas', 'luca.lianas@crs4.it'),
+    ('Giovanni Delussu', 'giovanni.delussu@crs4.it')
 ]
 MAINTAINER_INFO = AUTHOR_INFO
 AUTHOR = '', ''.join(t[0] for t in AUTHOR_INFO)
