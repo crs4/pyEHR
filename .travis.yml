@@ -22,10 +22,10 @@ before_install:
   - ./basexhttp -S
   - popd
   # install Python dependencies
-  - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo; fi
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo==2.8; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then pip install elasticsearch; fi
   - pip install bottle
-  - pip install httplib2
+  - pip install requests
   - pip install voluptuous
   - pip install lxml
   - pip install --pre pybasex
@@ -42,7 +42,7 @@ install:
 
 before_script:
   - if [[ "$DB_ENGINE" == "mongodb" ]]; then export EXCLUDE_TEST_MODULE="elasticsearch|.*performance*"; fi
-  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE="query*|.*mongo*"; fi
+  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then export EXCLUDE_TEST_MODULE="mongo|.*performance*"; fi
 
 script:
   - nosetests -v test --ignore-file=$EXCLUDE_TEST_MODULE --with-coverage --cover-package pyehr

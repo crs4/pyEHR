@@ -13,6 +13,8 @@ class TestQueryService(unittest.TestCase):
 
     def __init__(self, label):
         super(TestQueryService, self).__init__(label)
+        if CONF_FILE is None:
+            sys.exit('ERROR: no configuration file provided')
         sconf = get_service_configuration(CONF_FILE)
         self.qservice_uri = 'http://%s:%s' % (sconf.get_query_service_configuration()['host'],
                                               sconf.get_query_service_configuration()['port'])
@@ -20,8 +22,6 @@ class TestQueryService(unittest.TestCase):
         self.query_count_path = 'query/execute_count'
 
     def setUp(self):
-        if CONF_FILE is None:
-            sys.exit('ERROR: no configuration file provided')
         sconf = get_service_configuration(CONF_FILE)
         self.dbs = DBServices(**sconf.get_db_configuration())
         self.dbs.set_index_service(**sconf.get_index_configuration())
@@ -32,7 +32,6 @@ class TestQueryService(unittest.TestCase):
             self.dbs.delete_patient(p, cascade_delete=True)
         self._delete_index_db()
         self.patients = None
-        pass
 
     def _delete_index_db(self):
         self.dbs.index_service.connect()
