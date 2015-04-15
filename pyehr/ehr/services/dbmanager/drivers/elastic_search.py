@@ -85,6 +85,7 @@ class ElasticSearchDriver(DriverInterface):
         self.regtrue = re.compile("([ :])True([ \]},])")
         self.regfalse = re.compile("([ :])False([ \]},])")
         self.threshold = 1000
+        self.insert_timeout = 600
         self.database_ids_suffix="lookup"
         baseidids=self.database.rsplit('_', 1)[0]
         self.database_ids=baseidids+"_"+self.database_ids_suffix
@@ -415,13 +416,13 @@ class ElasticSearchDriver(DriverInterface):
             if self._is_id_taken(self.database,record['_id']):
                 raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
             myid = str(self.client.index(index=self.database,doc_type=self.collection_name,id=record['_id'],
-                                body=self._to_json(record),op_type='create',refresh='true')['_id'])
+                                body=self._to_json(record),op_type='create',refresh='true',timeout=self.insert_timeout)['_id'])
             self._store_ids(record)
             return myid
 
         def clinical_add_withoutid():
             myid = str(self.client.index(index=self.database,doc_type=self.collection_name,body=self._to_json(record),
-                                op_type='create',refresh='true')['_id'])
+                                op_type='create',refresh='true',timeout=self.insert_timeout)['_id'])
             record['_id']=myid
             self._store_ids(record)
             return myid
@@ -468,12 +469,12 @@ class ElasticSearchDriver(DriverInterface):
             old_value.append([record['_id'],ind,doct])
             existing_record['ids']=old_value
             self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=baseid,
-                                        body=existing_record,refresh='true')
+                                        body=existing_record,refresh='true',timeout=self.insert_timeout)
         else:
             existing_record=dict()
             existing_record['ids']=[[record['_id'],ind,doct]]
             self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=baseid,
-                                        body=existing_record,op_type='create',refresh='true')
+                                        body=existing_record,op_type='create',refresh='true',timeout=self.insert_timeout)
 
 
     def _erase_ids(self,id2e):
@@ -485,7 +486,7 @@ class ElasticSearchDriver(DriverInterface):
             if new_value:
                 existing_record['ids']=new_value
                 self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=id2e,
-                                        body=existing_record,refresh='true')
+                                        body=existing_record,refresh='true',timeout=self.insert_timeout)
             else:
                 self.client.delete(index=self.database_ids,doc_type=self.doc_ids,id=id2e,refresh='true')
         else:
@@ -497,7 +498,7 @@ class ElasticSearchDriver(DriverInterface):
                 if new_value:
                     existing_record['ids']=new_value
                     self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=baseid,
-                                        body=existing_record,refresh='true')
+                                        body=existing_record,refresh='true',timeout=self.insert_timeout)
                 else:
                     self.client.delete(index=self.database_ids,doc_type=self.doc_ids,id=baseid,refresh='true')
             else:
@@ -571,7 +572,7 @@ class ElasticSearchDriver(DriverInterface):
             raise DuplicatedKeyError('The following IDs are already in use: %s' % duplicatedlistid)
         #create a bulk list
         bulklist = self.pack_record(notduplicatedlist,rectype_clinical)
-        bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh='true')
+        bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh='true',timeout=self.insert_timeout)
         failuresid=[]
         errtype=[]
         nerrors=0
@@ -908,7 +909,7 @@ class ElasticSearchDriver(DriverInterface):
             if new_er:
                 existing_record['ids']=new_er
                 self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=baseid,
-                                        body=existing_record,refresh='true')
+                                        body=existing_record,refresh='true',timeout=self.insert_timeout)
             self.client.indices.refresh(index=self.database_ids)
             return counter
         else:
@@ -1004,17 +1005,17 @@ class ElasticSearchDriver(DriverInterface):
             if increase_version:
                 newversion = record_to_update['version']+1
                 record_to_update['version']=newversion
-                res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id)
+                res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,timeout=self.insert_timeout)
                 if(self._is_clinical_record_revision(record_to_update)):
                     self.logger.debug('updated %s document',res[u'_id'].rsplit('_', 1)[0])
                 else:
                     self.logger.debug('updated %s document', res[u'_id'])
             else:
                 if(self._is_clinical_record_revision(record_to_update)):
-                    res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id)
+                    res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,timeout=self.insert_timeout)
                     self.logger.debug('updated %s document',res[u'_id'].rsplit('_', 1)[0])
                 else:
-                    res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id)
+                    res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,timeout=self.insert_timeout)
                     self.logger.debug('updated %s document', res[u'_id'])
             return last_update
 
@@ -1048,7 +1049,7 @@ class ElasticSearchDriver(DriverInterface):
         else:
             newid=record_id
         new_record['_id']=newid
-        res = self.client.index(index=self.database,doc_type=self.collection_name,body=new_record,id=record_id)
+        res = self.client.index(index=self.database,doc_type=self.collection_name,body=new_record,id=record_id,timeout=self.insert_timeout)
         return last_update
 
 #    @profile
@@ -1076,7 +1077,7 @@ class ElasticSearchDriver(DriverInterface):
             last_update = None
         if(not self._is_patient_record(record_to_update)):
             self._select_doc_type(record_to_update['ehr_structure_id'])
-        res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id)
+        res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,timeout=self.insert_timeout)
         self.logger.debug('updated %s document', res[u'_id'])
         return last_update
 
@@ -1111,7 +1112,7 @@ class ElasticSearchDriver(DriverInterface):
             last_update = None
         if(not self._is_patient_record(record_to_update)):
             self._select_doc_type(record_to_update['ehr_structure_id'])
-        res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id)
+        res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,timeout=self.insert_timeout)
         self.logger.debug('updated %s document', res[u'_id'])
         return last_update
 
