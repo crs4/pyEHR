@@ -102,6 +102,8 @@ def build_structure(max_depth, max_width, labels, forced_path=None, ignored_comp
 
 def check_builder_configuration(builder_conf):
     builder_conf_schema = Schema({
+        Required('compositions_count'): int,
+        Required('compositions_lbl_start_index'): int,
         Required('mean_depth'): int,
         Required('max_width'): int,
         Required('structures_count'): int,
@@ -125,8 +127,9 @@ def get_forced_path(level, full_path):
     return forced_path, ignored_path
 
 
-def get_labels(labels_set_size=20):
-    return ['lbl-%05d' % x for x in xrange(0, labels_set_size)]
+def get_labels(labels_set_size=20, labels_start_index=0):
+    return ['lbl-%05d' % x for x in xrange(labels_start_index,
+                                           labels_start_index+labels_set_size)]
 
 
 def normalize_keys(dict_to_normalize):
@@ -145,6 +148,8 @@ def build_structures(builder_conf):
     The dictionary should be like
 
     {
+      "compositions_count": 20,
+      "compositions_lbl_start_index": 0,
       "mean_depth": 4,
       "max_width": 5,
       "structures_count": 100,
@@ -174,7 +179,7 @@ def build_structures(builder_conf):
     check_builder_configuration(builder_conf)
     structures = {}
     created_matching_str = 0
-    labels = get_labels()
+    labels = get_labels(builder_conf['compositions_count'], builder_conf['compositions_lbl_start_index'])
     for level in sorted(builder_conf['matching_structures'], reverse=True):
         structures[level] = []
         str_count = round((builder_conf['structures_count']/100.) *
