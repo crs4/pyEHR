@@ -305,7 +305,7 @@ class DBServices(object):
         :param src_patient: the :class:`PatientRecord` related to the EHR record that is going to be
           moved
         :type src_patient: :class:`PatientRecord`
-        :param dest_patient: the :class:`PatientRecord` to whome the EHR record will be associated
+        :param dest_patient: the :class:`PatientRecord` which will be associated with the the EHR record
         :type dest_patient: :class:`PatientRecord`
         :param ehr_record: the :class:`ClinicalRecord` that is going to be moved
         :type ehr_record: :class:`ClinicalRecord`
