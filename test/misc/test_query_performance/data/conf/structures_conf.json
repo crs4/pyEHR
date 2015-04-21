@@ -1,6 +1,6 @@
 {
   "compositions_count": 20,
-  "compositions_lbl_start_index": 100,
+  "compositions_lbl_start_index": 0,
   "mean_depth": 5,
   "max_width": 4,
   "structures_count": 150,
