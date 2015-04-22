@@ -411,7 +411,7 @@ class MongoDriver(DriverInterface):
         """
         return self.get_records_by_query({field: value})
 
-    def get_records_by_query(self, selector, fields=None):
+    def get_records_by_query(self, selector, fields=None, limit=0):
         """
         Retrieve all records matching the given query
 
@@ -420,11 +420,14 @@ class MongoDriver(DriverInterface):
         :param fields: a list of field names that should be returned in the result set or a dict specifying the
                        fields to include or exclude
         :type fields: list or dictionary
+        :param limit: the maximum number of records that will be fetched by the query, default value is 0
+                      which means that limit won't be applied and all records will be fetched
+        :type limit: int
         :return: a list with the matching records
         :rtype: list
         """
         self._check_connection()
-        return (decode_dict(rec) for rec in self.collection.find(selector, fields))
+        return (decode_dict(rec) for rec in self.collection.find(selector, fields, limit=limit))
 
     def count_records_by_query(self, selector):
         """

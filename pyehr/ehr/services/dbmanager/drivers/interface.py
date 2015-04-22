@@ -128,7 +128,7 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
-    def get_records_by_query(self, selector, fields):
+    def get_records_by_query(self, selector, fields, limit):
         """
         Retrieve all records matching the given query
         """

@@ -1356,7 +1356,7 @@ class ElasticSearchDriver(DriverInterface):
                 yield key, value
 
 
-    def get_records_by_query(self,query,fields=None):
+    def get_records_by_query(self, query, fields=None, limit=0):
         if self.grbq == "from":
             res=self.get_records_by_query_from(query,fields)
         elif self.grbq == "scan":
