@@ -413,7 +413,7 @@ class DBServices(object):
     def get_ehr_record(self, ehr_record_id, patient_id):
         """
         Load a `ClinicalRecord` that matches the given *ehr_record_id* and that belongs
-        to the `PatientRecord` with ID *atient_id*. If no record with *ehr_record_id* is found or
+        to the `PatientRecord` with ID *patient_id*. If no record with *ehr_record_id* is found or
         if record doesn't belong to *patient_id* None will be returned.
 
         :param ehr_record_id: the ID of the clinical record
