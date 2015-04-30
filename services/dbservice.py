@@ -1,7 +1,8 @@
 import sys, argparse, json
 from functools import wraps
 
-from bottle import post, get, run, response, request, abort, HTTPError
+from bottle import post, get, put, delete, run, response, request,\
+    abort, HTTPError
 
 from pyehr.utils import get_logger
 from pyehr.utils.services import get_service_configuration, check_pid_file,\
@@ -31,12 +32,14 @@ class DBService(object):
         #######################################################
         # Web Service methods
         #######################################################
-        post('/patient/add')(self.save_patient)
+        # ---- PUT METHODS ----
+        put('/patient')(self.save_patient)
+        put('/ehr')(self.save_ehr_record)
+
         post('/patient/hide')(self.hide_patient)
         post('/patient/delete')(self.delete_patient)
         post('/patient/get')(self.get_patient)
         post('/patient/load_ehr_records')(self.load_ehr_records)
-        post('/ehr/add')(self.save_ehr_record)
         post('/ehr/hide')(self.hide_ehr_record)
         post('/ehr/delete')(self.delete_ehr_record)
         post('/ehr/get')(self.get_ehr_record)
@@ -103,7 +106,7 @@ class DBService(object):
         Create a new PatientRecord from the given values. Returns the saved record in
         its JSON encoding
         """
-        params = request.forms
+        params = request.json
         try:
             record_id = params.get('patient_id')
             if not record_id:
@@ -112,9 +115,9 @@ class DBService(object):
                 'record_id': record_id,
             }
             if params.get('creation_time'):
-                patient_record_conf['creation_time'] = float(params.get('creation_time'))
-            if params.get('active'):
-                patient_record_conf['active'] = self._get_bool(params.get('active'))
+                patient_record_conf['creation_time'] = params.get('creation_time')
+            if params.get('active') is not None:
+                patient_record_conf['active'] = params.get('active')
             patient_record = PatientRecord(**patient_record_conf)
             patient_record = self.dbs.save_patient(patient_record)
             response_body = {
@@ -137,7 +140,7 @@ class DBService(object):
         Save a new EHR record and link it to an existing patient record.
         EHR record must be a valid JSON dictionary.
         """
-        params = request.forms
+        params = request.json
         try:
             patient_id = params.get('patient_id')
             if not patient_id:

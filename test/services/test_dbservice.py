@@ -19,11 +19,11 @@ class TestDBService(unittest.TestCase):
         self.dbservice_uri = 'http://%s:%s' % (sconf.get_db_service_configuration()['host'],
                                                sconf.get_db_service_configuration()['port'])
         self.patient_paths = {
-            'add': 'patient/add',
+            'add': 'patient',
             'delete': 'patient/delete'
         }
         self.ehr_paths = {
-            'add': 'ehr/add',
+            'add': 'ehr',
             'delete': 'ehr/delete',
             'get': 'ehr/get'
         }
@@ -155,23 +155,22 @@ class TestDBService(unittest.TestCase):
 
     def test_add_patient(self):
         # check mandatory fields
-        results = requests.post(self._get_path(self.patient_paths['add']), {})
+        results = requests.put(self._get_path(self.patient_paths['add']), json={})
         self.assertEqual(results.status_code, requests.codes.bad)
         # check full patient record creation
         creation_time = time.time()
         patient_details = self._build_add_patient_request(patient_id='TEST_PATIENT',
                                                           active=False,
                                                           creation_time=creation_time)
-        results = requests.post(self._get_path(self.patient_paths['add']), patient_details)
+        results = requests.put(self._get_path(self.patient_paths['add']), json=patient_details)
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertTrue(results.json()['SUCCESS'])
         response_patient = results.json()['RECORD']
         self.assertEqual(response_patient['record_id'], patient_details['patient_id'])
-        self.assertEqual(response_patient['creation_time'],
-                         round(patient_details['creation_time'], 2))
+        self.assertEqual(response_patient['creation_time'], patient_details['creation_time'])
         self.assertFalse(response_patient['active'])
         # check duplicated entry
-        results = requests.post(self._get_path(self.patient_paths['add']), patient_details)
+        results = requests.put(self._get_path(self.patient_paths['add']), json=patient_details)
         self.assertEqual(results.status_code, requests.codes.server_error)
         # cleanup
         results = requests.post(self._get_path(self.patient_paths['delete']),
@@ -182,13 +181,13 @@ class TestDBService(unittest.TestCase):
     def test_add_ehr_record(self):
         # create a patient
         patient_details = self._build_add_patient_request(patient_id='TEST_PATIENT')
-        results = requests.post(self._get_path(self.patient_paths['add']), patient_details)
+        results = requests.put(self._get_path(self.patient_paths['add']), json=patient_details)
         self.assertEqual(results.status_code, requests.codes.ok)
         # EHR creation, check for mandatory fields
-        results = requests.post(self._get_path(self.ehr_paths['add']), {})
+        results = requests.put(self._get_path(self.ehr_paths['add']), json={})
         self.assertEqual(results.status_code, requests.codes.bad)
-        results = requests.post(self._get_path(self.ehr_paths['add']),
-                                self._build_add_ehr_request(patient_id='TEST_PATIENT'))
+        results = requests.put(self._get_path(self.ehr_paths['add']),
+                               json=self._build_add_ehr_request(patient_id='TEST_PATIENT'))
         self.assertEqual(results.status_code, requests.codes.bad)
         # check for bad EHR JSON document (i.e. missing mandatory field in JSON document)
         ehr_record_details = {
@@ -196,15 +195,15 @@ class TestDBService(unittest.TestCase):
                 'k1': 'v1', 'k2': 'v2'
             }
         }
-        results = requests.post(self._get_path(self.ehr_paths['add']),
-                                self._build_add_ehr_request(patient_id='TEST_PATIENT',
-                                                            ehr_record=ehr_record_details))
+        results = requests.put(self._get_path(self.ehr_paths['add']),
+                               json=self._build_add_ehr_request(patient_id='TEST_PATIENT',
+                                                                ehr_record=ehr_record_details))
         self.assertEqual(results.status_code, requests.codes.server_error)
         # fix EHR record details
         ehr_record_details['archetype_class'] = 'openEHR.TEST-EVALUATION.v1'
-        results = requests.post(self._get_path(self.ehr_paths['add']),
-                                self._build_add_ehr_request(patient_id='TEST_PATIENT',
-                                                            ehr_record=ehr_record_details))
+        results = requests.put(self._get_path(self.ehr_paths['add']),
+                               json=self._build_add_ehr_request(patient_id='TEST_PATIENT',
+                                                                ehr_record=ehr_record_details))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertTrue(results.json()['SUCCESS'])
         self.assertEqual(results.json()['RECORD']['ehr_data']['archetype_class'],
@@ -212,8 +211,8 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(results.json()['RECORD']['ehr_data'], ehr_record_details)
         self.assertTrue(results.json()['RECORD']['active'])
         # check for non existing patient ID
-        results = requests.post(self._get_path(self.ehr_paths['add']),
-                                self._build_add_ehr_request(ehr_record=ehr_record_details))
+        results = requests.put(self._get_path(self.ehr_paths['add']),
+                               json=self._build_add_ehr_request(ehr_record=ehr_record_details))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertFalse(results.json()['SUCCESS'])
         # cleanup
@@ -232,8 +231,8 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertFalse(results.json()['SUCCESS'])
         # add a patient
-        results = requests.post(self._get_path(self.patient_paths['add']),
-                                self._build_add_patient_request(patient_id='TEST_PATIENT'))
+        results = requests.put(self._get_path(self.patient_paths['add']),
+                               json=self._build_add_patient_request(patient_id='TEST_PATIENT'))
         self.assertEqual(results.status_code, requests.codes.ok)
         # delete patient
         results = requests.post(self._get_path(self.patient_paths['delete']),
@@ -241,17 +240,17 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertTrue(results.json()['SUCCESS'])
         # create patient data again
-        results = requests.post(self._get_path(self.patient_paths['add']),
-                                self._build_add_patient_request(patient_id='TEST_PATIENT'))
+        results = requests.put(self._get_path(self.patient_paths['add']),
+                               json=self._build_add_patient_request(patient_id='TEST_PATIENT'))
         self.assertEqual(results.status_code, requests.codes.ok)
         # ... and add an EHR record
         ehr_record = {
             'archetype_class': 'openEHR.TEST-EVALUATION.v1',
             'archetype_details': {'k1': 'v1', 'k2': 'v2'}
         }
-        results = requests.post(self._get_path(self.ehr_paths['add']),
-                                self._build_add_ehr_request(patient_id='TEST_PATIENT',
-                                                            ehr_record=ehr_record))
+        results = requests.put(self._get_path(self.ehr_paths['add']),
+                               json=self._build_add_ehr_request(patient_id='TEST_PATIENT',
+                                                                ehr_record=ehr_record))
         self.assertEqual(results.status_code, requests.codes.ok)
         # try to delete patient record without the cascade delete flag enabled
         results = requests.post(self._get_path(self.patient_paths['delete']),
@@ -266,16 +265,16 @@ class TestDBService(unittest.TestCase):
 
     def test_delete_ehr_record(self):
         # create patient and EHR record
-        results = requests.post(self._get_path(self.patient_paths['add']),
-                                self._build_add_patient_request(patient_id='TEST_PATIENT'))
+        results = requests.put(self._get_path(self.patient_paths['add']),
+                               json=self._build_add_patient_request(patient_id='TEST_PATIENT'))
         self.assertEqual(results.status_code, requests.codes.ok)
         ehr_record = {
             'archetype_class': 'openEHR.TEST-EVALUATION.v1',
             'archetype_details': {'k1': 'v1', 'k2': 'v2'}
         }
-        results = requests.post(self._get_path(self.ehr_paths['add']),
-                                self._build_add_ehr_request(patient_id='TEST_PATIENT',
-                                                            ehr_record=ehr_record))
+        results = requests.put(self._get_path(self.ehr_paths['add']),
+                               json=self._build_add_ehr_request(patient_id='TEST_PATIENT',
+                                                                ehr_record=ehr_record))
         self.assertEqual(results.status_code, requests.codes.ok)
         # get EHR record ID (will be used to delete the record itself)
         ehr_record_id = str(results.json()['RECORD']['record_id'])
@@ -310,16 +309,16 @@ class TestDBService(unittest.TestCase):
 
     def test_get_ehr_record(self):
         # create a patient and an EHR record
-        results = requests.post(self._get_path(self.patient_paths['add']),
-                                self._build_add_patient_request(patient_id='TEST_PATIENT'))
+        results = requests.put(self._get_path(self.patient_paths['add']),
+                               json=self._build_add_patient_request(patient_id='TEST_PATIENT'))
         self.assertEqual(results.status_code, requests.codes.ok)
         ehr_record = {
             'archetype_class': 'openEHR.TEST-EVALUATION.v1',
             'archetype_details': {'k1': 'v1', 'k2': 'v2'}
         }
-        results = requests.post(self._get_path(self.ehr_paths['add']),
-                                self._build_add_ehr_request(patient_id='TEST_PATIENT',
-                                                            ehr_record=ehr_record))
+        results = requests.put(self._get_path(self.ehr_paths['add']),
+                               json=self._build_add_ehr_request(patient_id='TEST_PATIENT',
+                                                                ehr_record=ehr_record))
         self.assertEqual(results.status_code, requests.codes.ok)
         ehr_record_id = str(results.json()['RECORD']['record_id'])
         # check for missing mandatory fields
