@@ -40,10 +40,11 @@ class DBService(object):
         delete('/ehr/<patient_id>/<ehr_record_id>/delete')(self.delete_ehr_record)
         delete('/patient/<patient_id>/hide')(self.hide_patient)
         delete('/ehr/<patient_id>/<ehr_record_id>/hide')(self.hide_ehr_record)
+        # ---- GET METHODS -----
+        get('/patient/<patient_id>')(self.get_patient)
+        get('/patient/load_ehr_records')(self.load_ehr_records)
+        get('/ehr/<patient_id>/<ehr_record_id>')(self.get_ehr_record)
 
-        post('/patient/get')(self.get_patient)
-        post('/patient/load_ehr_records')(self.load_ehr_records)
-        post('/ehr/get')(self.get_ehr_record)
         post('/batch/save/patient')(self.batch_save_patient)
         post('/batch/save/patients')(self.batch_save_patients)
         # Utilities
@@ -64,7 +65,7 @@ class DBService(object):
             except pyehr_errors.UnknownDriverError, ude:
                 inst._error(str(ude), 500)
             except HTTPError:
-                #if an abort was called in wrapped function, raise the generated HTTPError
+                # if an abort was called in wrapped function, raise the generated HTTPError
                 raise
             except Exception, e:
                 import traceback
@@ -268,7 +269,8 @@ class DBService(object):
         if not ehr_record:
             response_body = {
                 'SUCCESS': False,
-                'MESSAGE': 'EHR record with ID %s is not connected to patient record or is alredy an hidden record' % ehr_record_id
+                'MESSAGE': 'EHR record with ID %s is not connected to patient record or is already an hidden record' %
+                           ehr_record_id
             }
         else:
             self.dbs.hide_ehr_record(ehr_record)
@@ -279,20 +281,13 @@ class DBService(object):
         return self._success(response_body)
 
     @exceptions_handler
-    def get_patient(self):
-        params = request.forms
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
+    def get_patient(self, patient_id):
+        params = request.json
         fetch_ehr = params.get('fetch_ehr_records')
-        if fetch_ehr:
-            fetch_ehr = self._get_bool(fetch_ehr)
-        else:
+        if fetch_ehr is None:
             fetch_ehr = True
         fetch_hidden_ehr = params.get('fetch_hidden_ehr_records')
-        if fetch_hidden_ehr:
-            fetch_hidden_ehr = self._get_bool(fetch_hidden_ehr)
-        else:
+        if fetch_hidden_ehr is None:
             fetch_hidden_ehr = False
         patient_record = self.dbs.get_patient(patient_id, fetch_ehr,
                                               fetch_hidden_ehr)
@@ -304,14 +299,7 @@ class DBService(object):
         return self._success(response_body)
 
     @exceptions_handler
-    def get_ehr_record(self):
-        params = request.forms
-        ehr_record_id = params.get('ehr_record_id')
-        if not ehr_record_id:
-            self._missing_mandatory_field('ehr_record_id')
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
+    def get_ehr_record(self, patient_id, ehr_record_id):
         ehr_record = self.dbs.get_ehr_record(ehr_record_id, patient_id)
         response_body = {'SUCCESS': True}
         if not ehr_record:

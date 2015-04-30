@@ -25,7 +25,7 @@ class TestDBService(unittest.TestCase):
         self.ehr_paths = {
             'add': 'ehr',
             'delete': 'ehr',
-            'get': 'ehr/get'
+            'get': 'ehr'
         }
         self.batch_path = {
             'save_patient': 'batch/save/patient',
@@ -77,14 +77,6 @@ class TestDBService(unittest.TestCase):
         request = {}
         if cascade_delete:
             request['cascade_delete'] = cascade_delete
-        return request
-
-    def _build_get_ehr_request(self, patient_id=None, ehr_record_id=None):
-        request = {}
-        if patient_id:
-            request['patient_id'] = patient_id
-        if ehr_record_id:
-            request['ehr_record_id'] = ehr_record_id
         return request
 
     def _build_patient_batch_request(self, patient_batch):
@@ -315,32 +307,19 @@ class TestDBService(unittest.TestCase):
                                                                 ehr_record=ehr_record))
         self.assertEqual(results.status_code, requests.codes.ok)
         ehr_record_id = str(results.json()['RECORD']['record_id'])
-        # check for missing mandatory fields
-        results = requests.post(self._get_path(self.ehr_paths['get']),
-                                self._build_get_ehr_request())
-        self.assertEqual(results.status_code, requests.codes.bad)
-        results = requests.post(self._get_path(self.ehr_paths['get']),
-                                self._build_get_ehr_request(patient_id='TEST_PATIENT'))
-        self.assertEqual(results.status_code, requests.codes.bad)
-        results = requests.post(self._get_path(self.ehr_paths['get']),
-                                self._build_get_ehr_request(ehr_record_id='DUMMY_ID'))
-        self.assertEqual(results.status_code, requests.codes.bad)
         # wrong patient ID, right EHR record ID
-        results = requests.post(self._get_path(self.ehr_paths['get']),
-                                self._build_get_ehr_request(patient_id='JOHN_DOE',
-                                                            ehr_record_id=ehr_record_id))
+        results = requests.get(self._get_path(self.ehr_paths['get'], patient_id='JOHN_DOE',
+                                              ehr_record_id=ehr_record_id))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertIsNone(results.json()['RECORD'])
         # right patient ID, wrong EHR record ID
-        results = requests.post(self._get_path(self.ehr_paths['get']),
-                                self._build_get_ehr_request(patient_id='TEST_PATIENT',
-                                                            ehr_record_id='DUMMY_ID'))
+        results = requests.get(self._get_path(self.ehr_paths['get'], patient_id='TEST_PATIENT',
+                                              ehr_record_id='DUMMY_ID'))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertIsNone(results.json()['RECORD'])
         # test with proper patient and EHR record IDs
-        results = requests.post(self._get_path(self.ehr_paths['get']),
-                                self._build_get_ehr_request(patient_id='TEST_PATIENT',
-                                                            ehr_record_id=ehr_record_id))
+        results = requests.get(self._get_path(self.ehr_paths['get'], patient_id='TEST_PATIENT',
+                                              ehr_record_id=ehr_record_id))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertEqual(str(results.json()['RECORD']['record_id']), ehr_record_id)
         self.assertEqual(str(results.json()['RECORD']['patient_id']), 'TEST_PATIENT')
