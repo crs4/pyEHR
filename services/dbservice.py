@@ -35,13 +35,14 @@ class DBService(object):
         # ---- PUT METHODS ----
         put('/patient')(self.save_patient)
         put('/ehr')(self.save_ehr_record)
+        # ---- DELETE METHODS ----
+        delete('/patient/<patient_id>')(self.delete_patient)
+        delete('/ehr/<patient_id>/<ehr_record_id>')(self.delete_ehr_record)
 
         post('/patient/hide')(self.hide_patient)
-        post('/patient/delete')(self.delete_patient)
         post('/patient/get')(self.get_patient)
         post('/patient/load_ehr_records')(self.load_ehr_records)
         post('/ehr/hide')(self.hide_ehr_record)
-        post('/ehr/delete')(self.delete_ehr_record)
         post('/ehr/get')(self.get_ehr_record)
         post('/batch/save/patient')(self.batch_save_patient)
         post('/batch/save/patients')(self.batch_save_patients)
@@ -182,16 +183,11 @@ class DBService(object):
             self._error(str(ve), 400)
 
     @exceptions_handler
-    def delete_patient(self):
-        params = request.forms
+    def delete_patient(self, patient_id):
+        params = request.json
         try:
-            patient_id = params.get('patient_id')
-            if not patient_id:
-                self._missing_mandatory_field('patient_id')
             cascade_delete = params.get('cascade_delete')
-            if cascade_delete:
-                cascade_delete = self._get_bool(cascade_delete)
-            else:
+            if cascade_delete is None:
                 cascade_delete = False
             patient_record = self.dbs.get_patient(patient_id)
             if not patient_record:
@@ -212,14 +208,7 @@ class DBService(object):
             self._error(msg, 500)
 
     @exceptions_handler
-    def delete_ehr_record(self):
-        params = request.forms
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
-        ehr_record_id = params.get('ehr_record_id')
-        if not ehr_record_id:
-            self._missing_mandatory_field('ehr_record_id')
+    def delete_ehr_record(self, patient_id, ehr_record_id):
         patient_record = self.dbs.get_patient(patient_id, fetch_ehr_records=False,
                                               fetch_hidden_ehr=True)
         if not patient_record:

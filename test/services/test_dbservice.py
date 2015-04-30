@@ -20,11 +20,11 @@ class TestDBService(unittest.TestCase):
                                                sconf.get_db_service_configuration()['port'])
         self.patient_paths = {
             'add': 'patient',
-            'delete': 'patient/delete'
+            'delete': 'patient'
         }
         self.ehr_paths = {
             'add': 'ehr',
-            'delete': 'ehr/delete',
+            'delete': 'ehr',
             'get': 'ehr/get'
         }
         self.batch_path = {
@@ -41,8 +41,13 @@ class TestDBService(unittest.TestCase):
         index_service.basex_client.delete_database()
         index_service.disconnect()
 
-    def _get_path(self, path):
-        return '/'.join([self.dbservice_uri, path])
+    def _get_path(self, path, patient_id=None, ehr_record_id=None):
+        path_params = [self.dbservice_uri, path]
+        if patient_id:
+            path_params.append(patient_id)
+        if ehr_record_id:
+            path_params.append(ehr_record_id)
+        return '/'.join(path_params)
 
     def _build_add_patient_request(self, patient_id='JOHN_DOE', active=None,
                                    creation_time=None):
@@ -66,16 +71,10 @@ class TestDBService(unittest.TestCase):
             request['record_id'] = record_id
         return request
 
-    def _build_delete_patient_request(self, patient_id='JOHN_DOE', cascade_delete=None):
-        request = {'patient_id': patient_id}
+    def _build_delete_patient_request(self, cascade_delete=None):
+        request = {}
         if cascade_delete:
             request['cascade_delete'] = cascade_delete
-        return request
-
-    def _build_delete_ehr_request(self, patient_id='JOHN_DOE', ehr_record_id=None):
-        request = {'patient_id': patient_id}
-        if ehr_record_id:
-            request['ehr_record_id'] = ehr_record_id
         return request
 
     def _build_get_ehr_request(self, patient_id=None, ehr_record_id=None):
@@ -173,8 +172,9 @@ class TestDBService(unittest.TestCase):
         results = requests.put(self._get_path(self.patient_paths['add']), json=patient_details)
         self.assertEqual(results.status_code, requests.codes.server_error)
         # cleanup
-        results = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request(patient_id='TEST_PATIENT'))
+        results = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id='TEST_PATIENT'),
+                                  json=self._build_delete_patient_request())
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertTrue(results.json()['SUCCESS'])
 
@@ -216,18 +216,16 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertFalse(results.json()['SUCCESS'])
         # cleanup
-        results = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request(patient_id='TEST_PATIENT',
-                                                                   cascade_delete=True))
+        results = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id='TEST_PATIENT'),
+                                  json=self._build_delete_patient_request(cascade_delete=True))
         self.assertEqual(results.status_code, requests.codes.ok)
 
     def test_delete_patient(self):
-        # check for mandatory fields
-        results = requests.post(self._get_path(self.patient_paths['delete']), {})
-        self.assertEqual(results.status_code, requests.codes.bad)
         # try to delete a non existing patient
-        results = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request())
+        results = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id='JOHN_DOE'),
+                                  json=self._build_delete_patient_request())
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertFalse(results.json()['SUCCESS'])
         # add a patient
@@ -235,8 +233,9 @@ class TestDBService(unittest.TestCase):
                                json=self._build_add_patient_request(patient_id='TEST_PATIENT'))
         self.assertEqual(results.status_code, requests.codes.ok)
         # delete patient
-        results = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request(patient_id='TEST_PATIENT'))
+        results = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id='TEST_PATIENT'),
+                                  json=self._build_delete_patient_request())
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertTrue(results.json()['SUCCESS'])
         # create patient data again
@@ -253,13 +252,14 @@ class TestDBService(unittest.TestCase):
                                                                 ehr_record=ehr_record))
         self.assertEqual(results.status_code, requests.codes.ok)
         # try to delete patient record without the cascade delete flag enabled
-        results = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request(patient_id='TEST_PATIENT'))
+        results = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id='TEST_PATIENT'),
+                                  json=self._build_delete_patient_request())
         self.assertEqual(results.status_code, requests.codes.server_error)
         # retry enabling cascade deletion
-        results = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request(patient_id='TEST_PATIENT',
-                                                                   cascade_delete=True))
+        results = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id='TEST_PATIENT'),
+                                  json=self._build_delete_patient_request(cascade_delete=True))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertTrue(results.json()['SUCCESS'])
 
@@ -278,33 +278,25 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(results.status_code, requests.codes.ok)
         # get EHR record ID (will be used to delete the record itself)
         ehr_record_id = str(results.json()['RECORD']['record_id'])
-        # check for mandatory fields
-        results = requests.post(self._get_path(self.ehr_paths['delete']), {})
-        self.assertEqual(results.status_code, requests.codes.bad)
-        results = requests.post(self._get_path(self.ehr_paths['delete']),
-                                self._build_delete_ehr_request(patient_id='TEST_PATIENT'))
-        self.assertEqual(results.status_code, requests.codes.bad)
         # delete an EHR record by giving a wrong Patient ID
-        results = requests.post(self._get_path(self.ehr_paths['delete']),
-                                self._build_delete_ehr_request(ehr_record_id=ehr_record_id))
+        results = requests.delete(self._get_path(self.ehr_paths['delete'], patient_id='JOHN_DOE',
+                                                 ehr_record_id=ehr_record_id))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertFalse(results.json()['SUCCESS'])
         # try to delete a non existing EHR record (wrong record ID)
-        results = requests.post(self._get_path(self.ehr_paths['delete']),
-                                self._build_delete_ehr_request(patient_id='TEST_PATIENT',
-                                                               ehr_record_id='DUMMY_ID'))
+        results = requests.delete(self._get_path(self.ehr_paths['delete'], patient_id='TEST_PATIENT',
+                                                 ehr_record_id='DUMMY_RECORD'))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertFalse(results.json()['SUCCESS'])
         # delete EHR record
-        results = requests.post(self._get_path(self.ehr_paths['delete']),
-                                self._build_delete_ehr_request(patient_id='TEST_PATIENT',
-                                                               ehr_record_id=ehr_record_id))
+        results = requests.delete(self._get_path(self.ehr_paths['delete'], patient_id='TEST_PATIENT',
+                                                 ehr_record_id=ehr_record_id))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertTrue(results.json()['SUCCESS'])
         # cleanup
-        results = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request(patient_id='TEST_PATIENT',
-                                                                   cascade_delete=True))
+        results = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id='TEST_PATIENT'),
+                                  json=self._build_delete_patient_request(cascade_delete=True))
         self.assertEqual(results.status_code, requests.codes.ok)
 
     def test_get_ehr_record(self):
@@ -351,9 +343,9 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(str(results.json()['RECORD']['record_id']), ehr_record_id)
         self.assertEqual(str(results.json()['RECORD']['patient_id']), 'TEST_PATIENT')
         # cleanup
-        results = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request(patient_id='TEST_PATIENT',
-                                                                   cascade_delete=True))
+        results = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id='TEST_PATIENT'),
+                                  json=self._build_delete_patient_request(cascade_delete=True))
         self.assertEqual(results.status_code, requests.codes.ok)
 
     def test_patient_batch(self):
@@ -390,9 +382,9 @@ class TestDBService(unittest.TestCase):
                                 self._build_patient_batch_request(patient_batch))
         self.assertEqual(results.status_code, requests.codes.server_error)
         # cleanup
-        results = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request(patient_id='TEST_PATIENT',
-                                                                   cascade_delete=True))
+        results = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id='TEST_PATIENT'),
+                                  json=self._build_delete_patient_request(cascade_delete=True))
         self.assertEqual(results.status_code, requests.codes.ok)
 
     def test_patients_batch(self):
@@ -423,9 +415,9 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(len(results.json()['SAVED']), 2)
         # cleanup
         for saved in results.json()['SAVED']:
-            res = requests.post(self._get_path(self.patient_paths['delete']),
-                                self._build_delete_patient_request(patient_id=str(saved['record_id']),
-                                                                   cascade_delete=True))
+            res = requests.delete(self._get_path(self.patient_paths['delete'],
+                                                 patient_id=str(saved['record_id'])),
+                                  json=self._build_delete_patient_request(cascade_delete=True))
             self.assertEqual(res.status_code, requests.codes.ok)
 
 
