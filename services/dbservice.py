@@ -36,13 +36,13 @@ class DBService(object):
         put('/patient')(self.save_patient)
         put('/ehr')(self.save_ehr_record)
         # ---- DELETE METHODS ----
-        delete('/patient/<patient_id>')(self.delete_patient)
-        delete('/ehr/<patient_id>/<ehr_record_id>')(self.delete_ehr_record)
+        delete('/patient/<patient_id>/delete')(self.delete_patient)
+        delete('/ehr/<patient_id>/<ehr_record_id>/delete')(self.delete_ehr_record)
+        delete('/patient/<patient_id>/hide')(self.hide_patient)
+        delete('/ehr/<patient_id>/<ehr_record_id>/hide')(self.hide_ehr_record)
 
-        post('/patient/hide')(self.hide_patient)
         post('/patient/get')(self.get_patient)
         post('/patient/load_ehr_records')(self.load_ehr_records)
-        post('/ehr/hide')(self.hide_ehr_record)
         post('/ehr/get')(self.get_ehr_record)
         post('/batch/save/patient')(self.batch_save_patient)
         post('/batch/save/patients')(self.batch_save_patients)
@@ -233,14 +233,10 @@ class DBService(object):
         return self._success(response_body)
 
     @exceptions_handler
-    def hide_patient(self):
+    def hide_patient(self, patient_id):
         """
         Hide a patient record and related EHR records
         """
-        params = request.forms
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
         patient_record = self.dbs.get_patient(patient_id)
         if not patient_record:
             # TODO: check if an error is a better solution here
@@ -257,17 +253,10 @@ class DBService(object):
         return self._success(response_body)
 
     @exceptions_handler
-    def hide_ehr_record(self):
+    def hide_ehr_record(self, patient_id, ehr_record_id):
         """
         Hide an EHR record by ID
         """
-        params = request.forms
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
-        ehr_record_id = params.get('ehr_record_id')
-        if not ehr_record_id:
-            self._missing_mandatory_field('ehr_record_id')
         patient_record = self.dbs.get_patient(patient_id, fetch_ehr_records=False)
         if not patient_record:
             response_body = {
