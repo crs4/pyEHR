@@ -92,7 +92,11 @@ class ElasticSearchDriver(DriverInterface):
         self.doc_ids="table"
         self.scrolltime="1m"
         self.grbq="scan" # "scan" or "from"
-
+        #refresh for insertion. put to false for long bulk insertion
+        self.refresh='false'
+        #self.refresh='true'
+        #timeout for all action on es
+        self.global_timeout=60
     def __enter__(self):
         self.connect()
         return self
@@ -109,7 +113,7 @@ class ElasticSearchDriver(DriverInterface):
         if not self.client:
             self.logger.debug('connecting to host %s', self.host)
             try:
-                self.client = elasticsearch.Elasticsearch(hosts=self.host,connection_class=self.transportclass)
+                self.client = elasticsearch.Elasticsearch(hosts=self.host,connection_class=self.transportclass,maxsize=100,timeout=self.global_timeout)
                 self.client.info()
             except elasticsearch.TransportError:
                 raise DBManagerNotConnectedError('Unable to connect to ElasticSearch at %s:%s' %
@@ -416,13 +420,13 @@ class ElasticSearchDriver(DriverInterface):
             if self._is_id_taken(self.database,record['_id']):
                 raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
             myid = str(self.client.index(index=self.database,doc_type=self.collection_name,id=record['_id'],
-                                body=self._to_json(record),op_type='create',refresh='true',timeout=self.insert_timeout)['_id'])
+                                body=self._to_json(record),op_type='create',refresh=self.refresh,timeout=self.insert_timeout)['_id'])
             self._store_ids(record)
             return myid
 
         def clinical_add_withoutid():
             myid = str(self.client.index(index=self.database,doc_type=self.collection_name,body=self._to_json(record),
-                                op_type='create',refresh='true',timeout=self.insert_timeout)['_id'])
+                                op_type='create',refresh=self.refresh,timeout=self.insert_timeout)['_id'])
             record['_id']=myid
             self._store_ids(record)
             return myid
@@ -469,12 +473,12 @@ class ElasticSearchDriver(DriverInterface):
             old_value.append([record['_id'],ind,doct])
             existing_record['ids']=old_value
             self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=baseid,
-                                        body=existing_record,refresh='true',timeout=self.insert_timeout)
+                                        body=existing_record,refresh=self.refresh,timeout=self.insert_timeout)
         else:
             existing_record=dict()
             existing_record['ids']=[[record['_id'],ind,doct]]
             self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=baseid,
-                                        body=existing_record,op_type='create',refresh='true',timeout=self.insert_timeout)
+                                        body=existing_record,op_type='create',refresh=self.refresh,timeout=self.insert_timeout)
 
 
     def _erase_ids(self,id2e):
@@ -572,7 +576,7 @@ class ElasticSearchDriver(DriverInterface):
             raise DuplicatedKeyError('The following IDs are already in use: %s' % duplicatedlistid)
         #create a bulk list
         bulklist = self.pack_record(notduplicatedlist,rectype_clinical)
-        bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh='true',timeout=self.insert_timeout)
+        bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh=self.refresh,timeout=self.insert_timeout)
         failuresid=[]
         errtype=[]
         nerrors=0
