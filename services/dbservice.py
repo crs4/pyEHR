@@ -35,6 +35,8 @@ class DBService(object):
         # ---- PUT METHODS ----
         put('/patient')(self.save_patient)
         put('/ehr')(self.save_ehr_record)
+        put('/batch/save/patient')(self.batch_save_patient)
+        put('/batch/save/patients')(self.batch_save_patients)
         # ---- DELETE METHODS ----
         delete('/patient/<patient_id>/delete')(self.delete_patient)
         delete('/ehr/<patient_id>/<ehr_record_id>/delete')(self.delete_ehr_record)
@@ -44,10 +46,7 @@ class DBService(object):
         get('/patient/<patient_id>')(self.get_patient)
         get('/patient/load_ehr_records')(self.load_ehr_records)
         get('/ehr/<patient_id>/<ehr_record_id>')(self.get_ehr_record)
-
-        post('/batch/save/patient')(self.batch_save_patient)
-        post('/batch/save/patients')(self.batch_save_patients)
-        # Utilities
+        # ---- UTILITIES ----
         post('/check/status/dbservice')(self.test_server)
         get('/check/status/dbservice')(self.test_server)
 
@@ -355,12 +354,12 @@ class DBService(object):
         If one of the EHR records can't be saved, all saved records (patient and ehr data
         within this batch) will be deleted.
         """
-        params = request.forms
+        params = request.json
         try:
             patient_data = params.get('patient_data')
             if patient_data is None:
                 self._missing_mandatory_field('patient_data')
-            patient_record = PatientRecord.from_json(json.loads(patient_data))
+            patient_record = PatientRecord.from_json(patient_data)
             success, msg, patient_record, errors = self._save_patient_from_batch(patient_record)
             if success:
                 response_body = {
@@ -376,7 +375,7 @@ class DBService(object):
         except pyehr_errors.InvalidJsonStructureError, je:
             self._error(str(je), 500)
         except ValueError, ve:
-            #TODO: check this, not quite sure about the 400 error code...
+            # TODO: check this, not quite sure about the 400 error code...
             self._error(str(ve), 400)
 
     @exceptions_handler
@@ -388,7 +387,7 @@ class DBService(object):
         Two lists of JSON records will be returned, one with the saved records and one with
         the records that failes with the related error.
         """
-        params = request.forms
+        params = request.json
         patients_data = params.get('patients_data')
         if patients_data is None:
             self._missing_mandatory_field('patients_data')
@@ -398,7 +397,6 @@ class DBService(object):
             'ERRORS': []
         }
         try:
-            patients_data = json.loads(patients_data)
             for patient in patients_data:
                 try:
                     patient_record = PatientRecord.from_json(patient)
@@ -414,7 +412,7 @@ class DBService(object):
                     response_body['ERRORS'].append({'MESSAGE': str(je), 'RECORD': patient})
             return self._success(response_body)
         except ValueError, ve:
-            #TODO: check this, not quite sure about the 400 error code...
+            # TODO: check this, not quite sure about the 400 error code...
             self._error(str(ve), 400)
 
     def start_service(self, host, port, engine, debug=False):

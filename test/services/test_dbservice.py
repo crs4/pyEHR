@@ -81,12 +81,12 @@ class TestDBService(unittest.TestCase):
 
     def _build_patient_batch_request(self, patient_batch):
         return {
-            'patient_data': json.dumps(patient_batch)
+            'patient_data': patient_batch
         }
 
     def _build_patients_batch_request(self, patients_batch):
         return {
-            'patients_data': json.dumps(patients_batch)
+            'patients_data': patients_batch
         }
 
     def _build_patient_batch(self, patient_id='JOHN_DOE', bad_patient_json=False,
@@ -331,36 +331,36 @@ class TestDBService(unittest.TestCase):
 
     def test_patient_batch(self):
         # check for mandatory fields
-        results = requests.post(self._get_path(self.batch_path['save_patient']), {})
+        results = requests.put(self._get_path(self.batch_path['save_patient']), json={})
         self.assertEqual(results.status_code, requests.codes.bad)
         # build a batch with a bad PATIENT RECORD JSON structure and try to save it
         patient_batch = self._build_patient_batch(patient_id='TEST_PATIENT',
                                                   bad_patient_json=True)
-        results = requests.post(self._get_path(self.batch_path['save_patient']),
-                                self._build_patient_batch_request(patient_batch))
+        results = requests.put(self._get_path(self.batch_path['save_patient']),
+                               json=self._build_patient_batch_request(patient_batch))
         self.assertEqual(results.status_code, requests.codes.server_error)
         # build a batch with a bad EHR RECORD JSON structure and try to save it
         patient_batch = self._build_patient_batch(patient_id='TEST_PATIENT',
                                                   bad_ehr_json=True)
-        results = requests.post(self._get_path(self.batch_path['save_patient']),
-                                self._build_patient_batch_request(patient_batch))
+        results = requests.put(self._get_path(self.batch_path['save_patient']),
+                               json=self._build_patient_batch_request(patient_batch))
         self.assertEqual(results.status_code, requests.codes.server_error)
         # build a batch with an EHR RECORD with duplicated ID and try to save it
         patient_batch = self._build_patient_batch(patient_id='TEST_PATIENT',
                                                   duplicated_ehr_id=True)
-        results = requests.post(self._get_path(self.batch_path['save_patient']),
-                                self._build_patient_batch_request(patient_batch))
+        results = requests.put(self._get_path(self.batch_path['save_patient']),
+                               json=self._build_patient_batch_request(patient_batch))
         self.assertEqual(results.status_code, requests.codes.server_error)
         # build a good batch and save it
         patient_batch = self._build_patient_batch(patient_id='TEST_PATIENT',
                                                   ehr_records_count=4)
-        results = requests.post(self._get_path(self.batch_path['save_patient']),
-                                self._build_patient_batch_request(patient_batch))
+        results = requests.put(self._get_path(self.batch_path['save_patient']),
+                               json=self._build_patient_batch_request(patient_batch))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertTrue(results.json()['SUCCESS'])
         # try to save the same batch again (expected duplicated ID error)
-        results = requests.post(self._get_path(self.batch_path['save_patient']),
-                                self._build_patient_batch_request(patient_batch))
+        results = requests.put(self._get_path(self.batch_path['save_patient']),
+                               json=self._build_patient_batch_request(patient_batch))
         self.assertEqual(results.status_code, requests.codes.server_error)
         # cleanup
         results = requests.delete(self._get_path(self.patient_paths['delete'], patient_id='TEST_PATIENT',
@@ -370,7 +370,7 @@ class TestDBService(unittest.TestCase):
 
     def test_patients_batch(self):
         # check for mandatory fields
-        results = requests.post(self._get_path(self.batch_path['save_patients']), {})
+        results = requests.put(self._get_path(self.batch_path['save_patients']), json={})
         self.assertEqual(results.status_code, requests.codes.bad)
         # build a set with mixed bad and good records
         patients_batch = list()
@@ -389,8 +389,8 @@ class TestDBService(unittest.TestCase):
         # fifth record is the last one and is a good one, it has no EHR records
         patients_batch.append(self._build_patient_batch(patient_id='TEST_PATIENT_2',
                                                         ehr_records_count=0))
-        results = requests.post(self._get_path(self.batch_path['save_patients']),
-                                self._build_patients_batch_request(patients_batch))
+        results = requests.put(self._get_path(self.batch_path['save_patients']),
+                               json=self._build_patients_batch_request(patients_batch))
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertEqual(len(results.json()['ERRORS']), 3)
         self.assertEqual(len(results.json()['SAVED']), 2)
