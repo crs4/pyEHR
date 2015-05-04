@@ -25,7 +25,7 @@ API Methods
 
    Simple page to check if server is up and running.
 
-.. http:post:: /patient/add
+.. http:put:: /patient
 
    Add a new patient with ID `patient_id`
 
@@ -37,6 +37,7 @@ API Methods
    :query active: (optional) a boolean value encoded as string,
                   indicates if the record will be an active one or
                   not. Default value is 'True'.
+   :reqheader Content-Type: application/json
    :resheader Content-Type: application/json
    :statuscode 200: record saved succesfully
    :statuscode 400: no `patient_id` provided
@@ -58,11 +59,11 @@ API Methods
         "SUCCESS": true
       }
 
-.. http:post:: /patient/hide
+.. http:delete:: /patient/(patient_id)/hide
 
-   Hide patient with ID `patient_id`. Related EHRs will be hidden as well.
+   Hide patient with ID (`patient_id`). Related EHRs will be hidden as well.
 
-   :query patient_id: ID of the patient
+   :reqheader Content-Type: application/json
    :resheader Content-Type: application/json
    :statuscode 200: record hidden succesfully or no patient with given ID
                     found (in this case a response with `SUCCESS` set to false
@@ -86,16 +87,16 @@ API Methods
         "SUCCESS": true
       }
 
-.. http:post:: /patient/delete
+.. http:delete:: /patient/(patient_id)/delete
 
-   Delete patient with ID `patient_id`. If `cascade_delete` parameter is passed
-   with a `True` vale, delete related EHRs as well, otherwise, if one or more EHRs
+   Delete patient with ID (`patient_id`). If `cascade_delete` parameter is passed
+   with a `True` value, delete related EHRs as well, otherwise, if one or more EHRs
    are connected return an error.
 
-   :query patient_id: ID of the patient
    :query cascade_delete: (optional) if True delete connected EHRs as well, if False
                           delete patient data only if no EHRs are connected, otherwise
                           return an error. Default value is `False`.
+   :reqheader Content-Type: application/json
    :resheader Content-Type: application/json
    :statuscode 200: record deleted succesfully or no patient with given ID found (in this
                     case a response with `SUCCESS` set to false will be returned)
@@ -112,14 +113,13 @@ API Methods
         "MESSAGE": "Patient record with ID FOOBAR successfully deleted"
       }
 
-.. http:post:: /patient/get
+.. http:get:: /patient/(patient_id)
 
-   Get patient with ID `patient_id` and related EHRs. If `fetch_ehr_records` parameter
+   Get patient with ID (`patient_id`) and related EHRs. If `fetch_ehr_records` parameter
    is passed with a `False` value, only fetch a minimum amount of details for the EHRs
    (ID, archetype but no clinical data details). If `fetch_hidden_ehr_records` parameter
    is passed with a `True` value fetch also hidden EHRs.
 
-   :query patient_id: ID of the patient
    :query fetch_ehr_records: (optional) if False only get a minimal version of the connected
                              EHRs (ID, archetype but no clinical data details). Default value
                              is `True`
@@ -224,12 +224,12 @@ API Methods
         "RECORD": null
     }
 
-.. http:post:: /patient/load_ehr_records
+.. http:get:: /patient/load_ehr_records
 
-   Load EHR records data for a given patient record (in JSON format), this method is usefull
-   if the patient record was retrieved with the `fetch_ehr_records` flag set up to False.
-   Only the EHRs (in JSON format) embedded in the patient record will be loaded,
-   other records connected to the given patient record will be ignored.
+   Load EHR records data for a given patient record (in JSON format), this method is intended
+   to be used if the patient record was retrieved with the `fetch_ehr_records` flag
+   set up to False. Only the EHRs (in JSON format) embedded in the patient record will
+   be loaded, other records connected to the given patient record will be ignored.
 
    :query patient_record: a patient record in JSON format with unloaded EHRs (clinical records
                           withouth clinical data details). An example is the following
@@ -270,6 +270,7 @@ API Methods
         "SUCCESS": true
     }
 
+   :reqheader Content-Type: application/json
    :resheader Content-Type: application/json
    :statuscode 200: operation succesfully completed
    :statuscode 400: no `patient_record` provided
@@ -320,7 +321,7 @@ API Methods
         "SUCCESS": true
     }
 
-.. http:post:: /ehr/add
+.. http:put:: /ehr
 
    Add an EHR to an existing patient record.
 
@@ -330,6 +331,7 @@ API Methods
    :query creation_time: (optional) the creation timestamp for the record.
    :query active: (optional) True if the record must be saved as active (default),
                   False otherwise
+   :reqheader Content-type: application/json
    :resheader Content-Type: application/json
    :statuscode 200: record hidden succesfully or no patient with given ID
                     found (in this case a response with `SUCCESS` set to false
@@ -374,12 +376,10 @@ API Methods
         "SUCCESS": true
       }
 
-.. http:post:: /ehr/hide
+.. http:delete:: /ehr/(patient_id)/(ehr_record_id)/hide
 
-   Hide an EHR with a specific `ehr_record_id` related to a patient record with ID `patient_id`
+   Hide an EHR with a specific (`ehr_record_id`) related to a patient record with ID (`patient_id`)
 
-   :query patient_id: ID of the patient record
-   :query ehr_record_id: ID of the EHR
    :resheader Content-Type: application/json
    :statuscode 200: record succesfully hidden. If `patient_id` can't be mapped to a patient record
                     a response with `SUCCESS` set to False will be returned, the same thing happens
@@ -417,12 +417,10 @@ API Methods
       "MESSAGE": "EHR record with ID 9a30f6b6a36b49c6b16e249ef35445eb succesfully hidden"
     }
 
-.. http:post:: /ehr/delete
+.. http:delete:: /ehr/(patient_id)/(ehr_record_id)/delete
 
-   Delete an EHR with a specific `ehr_record_id` related to a patient record with ID `patient_id`
+   Delete an EHR with a specific (`ehr_record_id`) related to a patient record with ID (`patient_id`)
 
-   :query patient_id: ID of the patient record
-   :query ehr_record_id: ID of the EHR
    :resheader Content-Type: application/json
    :statuscode 200: record succesfully deleted. If `patient_id` can't be mapped to a patient record
                     a response with `SUCCESS` set to False will be returned, the same thing happens
@@ -459,12 +457,10 @@ API Methods
       "MESSAGE": "EHR record with ID 9a30f6b6a36b49c6b16e249ef35445eb succesfully deleted"
     }
 
-.. http:post:: /ehr/get
+.. http:get:: /ehr/(patient_id)/(ehr_record_id)
 
-   Get an EHR with a specific `ehr_record_id` related to a patient record with ID `patient_id`
+   Get an EHR with a specific (`ehr_record_id`) related to a patient record with ID (`patient_id`)
 
-   :query patient_id: ID of the patient record
-   :query ehr_record_id: ID of the EHR
    :resheader Content-Type: application/json
    :statuscode 200: record successfully retrieved. If `patient_id` can't be mapped to a patient record
                     a response with `SUCCESS` set to False will be returned, the same thing happens
@@ -492,7 +488,7 @@ API Methods
          }
        }
 
-.. http:post:: /batch/save/patient
+.. http:put:: /batch/save/patient
 
    Save a patient and one or more related EHRs passed as a JSON document. If EHRs have a
    given ID and a duplicated key error is raisen, all EHRs of this batch previously saved
@@ -500,6 +496,7 @@ API Methods
    duplicated key error will be raised and no data will be saved.
 
    :query patient_data: a JSON document with patient and EHRs data. Example provided below.
+   :reqheader Content-Type: application/json
    :resheader Content-Type: application/json
    :statuscode 200: records succesfully saved
    :statuscode 400: missing mandatory field `patient_data`
@@ -550,7 +547,7 @@ API Methods
          ]
        }
 
-.. http:post:: /batch/save/patients
+.. http:put:: /batch/save/patients
 
    Save a list of patients with related EHRs passed as a JSON document. For each patient
    in the set, if EHRs have a given ID and a duplicated key error is raisen, all EHRs of
@@ -561,6 +558,7 @@ API Methods
    :query patients_data: a JSON document with patients and EHRs data. For each patient, the
                          method will accept the same structure of the `batch/save/patient/`
                          method, patients must be enclosed within a list.
+   :reqheader Content-Type: application/json
    :resheader Content-Type: application/json
    :statuscode 200: operation completed, saved records and the one that raised and error will
                     be specified in the return response
