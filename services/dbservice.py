@@ -91,7 +91,9 @@ class DBService(object):
         return body
 
     def _get_bool(self, str_val):
-        if str_val.upper() == 'TRUE':
+        if str_val is None:
+            return None
+        elif str_val.upper() == 'TRUE':
             return True
         elif str_val.upper() == 'FALSE':
             return False
@@ -281,12 +283,17 @@ class DBService(object):
 
     @exceptions_handler
     def get_patient(self, patient_id):
-        params = request.json
-        fetch_ehr = params.get('fetch_ehr_records')
-        if fetch_ehr is None:
+        params = request.params
+        if params:
+            fetch_ehr = self._get_bool(params.get('fetch_ehr_records'))
+            print 'fetch_ehr_records is %r' % fetch_ehr
+            if fetch_ehr is None:
+                fetch_ehr = True
+            fetch_hidden_ehr = self._get_bool(params.get('fetch_hidden_ehr_records'))
+            if fetch_hidden_ehr is None:
+                fetch_hidden_ehr = False
+        else:
             fetch_ehr = True
-        fetch_hidden_ehr = params.get('fetch_hidden_ehr_records')
-        if fetch_hidden_ehr is None:
             fetch_hidden_ehr = False
         patient_record = self.dbs.get_patient(patient_id, fetch_ehr,
                                               fetch_hidden_ehr)
