@@ -93,8 +93,8 @@ class ElasticSearchDriver(DriverInterface):
         self.scrolltime="1m"
         self.grbq="scan" # "scan" or "from"
         #refresh for insertion. put to false for long bulk insertion
-        self.refresh='false'
-        #self.refresh='true'
+        #self.refresh='false'
+        self.refresh='true'
         #timeout for all action on es
         self.global_timeout=60
     def __enter__(self):
