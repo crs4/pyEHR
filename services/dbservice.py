@@ -1,7 +1,8 @@
 import sys, argparse, json
 from functools import wraps
 
-from bottle import post, get, run, response, request, abort, HTTPError
+from bottle import post, get, put, delete, run, response, request,\
+    abort, HTTPError
 
 from pyehr.utils import get_logger
 from pyehr.utils.services import get_service_configuration, check_pid_file,\
@@ -31,18 +32,21 @@ class DBService(object):
         #######################################################
         # Web Service methods
         #######################################################
-        post('/patient/add')(self.save_patient)
-        post('/patient/hide')(self.hide_patient)
-        post('/patient/delete')(self.delete_patient)
-        post('/patient/get')(self.get_patient)
-        post('/patient/load_ehr_records')(self.load_ehr_records)
-        post('/ehr/add')(self.save_ehr_record)
-        post('/ehr/hide')(self.hide_ehr_record)
-        post('/ehr/delete')(self.delete_ehr_record)
-        post('/ehr/get')(self.get_ehr_record)
-        post('/batch/save/patient')(self.batch_save_patient)
-        post('/batch/save/patients')(self.batch_save_patients)
-        # Utilities
+        # ---- PUT METHODS ----
+        put('/patient')(self.save_patient)
+        put('/ehr')(self.save_ehr_record)
+        put('/batch/save/patient')(self.batch_save_patient)
+        put('/batch/save/patients')(self.batch_save_patients)
+        # ---- DELETE METHODS ----
+        delete('/patient/<patient_id>/delete')(self.delete_patient)
+        delete('/ehr/<patient_id>/<ehr_record_id>/delete')(self.delete_ehr_record)
+        delete('/patient/<patient_id>/hide')(self.hide_patient)
+        delete('/ehr/<patient_id>/<ehr_record_id>/hide')(self.hide_ehr_record)
+        # ---- GET METHODS -----
+        get('/patient/<patient_id>')(self.get_patient)
+        get('/patient/load_ehr_records')(self.load_ehr_records)
+        get('/ehr/<patient_id>/<ehr_record_id>')(self.get_ehr_record)
+        # ---- UTILITIES ----
         post('/check/status/dbservice')(self.test_server)
         get('/check/status/dbservice')(self.test_server)
 
@@ -60,7 +64,7 @@ class DBService(object):
             except pyehr_errors.UnknownDriverError, ude:
                 inst._error(str(ude), 500)
             except HTTPError:
-                #if an abort was called in wrapped function, raise the generated HTTPError
+                # if an abort was called in wrapped function, raise the generated HTTPError
                 raise
             except Exception, e:
                 import traceback
@@ -87,7 +91,9 @@ class DBService(object):
         return body
 
     def _get_bool(self, str_val):
-        if str_val.upper() == 'TRUE':
+        if str_val is None:
+            return None
+        elif str_val.upper() == 'TRUE':
             return True
         elif str_val.upper() == 'FALSE':
             return False
@@ -103,7 +109,7 @@ class DBService(object):
         Create a new PatientRecord from the given values. Returns the saved record in
         its JSON encoding
         """
-        params = request.forms
+        params = request.json
         try:
             record_id = params.get('patient_id')
             if not record_id:
@@ -112,9 +118,9 @@ class DBService(object):
                 'record_id': record_id,
             }
             if params.get('creation_time'):
-                patient_record_conf['creation_time'] = float(params.get('creation_time'))
-            if params.get('active'):
-                patient_record_conf['active'] = self._get_bool(params.get('active'))
+                patient_record_conf['creation_time'] = params.get('creation_time')
+            if params.get('active') is not None:
+                patient_record_conf['active'] = params.get('active')
             patient_record = PatientRecord(**patient_record_conf)
             patient_record = self.dbs.save_patient(patient_record)
             response_body = {
@@ -137,7 +143,7 @@ class DBService(object):
         Save a new EHR record and link it to an existing patient record.
         EHR record must be a valid JSON dictionary.
         """
-        params = request.forms
+        params = request.json
         try:
             patient_id = params.get('patient_id')
             if not patient_id:
@@ -179,16 +185,11 @@ class DBService(object):
             self._error(str(ve), 400)
 
     @exceptions_handler
-    def delete_patient(self):
-        params = request.forms
+    def delete_patient(self, patient_id):
+        params = request.json
         try:
-            patient_id = params.get('patient_id')
-            if not patient_id:
-                self._missing_mandatory_field('patient_id')
             cascade_delete = params.get('cascade_delete')
-            if cascade_delete:
-                cascade_delete = self._get_bool(cascade_delete)
-            else:
+            if cascade_delete is None:
                 cascade_delete = False
             patient_record = self.dbs.get_patient(patient_id)
             if not patient_record:
@@ -209,14 +210,7 @@ class DBService(object):
             self._error(msg, 500)
 
     @exceptions_handler
-    def delete_ehr_record(self):
-        params = request.forms
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
-        ehr_record_id = params.get('ehr_record_id')
-        if not ehr_record_id:
-            self._missing_mandatory_field('ehr_record_id')
+    def delete_ehr_record(self, patient_id, ehr_record_id):
         patient_record = self.dbs.get_patient(patient_id, fetch_ehr_records=False,
                                               fetch_hidden_ehr=True)
         if not patient_record:
@@ -241,14 +235,10 @@ class DBService(object):
         return self._success(response_body)
 
     @exceptions_handler
-    def hide_patient(self):
+    def hide_patient(self, patient_id):
         """
         Hide a patient record and related EHR records
         """
-        params = request.forms
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
         patient_record = self.dbs.get_patient(patient_id)
         if not patient_record:
             # TODO: check if an error is a better solution here
@@ -265,17 +255,10 @@ class DBService(object):
         return self._success(response_body)
 
     @exceptions_handler
-    def hide_ehr_record(self):
+    def hide_ehr_record(self, patient_id, ehr_record_id):
         """
         Hide an EHR record by ID
         """
-        params = request.forms
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
-        ehr_record_id = params.get('ehr_record_id')
-        if not ehr_record_id:
-            self._missing_mandatory_field('ehr_record_id')
         patient_record = self.dbs.get_patient(patient_id, fetch_ehr_records=False)
         if not patient_record:
             response_body = {
@@ -287,7 +270,8 @@ class DBService(object):
         if not ehr_record:
             response_body = {
                 'SUCCESS': False,
-                'MESSAGE': 'EHR record with ID %s is not connected to patient record or is alredy an hidden record' % ehr_record_id
+                'MESSAGE': 'EHR record with ID %s is not connected to patient record or is already an hidden record' %
+                           ehr_record_id
             }
         else:
             self.dbs.hide_ehr_record(ehr_record)
@@ -298,20 +282,18 @@ class DBService(object):
         return self._success(response_body)
 
     @exceptions_handler
-    def get_patient(self):
-        params = request.forms
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
-        fetch_ehr = params.get('fetch_ehr_records')
-        if fetch_ehr:
-            fetch_ehr = self._get_bool(fetch_ehr)
+    def get_patient(self, patient_id):
+        params = request.params
+        if params:
+            fetch_ehr = self._get_bool(params.get('fetch_ehr_records'))
+            print 'fetch_ehr_records is %r' % fetch_ehr
+            if fetch_ehr is None:
+                fetch_ehr = True
+            fetch_hidden_ehr = self._get_bool(params.get('fetch_hidden_ehr_records'))
+            if fetch_hidden_ehr is None:
+                fetch_hidden_ehr = False
         else:
             fetch_ehr = True
-        fetch_hidden_ehr = params.get('fetch_hidden_ehr_records')
-        if fetch_hidden_ehr:
-            fetch_hidden_ehr = self._get_bool(fetch_hidden_ehr)
-        else:
             fetch_hidden_ehr = False
         patient_record = self.dbs.get_patient(patient_id, fetch_ehr,
                                               fetch_hidden_ehr)
@@ -323,14 +305,7 @@ class DBService(object):
         return self._success(response_body)
 
     @exceptions_handler
-    def get_ehr_record(self):
-        params = request.forms
-        ehr_record_id = params.get('ehr_record_id')
-        if not ehr_record_id:
-            self._missing_mandatory_field('ehr_record_id')
-        patient_id = params.get('patient_id')
-        if not patient_id:
-            self._missing_mandatory_field('patient_id')
+    def get_ehr_record(self, patient_id, ehr_record_id):
         ehr_record = self.dbs.get_ehr_record(ehr_record_id, patient_id)
         response_body = {'SUCCESS': True}
         if not ehr_record:
@@ -386,12 +361,12 @@ class DBService(object):
         If one of the EHR records can't be saved, all saved records (patient and ehr data
         within this batch) will be deleted.
         """
-        params = request.forms
+        params = request.json
         try:
             patient_data = params.get('patient_data')
             if patient_data is None:
                 self._missing_mandatory_field('patient_data')
-            patient_record = PatientRecord.from_json(json.loads(patient_data))
+            patient_record = PatientRecord.from_json(patient_data)
             success, msg, patient_record, errors = self._save_patient_from_batch(patient_record)
             if success:
                 response_body = {
@@ -407,7 +382,7 @@ class DBService(object):
         except pyehr_errors.InvalidJsonStructureError, je:
             self._error(str(je), 500)
         except ValueError, ve:
-            #TODO: check this, not quite sure about the 400 error code...
+            # TODO: check this, not quite sure about the 400 error code...
             self._error(str(ve), 400)
 
     @exceptions_handler
@@ -419,7 +394,7 @@ class DBService(object):
         Two lists of JSON records will be returned, one with the saved records and one with
         the records that failes with the related error.
         """
-        params = request.forms
+        params = request.json
         patients_data = params.get('patients_data')
         if patients_data is None:
             self._missing_mandatory_field('patients_data')
@@ -429,7 +404,6 @@ class DBService(object):
             'ERRORS': []
         }
         try:
-            patients_data = json.loads(patients_data)
             for patient in patients_data:
                 try:
                     patient_record = PatientRecord.from_json(patient)
@@ -445,7 +419,7 @@ class DBService(object):
                     response_body['ERRORS'].append({'MESSAGE': str(je), 'RECORD': patient})
             return self._success(response_body)
         except ValueError, ve:
-            #TODO: check this, not quite sure about the 400 error code...
+            # TODO: check this, not quite sure about the 400 error code...
             self._error(str(ve), 400)
 
     def start_service(self, host, port, engine, debug=False):
