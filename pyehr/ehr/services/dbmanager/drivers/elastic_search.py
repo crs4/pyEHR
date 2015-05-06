@@ -859,6 +859,9 @@ class ElasticSearchDriver(DriverInterface):
             else:
                 raise MissingRevisionError("A record with ID %s does not exist in ids archive" % record_id)
 
+    def delete_records_by_id(self, records_id):
+        return super(ElasticSearchDriver, self).delete_records_by_id(records_id)
+
     def delete_record2(self, record_id):
         """
         Delete an existing record

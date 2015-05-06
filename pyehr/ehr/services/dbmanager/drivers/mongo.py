@@ -452,6 +452,10 @@ class MongoDriver(DriverInterface):
         res = self.collection.remove(record_id)
         self.logger.debug('deleted %d documents', res[u'n'])
 
+    def delete_records_by_id(self, records_id):
+        self.logger.debug('deleting documents %r' % records_id)
+        return self.delete_records_by_query({'_id': {'$in': records_id}})
+
     def delete_later_versions(self, record_id, version_to_keep=0):
         """
         Delete versions newer than version_to_keep for the given record ID.
@@ -477,6 +481,7 @@ class MongoDriver(DriverInterface):
         """
         self._check_connection()
         res = self.collection.remove(query)
+        self.logger.debug('Deleted %d documents', res[u'n'])
         return res[u'n']
 
     def _update_record(self, record_id, update_condition):
@@ -625,13 +630,16 @@ class MongoDriver(DriverInterface):
         :param record_id: record's ID
         :param list_label: the label of the field containing the list
         :type list_label: string
-        :param item_value: the item that will be removed from the list
+        :param item_value: the item that will be removed from the list or a list of items that will be removed
         :param update_timestamp_label: the label of the *last_update* field of the record if the last update timestamp
           must be recorded or None
         :type update_timestamp_label: field label or None
         :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
         """
-        update_statement = {'$pull': {list_label: item_value}}
+        if isinstance(item_value, list):
+            update_statement = {'$pullAll': {list_label, item_value}}
+        else:
+            update_statement = {'$pull': {list_label: item_value}}
         if update_timestamp_label:
             update_statement, last_update = self._update_record_timestamp(update_timestamp_label,
                                                                           update_statement)

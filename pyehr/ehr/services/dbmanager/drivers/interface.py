@@ -149,6 +149,14 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
+    def delete_records_by_id(self, records_id):
+        """
+        Delete a list of records from the backend server by giving record IDs
+        """
+        for rid in records_id:
+            self.delete_record(rid)
+
+    @abstractmethod
     def delete_later_versions(self, record_id, version_to_keep=0):
         """
         Delete versions newer than version_to_keep for the given record ID
