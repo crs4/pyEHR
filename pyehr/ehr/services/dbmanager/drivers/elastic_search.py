@@ -92,6 +92,7 @@ class ElasticSearchDriver(DriverInterface):
         self.doc_ids="table"
         self.scrolltime="1m"
         self.grbq="scan" # "scan" or "from"
+#        self.grbq="from"
         #refresh for insertion. put to false for long bulk insertion
         #self.refresh='false'
         self.refresh='true'
@@ -1362,19 +1363,20 @@ class ElasticSearchDriver(DriverInterface):
 
     def get_records_by_query(self, query, fields=None, limit=0):
         if self.grbq == "from":
-            res=self.get_records_by_query_from(query,fields)
+            res=self.get_records_by_query_from(query,fields,limit)
         elif self.grbq == "scan":
-            res=self.get_records_by_query_scan(query,fields)
+            res=self.get_records_by_query_scan(query,fields,limit)
         else:
             print "\nbad grbq:"+self.grbq+" using scan instead"
-            res=self.get_records_by_query_scan(query,fields)
+            res=self.get_records_by_query_scan(query,fields,limit)
         return res
 
 #    @profile
-    def get_records_by_query_scan(self, query,fields=None):
+    def get_records_by_query_scan(self, query,fields=None,limit=0):
         """
         Retrieve all records matching the given query
-
+        :param limit: the max number of total results to be returned
+        :type limit: integer
         :param fields: the fields to be retrieved
         :type  fields: string
         :param query: the value that must be matched for the given field
@@ -1383,6 +1385,10 @@ class ElasticSearchDriver(DriverInterface):
         :rtype: list
         """
         size = self.threshold
+        if limit:
+            if limit<size:
+                size=limit
+
 #        query["size"]=self.threshold
         scrolltime=self.scrolltime
         restot = []
@@ -1407,18 +1413,25 @@ class ElasticSearchDriver(DriverInterface):
                 if resuh['hits']==[]:
                     pippo=True
                 else:
-                    restot.extend(resuh['hits'])
-                    if len(resuh['hits']) < size:
+                    if limit and len(resuh['hits'])+len(restot) >= limit:
+                        missing=limit-len(restot)
+                        for i in range(0,missing):
+                            restot.append(resuh['hits'][i])
                         pippo=True
+                    else:
+                        restot.extend(resuh['hits'])
+                        if len(resuh['hits']) < size:
+                            pippo=True
         res = [p['_source'] for p in restot]
         if res != []:
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
 
-    def get_records_by_query_from(self, query,fields=None):
+    def get_records_by_query_from(self, query,fields=None,limit=0):
         """
         Retrieve all records matching the given query
-
+        :param limit: the max number of total results to be returned
+        :type limit: integer
         :param fields: the fields to be retrieved
         :type  fields: string
         :param query: the value that must be matched for the given field
@@ -1427,6 +1440,9 @@ class ElasticSearchDriver(DriverInterface):
         :rtype: list
         """
         size = self.threshold
+        if limit:
+            if limit<size:
+                size=limit
         restot = []
         if fields:
             resu = self.client.search(index=self.database,_source_include=fields,size=size,body=query)['hits']
@@ -1434,13 +1450,28 @@ class ElasticSearchDriver(DriverInterface):
             resu = self.client.search(index=self.database,size=size,body=query)['hits']
         number_of_results=resu['total']
         restot.extend(resu['hits'])
-        if number_of_results > size:
-            for i in range(1, (number_of_results-1)/size+1):
-                if fields:
-                    resu = self.client.search(index=self.database,_source_include=fields,size=size,from_=i*size,body=query)['hits']
-                else:
-                    resu = self.client.search(index=self.database,size=size,from_=i*size,body=query)['hits']
-                restot.extend(resu['hits'])
+        if limit:
+            nmin=min(number_of_results,limit)
+            if nmin>size:
+                for i in range(1, (nmin-1)/size+1):
+                    if fields:
+                        resu = self.client.search(index=self.database,_source_include=fields,size=size,from_=i*size,body=query)['hits']
+                    else:
+                        resu = self.client.search(index=self.database,size=size,from_=i*size,body=query)['hits']
+                    if len(restot)+len(resu['hits'])>=limit:
+                        missing=limit-len(restot)
+                        for i in range(0,missing):
+                            restot.append(resu['hits'][i])
+                    else:
+                        restot.extend(resu['hits'])
+        else:
+            if number_of_results > size:
+                for i in range(1, (number_of_results-1)/size+1):
+                    if fields:
+                        resu = self.client.search(index=self.database,_source_include=fields,size=size,from_=i*size,body=query)['hits']
+                    else:
+                        resu = self.client.search(index=self.database,size=size,from_=i*size,body=query)['hits']
+                    restot.extend(resu['hits'])
         res = [p['_source'] for p in restot]
         if res != []:
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
