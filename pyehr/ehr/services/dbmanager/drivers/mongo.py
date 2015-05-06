@@ -637,7 +637,7 @@ class MongoDriver(DriverInterface):
         :return: the timestamp of the last update as saved in the DB or None (if update_timestamp_field was None)
         """
         if isinstance(item_value, list):
-            update_statement = {'$pullAll': {list_label, item_value}}
+            update_statement = {'$pullAll': {list_label: item_value}}
         else:
             update_statement = {'$pull': {list_label: item_value}}
         if update_timestamp_label:
