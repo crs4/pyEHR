@@ -343,6 +343,26 @@ class DBServices(object):
             ehr_record.patient_id = None
         return ehr_record, patient_record
 
+    def remove_ehr_records(self, ehr_records, patient_record, reset_records=True):
+        """
+
+        :param ehr_records:
+        :param patient_record:
+        :param reset_records:
+        :return:
+        """
+        self._remove_from_list(patient_record, 'ehr_records', [ehr.record_id for ehr in ehr_records])
+        for ehr in ehr_records:
+            patient_record.ehr_records.pop(patient_record.ehr_records.index(ehr))
+        if reset_records:
+            self._delete_ehr_records(ehr_records, reset_records)
+            for ehr in ehr_records:
+                ehr.reset()
+        else:
+            for ehr in ehr_records:
+                ehr.patient_id = None
+        return ehr_records, patient_record
+
     def _get_active_records(self, driver):
         return driver.get_records_by_value('active', True)
 
@@ -505,8 +525,7 @@ class DBServices(object):
             raise CascadeDeleteError('Unable to delete patient record with ID %s, %d EHR records still connected',
                                      patient.record_id, len(patient.ehr_records))
         else:
-            for ehr_record in patient.ehr_records:
-                self._delete_ehr_record(ehr_record)
+            self._delete_ehr_records(patient.ehr_records)
             drf = self._get_drivers_factory(self.patients_repository)
             with drf.get_driver() as driver:
                 driver.delete_record(patient.record_id)
@@ -518,6 +537,15 @@ class DBServices(object):
             driver.delete_record(ehr_record.record_id)
         if reset_history:
             self.version_manager.remove_revisions(ehr_record.record_id)
+        return None
+
+    def _delete_ehr_records(self, ehr_records, reset_history=True):
+        drf = self._get_drivers_factory(self.ehr_repository)
+        with drf.get_driver() as driver:
+            driver.delete_records_by_id([ehr.record_id for ehr in ehr_records])
+        if reset_history:
+            for ehr in ehr_records:
+                self.version_manager.remove_revisions(ehr.record_id)
         return None
 
     def _hide_record(self, record):
@@ -554,9 +582,11 @@ class DBServices(object):
     def _remove_from_list(self, record, list_label, element):
         if isinstance(record, ClinicalRecord):
             return self.version_manager.remove_from_list(record, list_label, element, 'last_update')
-        else:
+        elif isinstance(record, PatientRecord):
             drf = self._get_drivers_factory(self.patients_repository)
             with drf.get_driver() as driver:
                 last_update = driver.remove_from_list(record.record_id, list_label, element, 'last_update')
             record.last_update = last_update
-            return  record
+            return record
+        else:
+            raise ValueError('Unable to handle object of class %s' % type(record))
