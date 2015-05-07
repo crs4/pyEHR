@@ -861,7 +861,10 @@ class ElasticSearchDriver(DriverInterface):
                 raise MissingRevisionError("A record with ID %s does not exist in ids archive" % record_id)
 
     def delete_records_by_id(self, records_id):
-        return super(ElasticSearchDriver, self).delete_records_by_id(records_id)
+        self.logger.debug('deleting documents %r' % records_id)
+        query1="{ \"query\":  {  \"terms\" : {\"_id\" : "+str(records_id) +" }  } }"
+        query = query1.replace("'","\"")
+        return self.delete_records_by_query(query)
 
     def delete_record2(self, record_id):
         """
@@ -1112,7 +1115,11 @@ class ElasticSearchDriver(DriverInterface):
         """
         record_to_update = self.get_record_by_id(record_id)
         list_to_update=record_to_update[list_label]
-        list_to_update.remove(item_value)
+        if isinstance(item_value, list):
+            for i in item_value:
+                list_to_update.remove(i)
+        else:
+            list_to_update.remove(item_value)
         if update_timestamp_label:
             last_update = time.time()
             record_to_update['last_update'] = last_update
