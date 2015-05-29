@@ -98,6 +98,9 @@ class ElasticSearchDriver(DriverInterface):
         self.refresh='true'
         #timeout for all action on es
         self.global_timeout=60
+        #refresh for deletion. put to false for long bulk deletion
+        self.drefresh='true'
+#        self.drefresh='false'
     def __enter__(self):
         self.connect()
         return self
@@ -493,7 +496,7 @@ class ElasticSearchDriver(DriverInterface):
                 self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=id2e,
                                         body=existing_record,refresh='true',timeout=self.insert_timeout)
             else:
-                self.client.delete(index=self.database_ids,doc_type=self.doc_ids,id=id2e,refresh='true')
+                self.client.delete(index=self.database_ids,doc_type=self.doc_ids,id=id2e,refresh=self.drefresh)
         else:
             baseid=id2e.rsplit('_', 1)[0]
             existing_record=self._get_ids(baseid)
@@ -505,7 +508,7 @@ class ElasticSearchDriver(DriverInterface):
                     self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=baseid,
                                         body=existing_record,refresh='true',timeout=self.insert_timeout)
                 else:
-                    self.client.delete(index=self.database_ids,doc_type=self.doc_ids,id=baseid,refresh='true')
+                    self.client.delete(index=self.database_ids,doc_type=self.doc_ids,id=baseid,refresh=self.drefresh)
             else:
                 raise MissingRevisionError("A record with ID %s does not exist in archive" % id)
 
@@ -844,7 +847,7 @@ class ElasticSearchDriver(DriverInterface):
             if not f:
                 raise MissingRevisionError("A record with ID %s does not exist in ids archive" % record_id)
             found=f[0]
-            self.client.delete(index=found[1],doc_type=found[2],id=found[0],refresh="true")
+            self.client.delete(index=found[1],doc_type=found[2],id=found[0],refresh=self.drefresh)
             self._erase_ids(found[0])
         else:
             baseid=rid.rsplit('_', 1)[0]
@@ -855,7 +858,7 @@ class ElasticSearchDriver(DriverInterface):
                 if not f:
                     raise MissingRevisionError("A record with ID %s does not exist in ids archive" % record_id)
                 found=f[0]
-                self.client.delete(index=found[1],doc_type=found[2],id=found[0],refresh="true")
+                self.client.delete(index=found[1],doc_type=found[2],id=found[0],refresh=self.drefresh)
                 self._erase_ids(found[0])
             else:
                 raise MissingRevisionError("A record with ID %s does not exist in ids archive" % record_id)
@@ -910,7 +913,7 @@ class ElasticSearchDriver(DriverInterface):
             for elem in er:
                 if "_" in elem[0]:
                     if int(elem[0].rsplit('_',1)[1])>version_to_keep:
-                        self.client.delete(index=elem[1],doc_type=elem[2],id=elem[0],refresh='true')
+                        self.client.delete(index=elem[1],doc_type=elem[2],id=elem[0],refresh=self.drefresh)
                         self._erase_ids(elem[0])
                         counter=counter+1
                     else:
