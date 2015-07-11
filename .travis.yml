@@ -1,3 +1,5 @@
+sudo: false
+
 language: python
 python:
   - 2.7
@@ -11,8 +13,8 @@ env:
 
 before_install:
   # start proper service
-  - if [[ "$DB_ENGINE" == "mongodb" ]]; then sudo service mongodb start; fi
-  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then sudo service elasticsearch start; fi
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then service mongodb start; fi
+  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then service elasticsearch start; fi
   # install BaseX server and start it
   - pushd .
   - cd ..
