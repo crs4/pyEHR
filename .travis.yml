@@ -4,6 +4,10 @@ language: python
 python:
   - 2.7
 
+services:
+  - mongodb
+  - elasticsearch
+
 env:
   global:
     - BASEX_DOWNLOAD_URL=http://files.basex.org/releases/8.0/BaseX80.zip
@@ -12,9 +16,6 @@ env:
     - DB_ENGINE=elasticsearch
 
 before_install:
-  # start proper service
-  - if [[ "$DB_ENGINE" == "mongodb" ]]; then service mongodb start; fi
-  - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then service elasticsearch start; fi
   # install BaseX server and start it
   - pushd .
   - cd ..
