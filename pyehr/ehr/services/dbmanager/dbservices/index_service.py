@@ -172,6 +172,58 @@ class IndexService(object):
         self.disconnect()
         return str_id
 
+    def _get_document_reference_counter(self, doc):
+        return int(doc.find("references_counter").get("hits"))
+
+    def _update_document_references_counter(self, doc, update_value):
+        doc.find("references_counter").set("hits", str(update_value))
+        return doc
+    def increase_structure_counter(self, structure_id, increase_value=1):
+        """
+        Increase the value of the references counter of the structure with the
+        given *structure_id* by the amount specified by *increase_value*.
+
+        :param structure_id: the ID of the structure
+        :param increase_value: the value that will be added to structure's references counter
+        """
+        if increase_value < 1:
+            raise ValueError("increase_value must be an integer greater than 0")
+        doc = self._get_structure_by_id(structure_id)
+        if doc is not None:
+            doc_count = self._get_document_reference_counter(doc)
+            self.logger.debug("Current counter for %s is %d", structure_id, doc_count)
+            doc = self._update_document_references_counter(doc, (doc_count + increase_value))
+            self.basex_client.delete_document(structure_id)
+            self.basex_client.add_document(doc, structure_id)
+            self.logger.debug("Documents %s updated", structure_id)
+        else:
+            self.logger.warn("There is no document with structure ID %s", structure_id)
+
+    def decrease_structure_counter(self, structure_id, decrease_value=1):
+        """
+        Decrease the value of the references counter of the structure with the
+        given *structure_id* by the amount specified by *decrease_value*.
+        If references counter reaches a value equal or lower than 0, the
+        structure will be delete.
+
+        :param structure_id: the ID of the structure
+        :param decrease_value: the value that will be subtracted from structure's references counter
+        """
+        if decrease_value < 1:
+            raise ValueError("decrease_value must be an integer greater than 0")
+        doc = self._get_structure_by_id(structure_id)
+        if doc is not None:
+            doc_count = self._get_document_reference_counter(doc)
+            if (doc_count - decrease_value) <= 0:
+                self.basex_client.delete_document(structure_id)
+            else:
+                doc = self._update_document_references_counter(doc, (doc_count - decrease_value))
+                self.basex_client.delete_document(structure_id)
+                self.basex_client.add_document(doc, structure_id)
+                self.logger.debug("Document %s updated", structure_id)
+        else:
+            self.logger.warn("There is no document with structure ID %s", structure_id)
+
     def _container_to_xpath(self, aql_container):
         if aql_container.class_expression.predicate:
             archetype_class = aql_container.class_expression.predicate.archetype_id
