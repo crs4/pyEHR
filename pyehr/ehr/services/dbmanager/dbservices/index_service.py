@@ -178,6 +178,23 @@ class IndexService(object):
     def _update_document_references_counter(self, doc, update_value):
         doc.find("references_counter").set("hits", str(update_value))
         return doc
+
+    def check_structure_counter(self, structure_id):
+        """
+        Check if a structure with ID *structure_id* has a references counter equal to 0.
+        If so, delete the structure because it is not referenced by a clinical record.
+
+        :param structure_id: the ID of the structure that will be checked
+        """
+        doc = self._get_structure_by_id(structure_id)
+        if doc is not None:
+            doc_count = self._get_document_reference_counter(doc)
+            if doc_count == 0:
+                self.basex_client.delete_document(structure_id)
+            else:
+                self.logger.debug("References counter for structure %s id %d",
+                                  doc_count, structure_id)
+
     def increase_structure_counter(self, structure_id, increase_value=1):
         """
         Increase the value of the references counter of the structure with the
