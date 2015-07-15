@@ -136,6 +136,11 @@ class IndexService(object):
         self.basex_client.add_document(record, structure_key)
         return structure_key
 
+    def _get_structure_by_id(self, structure_id):
+        if not self.basex_client:
+            self.connect()
+        return self.basex_client.get_document(structure_id)
+
     def _extract_structure_id_from_xml(self, xml_doc):
         return xml_doc.find('structure_id').get('uid')
 
