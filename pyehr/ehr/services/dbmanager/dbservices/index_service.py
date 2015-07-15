@@ -124,7 +124,10 @@ class IndexService(object):
         record_root.append(record)
         record_hash = self._get_record_hash(record)
         record_id = record_id or uuid4().hex
-        record_root.append(etree.Element('references_counter', {'hits': '1'}))
+        # new records are created with a reference counter set to 0, only when
+        # the reference counter will be increased only after the record will
+        # actually be saved on the DB
+        record_root.append(etree.Element('references_counter', {'hits': '0'}))
         record_root.append(etree.Element('structure_id', {'str_hash': record_hash,
                                                           'uid': record_id}))
         return record_root, record_id
