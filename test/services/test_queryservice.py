@@ -30,13 +30,7 @@ class TestQueryService(unittest.TestCase):
     def tearDown(self):
         for p in self.patients:
             self.dbs.delete_patient(p, cascade_delete=True)
-        self._delete_index_db()
         self.patients = None
-
-    def _delete_index_db(self):
-        self.dbs.index_service.connect()
-        self.dbs.index_service.basex_client.delete_database()
-        self.dbs.index_service.disconnect()
 
     def _get_quantity(self, value, units):
         return {
