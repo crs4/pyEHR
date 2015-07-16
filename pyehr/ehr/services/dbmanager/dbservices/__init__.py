@@ -177,7 +177,12 @@ class DBServices(object):
                 if not r.is_persistent:
                     r.increase_version()
             encoded_records = [driver.encode_record(r) for r in ehr_records]
-            saved, errors = driver.add_records(encoded_records, skip_existing_duplicated)
+            try:
+                saved, errors = driver.add_records(encoded_records, skip_existing_duplicated)
+            except Exception, exc:
+                for ehr in ehr_records:
+                    self.index_service.check_structure_counter(ehr.structure_id)
+                raise exc
             errors = [driver.decode_record(e) for e in errors]
         saved_struct_counter = Counter()
         for rec in ehr_records:
