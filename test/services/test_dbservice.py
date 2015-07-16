@@ -32,15 +32,6 @@ class TestDBService(unittest.TestCase):
             'save_patients': 'batch/save/patients'
         }
 
-    def tearDown(self):
-        sconf = get_service_configuration(CONF_FILE)
-        index_config = sconf.get_index_configuration()
-        index_config['db'] = index_config.pop('database')
-        index_service = IndexService(**index_config)
-        index_service.connect()
-        index_service.basex_client.delete_database()
-        index_service.disconnect()
-
     def _get_path(self, path, patient_id=None, ehr_record_id=None, action=None):
         path_params = [self.dbservice_uri, path]
         if patient_id:
