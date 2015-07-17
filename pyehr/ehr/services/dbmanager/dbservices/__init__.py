@@ -6,6 +6,8 @@ from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError, RedundantUpd
     RecordRestoreUnecessaryError, OperationNotAllowedError, ConfigurationError
 from pyehr.ehr.services.dbmanager.dbservices.version_manager import VersionManager
 
+from collections import Counter
+
 
 class DBServices(object):
     """
@@ -140,7 +142,13 @@ class DBServices(object):
             # calculate and set the structure ID for the given record
             self._set_structure_id(ehr_record)
             with drf.get_driver() as driver:
-                driver.add_record(driver.encode_record(ehr_record))
+                try:
+                    driver.add_record(driver.encode_record(ehr_record))
+                except Exception, e:
+                    # if a new structure was created, delete it (reference counter is 0)
+                    self.index_service.check_structure_counter(ehr_record.structure_id)
+                    raise e
+                self.index_service.increase_structure_counter(ehr_record.structure_id)
         patient_record = self._add_ehr_record(patient_record, ehr_record)
         return ehr_record, patient_record
 
@@ -169,8 +177,22 @@ class DBServices(object):
                 if not r.is_persistent:
                     r.increase_version()
             encoded_records = [driver.encode_record(r) for r in ehr_records]
-            saved, errors = driver.add_records(encoded_records, skip_existing_duplicated)
+            try:
+                saved, errors = driver.add_records(encoded_records, skip_existing_duplicated)
+            except Exception, exc:
+                for ehr in ehr_records:
+                    self.index_service.check_structure_counter(ehr.structure_id)
+                raise exc
             errors = [driver.decode_record(e) for e in errors]
+        saved_struct_counter = Counter()
+        for rec in ehr_records:
+            if rec.record_id in saved:
+                saved_struct_counter[rec.structure_id] += 1
+        error_struct_counter = set([rec.record_id for rec in errors])
+        for struct, counter in saved_struct_counter.iteritems():
+            self.index_service.increase_structure_counter(struct, counter)
+        for struct in error_struct_counter:
+            self.index_service.check_structure_counter(struct)
         saved_ehr_records = [ehr for ehr in ehr_records if ehr.record_id in saved]
         patient_record = self._add_ehr_records(patient_record, saved_ehr_records)
         return saved_ehr_records, patient_record, errors
@@ -535,6 +557,7 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_record(ehr_record.record_id)
+            self.index_service.decrease_structure_counter(ehr_record.structure_id)
         if reset_history:
             self.version_manager.remove_revisions(ehr_record.record_id)
         return None
@@ -543,6 +566,11 @@ class DBServices(object):
         drf = self._get_drivers_factory(self.ehr_repository)
         with drf.get_driver() as driver:
             driver.delete_records_by_id([ehr.record_id for ehr in ehr_records])
+            struct_id_counter = Counter()
+            for rec in ehr_records:
+                struct_id_counter[rec.structure_id] += 1
+            for str_id, str_count in struct_id_counter.iteritems():
+                self.index_service.decrease_structure_counter(str_id, str_count)
         if reset_history:
             for ehr in ehr_records:
                 self.version_manager.remove_revisions(ehr.record_id)

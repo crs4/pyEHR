@@ -24,11 +24,6 @@ class TestDBServices(unittest.TestCase):
         self.conf = sconf.get_db_configuration()
         self.index_conf = sconf.get_index_configuration()
 
-    def _delete_index_db(self, dbs):
-        dbs.index_service.connect()
-        dbs.index_service.basex_client.delete_database()
-        dbs.index_service.disconnect()
-
     def test_save_patient(self):
         dbs = DBServices(**self.conf)
         dbs.set_index_service(**self.index_conf)
@@ -39,7 +34,6 @@ class TestDBServices(unittest.TestCase):
         self.assertTrue(pat_rec.active)
         # cleanup
         dbs.delete_patient(pat_rec)
-        self._delete_index_db(dbs)
 
     def test_save_ehr_record(self):
         dbs = DBServices(**self.conf)
@@ -59,7 +53,6 @@ class TestDBServices(unittest.TestCase):
         self.assertEqual(pat_rec.ehr_records[0], ehr_rec)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
-        self._delete_index_db(dbs)
 
     def test_save_ehr_records(self):
         dbs = DBServices(**self.conf)
@@ -90,7 +83,6 @@ class TestDBServices(unittest.TestCase):
         self.assertEqual(len(pat_rec.ehr_records), 15)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
-        self._delete_index_db(dbs)
 
     def test_remove_ehr_record(self):
         dbs = DBServices(**self.conf)
@@ -112,7 +104,6 @@ class TestDBServices(unittest.TestCase):
         # clenup
         dbs.delete_patient(pat_rec_1)
         dbs.delete_patient(pat_rec_2, cascade_delete=True)
-        self._delete_index_db(dbs)
 
     def test_load_ehr_records(self):
         dbs = DBServices(**self.conf)
@@ -134,7 +125,6 @@ class TestDBServices(unittest.TestCase):
             self.assertNotEqual(len(ehr.ehr_data.archetype_details), 0)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
-        self._delete_index_db(dbs)
 
     def _get_active_records_count(self, patient_record, counter):
         for ehr in patient_record.ehr_records:
@@ -162,7 +152,6 @@ class TestDBServices(unittest.TestCase):
         self.assertNotIn('active', active_records)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
-        self._delete_index_db(dbs)
 
     def test_hide_ehr_record(self):
         dbs = DBServices(**self.conf)
@@ -190,7 +179,6 @@ class TestDBServices(unittest.TestCase):
         self.assertEqual(active_records['hidden'], 10)
         # cleanup
         dbs.delete_patient(pat_rec, cascade_delete=True)
-        self._delete_index_db(dbs)
 
     def test_move_ehr_record(self):
         dbs = DBServices(**self.conf)
@@ -209,7 +197,6 @@ class TestDBServices(unittest.TestCase):
         # cleanup
         dbs.delete_patient(pat_rec_1)
         dbs.delete_patient(pat_rec_2, cascade_delete=True)
-        self._delete_index_db(dbs)
 
     def test_get_ehr_record(self):
         dbs = DBServices(**self.conf)
@@ -230,9 +217,8 @@ class TestDBServices(unittest.TestCase):
         # right ehr_record_id and patient_id
         e = dbs.get_ehr_record(crec_id, p.record_id)
         self.assertIsInstance(e, ClinicalRecord)
-        #cleanup
+        # cleanup
         dbs.delete_patient(p, cascade_delete=True)
-        self._delete_index_db(dbs)
 
 
 def suite():
