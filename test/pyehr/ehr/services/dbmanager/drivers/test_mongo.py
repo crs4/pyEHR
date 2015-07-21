@@ -1,10 +1,9 @@
-import unittest, os, sys
-from pyehr.ehr.services.dbmanager.drivers.mongo import MongoDriver
-from pyehr.ehr.services.dbmanager.errors import DuplicatedKeyError
-from pyehr.utils.services import get_service_configuration
-from uuid import uuid4
+import sys, argparse, unittest, os
 
-CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
+from pyehr.ehr.services.dbmanager.dbservices import DBServices
+from pyehr.utils.services import get_service_configuration
+from pyehr.ehr.services.dbmanager.errors import DuplicatedKeyError
+from uuid import uuid4
 
 
 class TestMongoDBDriver(unittest.TestCase):
@@ -13,24 +12,27 @@ class TestMongoDBDriver(unittest.TestCase):
         super(TestMongoDBDriver, self).__init__(label)
 
     def setUp(self):
-        if CONF_FILE is None:
-            sys.exit('ERROR: no configuration file provided')
-        self.host = get_service_configuration(CONF_FILE).get_db_configuration()['host']
+        conf_file = "mongo.conf.1"
+        conf_dir = os.path.dirname(os.path.abspath(__file__))
+        conf = get_service_configuration(conf_dir+os.sep+conf_file)
+        db_conf = conf.get_db_configuration()
+        db_service = DBServices(**db_conf)
+        self.drf = db_service._get_drivers_factory(db_service.ehr_repository)
 
     def test_connection(self):
-        driver = MongoDriver(self.host, 'test_database', 'test_collection')
+        driver = self.drf.get_driver()
         driver.connect()
         self.assertTrue(driver.is_connected)
         driver.disconnect()
         self.assertFalse(driver.is_connected)
         # check also the context manager
-        with MongoDriver(self.host, 'test_database', 'test_collection') as driver:
+        with self.drf.get_driver() as driver:
             self.assertTrue(driver.is_connected)
         self.assertFalse(driver.is_connected)
 
     def test_select_collection(self):
-        with MongoDriver(self.host, 'test_database', 'test_collection_1') as driver:
-            self.assertEqual(driver.collection.name, u'test_collection_1')
+        with self.drf.get_driver() as driver:
+            self.assertEqual(driver.collection.name, u'test_collection')
             driver.select_collection('test_collection_2')
             self.assertEqual(driver.collection.name, u'test_collection_2')
 
@@ -41,7 +43,7 @@ class TestMongoDBDriver(unittest.TestCase):
             'field1': 'value1',
             'field2': 'value2'
         }
-        with MongoDriver(self.host, 'test_database', 'test_collection') as driver:
+        with self.drf.get_driver() as driver:
             r_id = driver.add_record(record)
             self.assertEqual(r_id, record_id)
             self.assertEqual(driver.documents_count, 1)
@@ -55,7 +57,7 @@ class TestMongoDBDriver(unittest.TestCase):
             'field1': 'value1',
             'field2': 'value2',
         } for rid in record_ids]
-        with MongoDriver(self.host, 'test_database', 'test_collection') as driver:
+        with self.drf.get_driver() as driver:
             saved_ids, errors = driver.add_records(records)
             for sid in saved_ids:
                 self.assertIn(sid, record_ids)
@@ -92,7 +94,7 @@ class TestMongoDBDriver(unittest.TestCase):
             'field1': 'value1',
             'field2': 'value2'
         }
-        with MongoDriver(self.host, 'test_database', 'test_collection') as driver:
+        with self.drf.get_driver() as driver:
             record_id = driver.add_record(record)
             self.assertEqual(record_id, record['_id'])
             rec = driver.get_record_by_id(record_id)
@@ -105,7 +107,7 @@ class TestMongoDBDriver(unittest.TestCase):
             {'value': x, 'even': x % 2 == 0, '_id': uuid4().hex}
             for x in xrange(0, 20)
         ]
-        with MongoDriver(self.host, 'test_database', 'test_collection') as driver:
+        with self.drf.get_driver() as driver:
             record_ids, _ = driver.add_records(records)
             even_recs = list(driver.get_records_by_query({'even': True}))
             self.assertEqual(len(even_recs), 10)
@@ -120,7 +122,7 @@ class TestMongoDBDriver(unittest.TestCase):
             'field1': 'value1',
             'field2': 'value2'
         }
-        with MongoDriver(self.host, 'test_database', 'test_collection') as driver:
+        with self.drf.get_driver() as driver:
             rec_id = driver.add_record(record)
             self.assertEqual(driver.get_record_by_id(rec_id)['label'], record['label'])
             driver._update_record(rec_id, {'$set': {'label': 'new_label'}})
