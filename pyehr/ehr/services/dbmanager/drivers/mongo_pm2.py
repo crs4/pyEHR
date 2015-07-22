@@ -16,7 +16,7 @@ except ImportError:
     import json
 
 
-class MultiprocessQueryRunner(object):
+class MultiprocessQueryRunnerPM2(object):
 
     def __init__(self, host, database, collection,
                  port, user, passwd):
@@ -28,7 +28,7 @@ class MultiprocessQueryRunner(object):
         self.passwd = passwd
 
     def __call__(self, query_description):
-        driver_instance = MongoDriver(
+        driver_instance = MongoDriverPM2(
             self.host, self.database, self.collection_name,
             self.port, self.user, self.passwd
         )
@@ -39,7 +39,7 @@ class MultiprocessQueryRunner(object):
         return results
 
 
-class MongoDriver(DriverInterface):
+class MongoDriverPM2(DriverInterface):
     """
     Create a driver to handle I\O with a MongoDB server. Using the given *host* and, if needed, *port*, *user*
     and *password* the driver will contact MongoDB when a connection is needed and will interrogate a specific
@@ -688,10 +688,10 @@ class MongoDriver(DriverInterface):
         return q
 
     def _parse_simple_expression(self, expression):
-        return super(MongoDriver, self)._parse_simple_expression(expression)
+        return super(MongoDriverPM2, self)._parse_simple_expression(expression)
 
     def _parse_match_expression(self, expr):
-        return super(MongoDriver, self)._parse_match_expression(expr)
+        return super(MongoDriverPM2, self)._parse_match_expression(expr)
 
     def _normalize_path(self, path):
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
@@ -709,10 +709,10 @@ class MongoDriver(DriverInterface):
         return '%s.archetype_details' % tmp_path
 
     def _build_paths(self, containment_mapping):
-        return super(MongoDriver, self)._build_paths(containment_mapping)
+        return super(MongoDriverPM2, self)._build_paths(containment_mapping)
 
     def _extract_path_alias(self, path):
-        return super(MongoDriver, self)._extract_path_alias(path)
+        return super(MongoDriverPM2, self)._extract_path_alias(path)
 
     def _get_archetype_class_path(self, path):
         path_pieces = path.split('.')
@@ -884,17 +884,17 @@ class MongoDriver(DriverInterface):
         return rs
 
     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
-        return super(MongoDriver, self).build_queries(query_model, patients_repository, ehr_repository,
+        return super(MongoDriverPM2, self).build_queries(query_model, patients_repository, ehr_repository,
                                                       query_params)
 
     def _get_query_hash(self, query):
-        return super(MongoDriver, self)._get_query_hash(query)
+        return super(MongoDriverPM2, self)._get_query_hash(query)
 
     def _get_queries_hash_map(self, queries):
-        return super(MongoDriver, self)._get_queries_hash_map(queries)
+        return super(MongoDriverPM2, self)._get_queries_hash_map(queries)
 
     def _get_structures_hash_map(self, queries):
-        return super(MongoDriver, self)._get_structures_hash_map(queries)
+        return super(MongoDriverPM2, self)._get_structures_hash_map(queries)
 
     def _get_structures_selector(self, structure_ids):
         if len(structure_ids) == 1:
@@ -951,7 +951,7 @@ class MongoDriver(DriverInterface):
         else:
             queries_pool = Pool(query_processes)
             results = queries_pool.imap_unordered(
-                MultiprocessQueryRunner(self.host, self.database_name,
+                MultiprocessQueryRunnerPM2(self.host, self.database_name,
                                         ehr_repository, self.port, self.user, self.passwd),
                 queries
             )

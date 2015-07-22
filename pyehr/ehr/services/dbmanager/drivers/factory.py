@@ -19,8 +19,15 @@ class DriversFactory(object):
 
     def get_driver(self):
         if self.driver == 'mongodb':
-            from mongo import MongoDriver
-            return MongoDriver(self.host, self.database, self.repository,
+            from pymongo import version as vsn
+            if int(vsn.split(".")[0]) < 3:
+                from mongo_pm2 import MongoDriverPM2
+                return MongoDriverPM2(self.host, self.database, self.repository,
+                               self.port, self.user, self.passwd,
+                               self.index_service, self.logger)
+            else:
+                from mongo_pm3 import MongoDriverPM3
+                return MongoDriverPM3(self.host, self.database, self.repository,
                                self.port, self.user, self.passwd,
                                self.index_service, self.logger)
         elif self.driver == 'elasticsearch':

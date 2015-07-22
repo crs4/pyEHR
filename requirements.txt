@@ -1,6 +1,6 @@
 lxml
 voluptuous
-pymongo == 2.8
+pymongo
 elasticsearch
 bottle
 pybasex >= 0.0.0-alpha.0

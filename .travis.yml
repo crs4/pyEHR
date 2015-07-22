@@ -12,7 +12,8 @@ env:
   global:
     - BASEX_DOWNLOAD_URL=http://files.basex.org/releases/8.0/BaseX80.zip
   matrix:
-    - DB_ENGINE=mongodb
+    - DB_ENGINE=mongodb PYMONGO="pymongo==2.8"
+    - DB_ENGINE=mongodb PYMONGO="pymongo"
     - DB_ENGINE=elasticsearch
 
 before_install:
@@ -25,8 +26,8 @@ before_install:
   - ./basexhttp -S
   - popd
   # install Python dependencies
-  - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo==2.8; fi
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then pip install elasticsearch; fi
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install $PYMONGO ; fi
   - pip install bottle
   - pip install requests
   - pip install voluptuous
