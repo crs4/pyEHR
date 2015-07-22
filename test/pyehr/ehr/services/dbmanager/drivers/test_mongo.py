@@ -6,15 +6,16 @@ from pyehr.ehr.services.dbmanager.errors import DuplicatedKeyError
 from uuid import uuid4
 
 
+conf_file = os.getenv('SERVICE_CONFIG_FILE')
+
+
 class TestMongoDBDriver(unittest.TestCase):
 
     def __init__(self, label):
         super(TestMongoDBDriver, self).__init__(label)
 
     def setUp(self):
-        conf_file = "mongo.conf.1"
-        conf_dir = os.path.dirname(os.path.abspath(__file__))
-        conf = get_service_configuration(conf_dir+os.sep+conf_file)
+        conf = get_service_configuration(conf_file)
         db_conf = conf.get_db_configuration()
         db_service = DBServices(**db_conf)
         self.drf = db_service._get_drivers_factory(db_service.ehr_repository)
@@ -32,9 +33,9 @@ class TestMongoDBDriver(unittest.TestCase):
 
     def test_select_collection(self):
         with self.drf.get_driver() as driver:
-            self.assertEqual(driver.collection.name, u'test_collection')
-            driver.select_collection('test_collection_2')
-            self.assertEqual(driver.collection.name, u'test_collection_2')
+            self.assertEqual(driver.collection.name, u'test_ehr')
+            driver.select_collection('test_ehr_2')
+            self.assertEqual(driver.collection.name, u'test_ehr_2')
 
     def test_add_record(self):
         record_id = uuid4().hex
