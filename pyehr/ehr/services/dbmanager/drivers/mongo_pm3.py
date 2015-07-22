@@ -199,3 +199,14 @@ class MongoDriverPM3(MongoDriverPM2):
             for r in results:
                 total_results.extend(r)
         return total_results
+
+    def count_records_by_query(self, selector):
+        """
+        Retrieve the number of records matching the given query
+
+        :param selector: the selector (in MongoDB syntax) used to select data
+        :return: the number of records that match the given query
+        :rtype: int
+        """
+        self._check_connection()
+        return self.collection.count(selector)
