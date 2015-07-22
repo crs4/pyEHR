@@ -12,8 +12,8 @@ env:
   global:
     - BASEX_DOWNLOAD_URL=http://files.basex.org/releases/8.0/BaseX80.zip
   matrix:
-    - DB_ENGINE=mongodb ; PYMONGO_VERSION=2.8
-    - DB_ENGINE=mongodb ; PYMONGO_VERSION=3.0.2
+    - DB_ENGINE=mongodb PYMONGO_VERSION=2.8
+    - DB_ENGINE=mongodb PYMONGO_VERSION=3.0.2
     - DB_ENGINE=elasticsearch
 
 before_install:
