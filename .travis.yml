@@ -27,7 +27,7 @@ before_install:
   - popd
   # install Python dependencies
   - if [[ "$DB_ENGINE" == "elasticsearch" ]]; then pip install elasticsearch; fi
-  - if [[ "$DB_ENGINE" == "mongodb"]]; then pip install pymongo==$PYMONGO_VERSION ; fi
+  - if [[ "$DB_ENGINE" == "mongodb" ]]; then pip install pymongo==$PYMONGO_VERSION ; fi
   - pip install bottle
   - pip install requests
   - pip install voluptuous
