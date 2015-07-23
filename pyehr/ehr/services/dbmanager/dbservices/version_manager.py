@@ -154,7 +154,7 @@ class VersionManager(object):
         setattr(record, field, value)
         return record
 
-    def add_to_list(self, record, list_label, element, last_update_label):
+    def add_to_list(self, record, list_label, element, last_update_label=None):
         current_revision = self._get_current_revision(record.record_id)
         self._check_optimistic_lock(current_revision, record.version)
         self._move_record_to_archive(current_revision)
@@ -166,7 +166,7 @@ class VersionManager(object):
         record.increase_version()
         return record
 
-    def extend_list(self, record, list_label, elements, last_update_label):
+    def extend_list(self, record, list_label, elements, last_update_label=None):
         current_revision = self._get_current_revision(record.record_id)
         self._check_optimistic_lock(current_revision, record.version)
         self._move_record_to_archive(current_revision)
@@ -178,7 +178,7 @@ class VersionManager(object):
         record.increase_version()
         return record
 
-    def remove_from_list(self, record, list_label, element, last_update_label):
+    def remove_from_list(self, record, list_label, element, last_update_label=None):
         current_revision = self._get_current_revision(record.record_id)
         self._check_optimistic_lock(current_revision, record.version)
         self._move_record_to_archive(current_revision)
