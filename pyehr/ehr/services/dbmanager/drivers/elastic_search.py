@@ -398,7 +398,6 @@ class ElasticSearchDriver(DriverInterface):
             last_update=record['last_update'],
             active=record['active'],
             record_id={'_id': record['_id'].rsplit('_', 1)[0],'_revision' : int(record['_id'].rsplit('_', 1)[1])},
-            structure_id=record['ehr_structure_id'],
             version=int(record['_id'].rsplit('_', 1)[1]),
         )
 

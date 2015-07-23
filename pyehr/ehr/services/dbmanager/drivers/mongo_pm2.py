@@ -288,7 +288,6 @@ class MongoDriverPM2(DriverInterface):
             last_update=record['last_update'],
             active=record['active'],
             record_id=record['_id'],
-            structure_id=record['ehr_structure_id'],
             version=record.get('_version'),
         )
 
