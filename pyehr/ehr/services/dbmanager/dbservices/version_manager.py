@@ -94,7 +94,9 @@ class VersionManager(object):
             if record:
                 rec = driver.decode_record(record)
                 if convert_to_clinical_record:
-                    return rec.convert_to_clinical_record()
+                    crec = rec.convert_to_clinical_record()
+                    self._set_structure_id(crec)
+                    return crec
                 else:
                     return rec
             else:
