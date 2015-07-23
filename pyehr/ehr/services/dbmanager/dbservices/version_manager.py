@@ -9,7 +9,7 @@ except ImportError:
 from pyehr.ehr.services.dbmanager.drivers.factory import DriversFactory
 from pyehr.utils import get_logger
 from pyehr.ehr.services.dbmanager.errors import OptimisticLockError,\
-    RedundantUpdateError, MissingRevisionError
+    RedundantUpdateError, MissingRevisionError, ConfigurationError
 
 
 class VersionManager(object):
@@ -51,6 +51,10 @@ class VersionManager(object):
             logger=self.logger,
             index_service=self.index_service,
         )
+
+    def _check_index_service(self):
+        if not self.index_service:
+            raise ConfigurationError('Operation not allowed, missing IndexService')
 
     def _check_redundant_update(self, new_record, old_record):
         new_record_hash = md5()
