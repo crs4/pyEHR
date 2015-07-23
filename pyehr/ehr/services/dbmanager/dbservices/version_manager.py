@@ -107,6 +107,16 @@ class VersionManager(object):
                          driver.get_revisions_by_ehr_id(record_id)]
         return sorted(revisions, key=attrgetter('version'), reverse=reverse_ordering)
 
+    def _set_structure_id(self, ehr_record):
+        self._check_index_service()
+        ehr_data = ehr_record.ehr_data.to_json()
+        structure_id = self.index_service.get_structure_id(ehr_data)
+        if structure_id == ehr_record.structure_id:
+            return False
+        else:
+            ehr_record.structure_id = structure_id
+            return True
+
     def update_record(self, new_record):
         current_revision = self._get_current_revision(new_record.record_id)
         self._check_redundant_update(new_record, current_revision)
