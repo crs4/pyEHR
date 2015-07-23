@@ -28,6 +28,23 @@ class TestVersionManager(unittest.TestCase):
                                  }})
         return ClinicalRecord(arch)
 
+    def _create_random_complex_archetype(self):
+        arch1 = ArchetypeInstance('openEHR-EHR-OBSERVATION.dummy-observation.v1',
+                                  {
+                                      'data': {
+                                          'at0001': random.randint(1, 99),
+                                          'at0002': 'just a text field'
+                                      }
+                                  })
+        arch2 = ArchetypeInstance('openEHR-EHR-COMPOSITION.dummy-composition.v1',
+                                  {
+                                      'data': {
+                                          'at1001': random.randint(1, 100),
+                                          'at1002': arch1
+                                      }
+                                  })
+        return arch2
+
     def build_dataset(self):
         self._create_random_patient()
         crec = self._create_random_clinical_record()
@@ -46,7 +63,6 @@ class TestVersionManager(unittest.TestCase):
         if self.patient:
             self.dbs.delete_patient(self.patient, cascade_delete=True)
         self.dbs = None
-
 
     def test_record_update(self):
         crec = self.build_dataset()
@@ -99,6 +115,21 @@ class TestVersionManager(unittest.TestCase):
         self.assertEqual(crec.to_json(), crec_rev_2)
         crec = self.dbs.restore_previous_ehr_version(crec)
         self.assertEqual(crec.to_json(), crec_rev_1)
+
+    def test_record_reindex(self):
+        crec = self.build_dataset()
+        crec_struct_id = crec.structure_id
+        crec.ehr_data = self._create_random_complex_archetype()
+        crec = self.dbs.update_ehr_record(crec)
+        self.assertNotEqual(crec_struct_id, crec.structure_id)
+        self.assertEqual(crec.version, 2)
+        self.assertGreater(crec.last_update, crec.creation_time)
+        self.assertEqual(crec.ehr_data.archetype_class, 'openEHR-EHR-COMPOSITION.dummy-composition.v1')
+        crec_struct_id = crec.structure_id
+        crec, deleted_revisions = self.dbs.restore_original_ehr(crec)
+        self.assertNotEqual(crec.structure_id, crec_struct_id)
+        self.assertEqual(crec.version, 1)
+        self.assertEqual(crec.ehr_data.archetype_class, 'openEHR-EHR-OBSERVATION.dummy-observation.v1')
 
     def test_get_revision(self):
         crec = self.build_dataset()
@@ -186,6 +217,7 @@ def suite():
     suite.addTest(TestVersionManager('test_record_restore'))
     suite.addTest(TestVersionManager('test_record_restore_original'))
     suite.addTest(TestVersionManager('test_record_restore_previous_revision'))
+    suite.addTest(TestVersionManager('test_record_reindex'))
     suite.addTest(TestVersionManager('test_get_revision'))
     suite.addTest(TestVersionManager('test_get_revisions'))
     suite.addTest(TestVersionManager('test_optimistic_lock_error'))
