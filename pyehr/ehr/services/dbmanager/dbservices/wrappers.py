@@ -261,7 +261,6 @@ class ClinicalRecord(Record):
             creation_time=self.creation_time,
             last_update=self.last_update,
             active=self.active,
-            structure_id=self.structure_id,
             version=self.version
         )
 
@@ -269,9 +268,10 @@ class ClinicalRecord(Record):
 class ClinicalRecordRevision(ClinicalRecord):
 
     def __init__(self, ehr_data, record_id, patient_id, creation_time=None, last_update=None,
-                 active=True, structure_id=None, version=0):
-        super(ClinicalRecordRevision, self).__init__(ehr_data, creation_time, last_update,
-                                                     active, record_id, structure_id, version)
+                 active=True, version=0):
+        super(ClinicalRecordRevision, self).__init__(ehr_data=ehr_data, creation_time=creation_time,
+                                                     last_update=last_update, active=active,
+                                                     record_id=record_id, version=version)
         self.record_id = record_id
         self._set_patient_id(patient_id)
 
@@ -284,7 +284,6 @@ class ClinicalRecordRevision(ClinicalRecord):
             'creation_time': float,
             'last_update': float,
             'active': bool,
-            'record_id': str,
             'patient_id': str,
             'version': int
         })
@@ -296,7 +295,6 @@ class ClinicalRecordRevision(ClinicalRecord):
             last_update=self.last_update,
             active=self.active,
             record_id=self.record_id['_id'],
-            structure_id=self.structure_id,
             version=self.version
         )
         crec._set_patient_id(self.patient_id)
