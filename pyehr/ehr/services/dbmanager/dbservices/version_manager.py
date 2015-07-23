@@ -125,9 +125,14 @@ class VersionManager(object):
         drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
             new_record.increase_version()
+            struct_changed = self._set_structure_id(new_record)
             last_update = driver.replace_record(new_record.record_id,
                                                 driver.encode_record(new_record),
                                                 'last_update')
+            if struct_changed:
+                self.index_service.increase_structure_counter(new_record.structure_id)
+            else:
+                self.index_service.check_structure_counter(new_record.structure_id)
             new_record.last_update = last_update
         return new_record
 
