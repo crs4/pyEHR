@@ -195,10 +195,12 @@ class VersionManager(object):
                                             convert_to_clinical_record=True)
         if not original_record:
             raise MissingRevisionError('Unable to retrieve version %d for record %s' %
-                                      (revision, record_id))
+                                       (revision, record_id))
         drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
+            old_rec_struct = driver.get_values_by_record_id(record_id, ["ehr_structure_id"])["ehr_structure_id"]
             driver.delete_record(record_id)
+            self.index_service.decrease_structure_counter(old_rec_struct)
             driver.add_record(driver.encode_record(original_record))
         drf = self._get_drivers_factory(True)
         with drf.get_driver() as driver:
