@@ -1570,6 +1570,10 @@ class ElasticSearchDriver(DriverInterface):
             res=self.get_records_by_query_scan(query,fields,limit)
         return res
 
+    def get_values_by_record_id(self, record_id, values_list):
+        res = self.client.get_source(index=self.database, id=record_id, _source_include=values_list)
+        return decode_dict(res)
+
     def get_records_by_query_scan(self, query,fields=None,limit=0):
         """
         Retrieve all records matching the given query

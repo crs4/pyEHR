@@ -135,6 +135,13 @@ class DriverInterface(object):
         pass
 
     @abstractmethod
+    def get_values_by_record_id(self, record_id, values_list):
+        """
+        Retrieve values in *values_list* from record with ID *record_id*
+        """
+        pass
+
+    @abstractmethod
     def count_records_by_query(self, selector):
         """
         Retrieve the number of records matching the given query
