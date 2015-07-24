@@ -70,7 +70,7 @@ class RecordRestoreFailedError(Exception):
     pass
 
 
-class RecordRestoreUnecessaryError(Exception):
+class RecordRestoreUnnecessaryError(Exception):
     pass
 
 
@@ -80,6 +80,7 @@ class MissingRevisionError(Exception):
 
 class OperationNotAllowedError(Exception):
     pass
+
 
 class QueryCreationException(Exception):
     pass

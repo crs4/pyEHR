@@ -3,7 +3,7 @@ from pyehr.ehr.services.dbmanager.dbservices import DBServices
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord,\
     ClinicalRecord, ClinicalRecordRevision, ArchetypeInstance
 from pyehr.ehr.services.dbmanager.errors import OptimisticLockError,\
-    RedundantUpdateError, MissingRevisionError, RecordRestoreUnecessaryError,\
+    RedundantUpdateError, MissingRevisionError, RecordRestoreUnnecessaryError,\
     OperationNotAllowedError
 from pyehr.utils.services import get_service_configuration
 
@@ -197,9 +197,9 @@ class TestVersionManager(unittest.TestCase):
         with self.assertRaises(MissingRevisionError) as ctx:
             self.dbs.restore_ehr_version(crec2, 5)
 
-    def test_record_restore_unecessary_error(self):
+    def test_record_restore_unnecessary_error(self):
         crec = self.build_dataset()
-        with self.assertRaises(RecordRestoreUnecessaryError) as ctx:
+        with self.assertRaises(RecordRestoreUnnecessaryError) as ctx:
             self.dbs.restore_previous_ehr_version(crec)
             self.dbs.restore_original_ehr(crec)
 
@@ -223,7 +223,7 @@ def suite():
     suite.addTest(TestVersionManager('test_optimistic_lock_error'))
     suite.addTest(TestVersionManager('test_redundant_update_error'))
     suite.addTest(TestVersionManager('test_missing_revision_error'))
-    suite.addTest(TestVersionManager('test_record_restore_unecessary_error'))
+    suite.addTest(TestVersionManager('test_record_restore_unnecessary_error'))
     suite.addTest(TestVersionManager('test_operation_not_allowed_error'))
     return suite
 
