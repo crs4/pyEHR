@@ -124,17 +124,17 @@ class VersionManager(object):
         self._check_redundant_update(new_record, current_revision)
         self._check_optimistic_lock(current_revision, new_record.version)
         self._move_record_to_archive(current_revision)
+        old_structure_id = current_revision.structure_id
         drf = self._get_drivers_factory()
         with drf.get_driver() as driver:
             new_record.increase_version()
-            struct_changed = self._set_structure_id(new_record)
+            self._set_structure_id(new_record)
             last_update = driver.replace_record(new_record.record_id,
                                                 driver.encode_record(new_record),
                                                 'last_update')
-            if struct_changed:
+            if new_record.structure_id != old_structure_id:
                 self.index_service.increase_structure_counter(new_record.structure_id)
-            else:
-                self.index_service.check_structure_counter(new_record.structure_id)
+                self.index_service.decrease_structure_counter(old_structure_id)
             new_record.last_update = last_update
         return new_record
 
