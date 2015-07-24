@@ -17,10 +17,6 @@ except ImportError:
 import elasticsearch
 import time
 import re
-import sys
-import os
-#from profilehooks import profile
-
 
 class MultiprocessQueryRunner(object):
 
@@ -47,27 +43,25 @@ class MultiprocessQueryRunner(object):
 
 class ElasticSearchDriver(DriverInterface):
     """
-    Creates a driver to handle I\O with a ElasticSearch server.
+    Creates a driver to handle I\O with a ElasticSearch (ES) server.
     Parameters:
     hosts - list of nodes we should connect to.
-     Node should be a dictionary ({"host": "localhost", "port": 9200}), the entire dictionary
-     will be passed to the Connection class as kwargs, or a string in the format of host[:port]
-     which will be translated to a dictionary automatically. If no value is given the Connection class defaults will be used.
-    transport_class - Transport subclass to use.
-    kwargs - any additional arguments will be passed on to the Transport class and, subsequently, to the Connection instances.
-
-    Using the given *host:port* dictionary and, if needed, the database (index in elasticsearch terminology) and the collection
-    ( document in elasticsearch terminology)  the driver will contact ES when a connection is needed and will interrogate a
-    specific *document* type stored in one *index*  within the server. If no *logger* object is passed to constructor, a new one
-    is created.
-    *port*, *user* and *password* are not used
+     hosts must be a dictionary ({"host": "localhost", "port": 9200}), the entire dictionary will be passed to the
+     Connection class as kwargs, or a string in the format of host[:port] which will be translated to a dictionary
+     automatically. If no value is given the Connection class defaults will be used.
+    database: "index" to use
+    collection: "document type" to use
+    Using the given *host:port* dictionary and, if needed, the database (index in elasticsearch terminology)
+    and the collection  ( document in elasticsearch terminology)  the driver will contact ES when a connection is
+    needed and will interrogate a specific *document type* stored in one *index*  within the server.
+    If no *logger* object is passed to constructor, a new one is created.
+    *port*, *user* and *password* are currently not used
     """
 
     # This map is used to encode\decode data when writing\reading to\from ElasticSearch
     #ENCODINGS_MAP = {'.': '-'}   I NEED TO SEE THE QUERIES
     ENCODINGS_MAP = {}
 
-#    @profile
     def __init__(self, host, database,collection,
                  port=None, user=None, passwd=None,
                  index_service=None, logger=None):
@@ -84,23 +78,29 @@ class ElasticSearchDriver(DriverInterface):
         self.logger = logger or get_logger('elasticsearch-db-driver')
         self.regtrue = re.compile("([ :])True([ \]},])")
         self.regfalse = re.compile("([ :])False([ \]},])")
-        self.threshold = 1000
-        self.insert_timeout = 600
         self.database_ids_suffix="lookup"
         baseidids=self.database.rsplit('_', 1)[0]
         self.database_ids=baseidids+"_"+self.database_ids_suffix
         self.doc_ids="table"
+        #scan settings: threshold, timeout for scroll life
+        self.threshold = 1000
         self.scrolltime="1m"
-        self.grbq="scan" # "scan" or "from"
-#        self.grbq="from"
+        #method in get records by query:"scan" or "from"
+        self.grbq="scan"
+        #method in get_record_by_id: "current" or "lookuptable"
+        self.grbi = "current"
+        #method in delete_record: "search" or "lookuptable"
+        self.dere="lookuptable"
+        #method in delete_later_versions:"search" or "lookuptable"
+        self.dlv="lookuptable"
         #refresh for insertion. put to false for long bulk insertion
-        #self.refresh='false'
         self.refresh='true'
+        #timeout for insertion
+        self.insert_timeout = 600
         #timeout for all action on es
         self.global_timeout=60
         #refresh for deletion. put to false for long bulk deletion
         self.drefresh='true'
-#        self.drefresh='false'
     def __enter__(self):
         self.connect()
         return self
@@ -109,7 +109,6 @@ class ElasticSearchDriver(DriverInterface):
         self.disconnect()
         return None
 
-#    @profile
     def connect(self):
         """
         Open a connection to a ES server.
@@ -117,7 +116,8 @@ class ElasticSearchDriver(DriverInterface):
         if not self.client:
             self.logger.debug('connecting to host %s', self.host)
             try:
-                self.client = elasticsearch.Elasticsearch(hosts=self.host,connection_class=self.transportclass,maxsize=100,timeout=self.global_timeout)
+                self.client = elasticsearch.Elasticsearch(hosts=self.host,connection_class=self.transportclass,
+                                                          maxsize=100,timeout=self.global_timeout)
                 self.client.info()
             except elasticsearch.TransportError:
                 raise DBManagerNotConnectedError('Unable to connect to ElasticSearch at %s:%s' %
@@ -128,11 +128,10 @@ class ElasticSearchDriver(DriverInterface):
         else:
             self.logger.debug('Alredy connected to ElasticSearch')
 
-#    @profile
     def disconnect(self):
         """
-        Close a connection to a ElasticSearch server.
-        There's not such thing so we erase the client pointer
+        Close a connection to a ES server.
+        There's not such thing so we simply erase the client pointer
         """
         self.logger.debug('disconnecting from host %s', self.host)
         self.database = None
@@ -140,13 +139,15 @@ class ElasticSearchDriver(DriverInterface):
         self.client = None
 
     def init_structure(self, structure_def):
-        # ElasticSearch would benefit from structure initialization but it doesn't need it
+        """
+        ElasticSearch  doesn't need structure initialization
+        """
         pass
 
     @property
     def is_connected(self):
         """
-        Check if the connection to the ElasticSearch server is opened.
+        Check if the connection to the ES server is opened.
 
         :rtype: boolean
         :return: True if the connection is open, False if it is closed.
@@ -157,10 +158,10 @@ class ElasticSearchDriver(DriverInterface):
         if not self.is_connected:
             raise DBManagerNotConnectedError('Connection to host %s is closed' % self.host)
 
-#    @profile
     def select_collection(self, collection_label):
         """
         Change the collection for the current database
+        ES lingo: change the doc_type for the current index
 
         :param collection_label: the label of the collection that must be selected
         :type collection_label: string
@@ -172,12 +173,22 @@ class ElasticSearchDriver(DriverInterface):
         self.collection = collection_label
         self.collection_name = collection_label
 
-#    @profile
     def _select_doc_type(self,strid):
+        """
+        Select the collection fo the EHR record through the structure id
+        :param strid: structure id from the index service
+        :type strid: string
+        """
         self.collection_name = self.collection+"_"+strid
 
-#    @profile
     def _encode_patient_record(self, patient_record):
+        """
+        encode patient record, i.e. transform from openehr to ES representation
+        :param patient_record:  patient record entity
+        :type: PatientRecord
+        :return:encoded_record: patient record in db representation
+        :type: encoded_record: dict
+        """
         encoded_record = {
             'creation_time': patient_record.creation_time,
             'last_update': patient_record.last_update,
@@ -194,12 +205,6 @@ class ElasticSearchDriver(DriverInterface):
     def _from_json(self,doc):
         return json.loads('"'+doc+'"')
 
-    def my_decode(self,doc):
-#        docnew=self._from_json(doc)
-#        return decode_dict(docnew)
-        return decode_dict(doc)
-
-#    @profile
     def _normalize_keys(self, document, original, encoded):
         normalized_doc = {}
         for k, v in document.iteritems():
@@ -212,8 +217,14 @@ class ElasticSearchDriver(DriverInterface):
                 normalized_doc[k] = self._normalize_keys(v, original, encoded)
         return normalized_doc
 
-#    @profile
     def _encode_clinical_record(self, clinical_record):
+        """
+        encode clinical record, i.e. transform from openehr to ES representation
+        :param clinical_record:  clinical record entity
+        :type: ClinicalRecord
+        :return:encoded_record: clinical record in ES representation
+        :type: encoded_record: dict
+        """
         ehr_data = clinical_record.ehr_data.to_json()
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = self._normalize_keys(ehr_data, original_value, encoded_value)
@@ -233,6 +244,13 @@ class ElasticSearchDriver(DriverInterface):
 
 #    @profile
     def _encode_clinical_record_revision(self, clinical_record_revision):
+        """
+        encode clinical revision record, i.e. transform from openehr to ES representation
+        :param clinical_revision_record:  clinical revision record entity
+        :type: ClinicalRecordRevision
+        :return:clinical revision record in ES representation
+        :type: dict
+        """
         ehr_data = clinical_record_revision.ehr_data.to_json()
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = self._normalize_keys(ehr_data, original_value, encoded_value)
@@ -252,8 +270,7 @@ class ElasticSearchDriver(DriverInterface):
 #    @profile
     def encode_record(self, record):
         """
-        Encode a :class:`Record` object into a data structure that can be saved within
-        ElasticSearch
+        Encode a :class:`Record` object into a data structure that can be saved within ES
 
         :param record: the record that must be encoded
         :type record: a :class:`Record` subclass
@@ -272,9 +289,18 @@ class ElasticSearchDriver(DriverInterface):
 
 #    @profile
     def _decode_patient_record(self, record, loaded):
+        """
+        decode patient record, i.e. transform ES to openehr representation
+        :param record : patient record in ES representation
+        :type: dict
+        :param loaded: all fields are inserted
+        :type loaded: bool
+        :return: patient record entity
+        :type: PatientRecord
+        """
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord
 
-        record = self.my_decode(record)
+        record = decode_dict(record)
         if loaded:
             # by default, clinical records are attached as "unloaded"
             ehr_records = [self._decode_clinical_record({'_id': ehr}, loaded=False)
@@ -305,9 +331,18 @@ class ElasticSearchDriver(DriverInterface):
 
 #    @profile
     def _decode_clinical_record(self, record, loaded):
+        """
+        decode clinical record, i.e. transform ES to openehr representation
+        :param record : clinical record in ES representation
+        :type: dict
+        :param loaded: all fields are inserted
+        :type loaded: bool
+        :return:clinical record entity
+        :type: ClinicalRecord
+        """
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecord,\
             ArchetypeInstance
-        record = self.my_decode(record)
+        record = decode_dict(record)
         if loaded:
             ehr_data = record['ehr_data']
             for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
@@ -343,9 +378,16 @@ class ElasticSearchDriver(DriverInterface):
 
 #    @profile
     def _decode_clinical_record_revision(self, record):
+        """
+        decode clinical revision record, i.e. transform ES to openehr representation
+        :param record : clinical revision record in ES representation
+        :type: dict
+        :return:clinical revision record entity
+        :type: ClinicalRecordRevision
+        """
         from pyehr.ehr.services.dbmanager.dbservices.wrappers import ClinicalRecordRevision, \
             ArchetypeInstance
-        record = self.my_decode(record)
+        record = decode_dict(record)
         ehr_data = record['ehr_data']
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             ehr_data = self._decode_keys(ehr_data, encoded_value, original_value)
@@ -363,14 +405,14 @@ class ElasticSearchDriver(DriverInterface):
 #    @profile
     def decode_record(self, record, loaded=True):
         """
-        Create a :class:`Record` object from data retrieved from ElasticSearch
+        Create a :class:`Record` object from data retrieved from ES
 
-        :param record: the ElasticSearch record that must be decoded
-        :type record: a ElasticSearch dictionary
+        :param record: the ES record that must be decoded
+        :type record: a ES dictionary
         :param loaded: if True, return a :class:`Record` with all values, if False all fields with
           the exception of the record_id one will have a None value
         :type loaded: boolean
-        :return: the ElasticSearch document encoded as a :class:`Record` object
+        :return: the ES document encoded as a :class:`Record` object
         """
         if self._is_clinical_record(record):
             return self._decode_clinical_record(record, loaded)
@@ -397,21 +439,16 @@ class ElasticSearchDriver(DriverInterface):
         """
         Get the number of documents within current collection
 
-        :return: the number of current collection's documents
+        :return: the number of current database and collection's documents
         :rtype: int
         """
         self.__check_connection()
         query="{ \"query\" : { \"prefix\" : { \"_type\" : \""+self.collection+"\" }}}"
         return self.client.search(index=self.database,search_type='count',body=query)['hits']['total']
 
-#    @profile
     def count(self):
         return self.client.count(index=self.database)['count']
 
-    def count2(self):
-        return self.client.search(index=self.database)['hits']['total']
-
-#    @profile
     def add_record(self, record):
         """
         Save a record within ElasticSearch and return the record's ID
@@ -419,12 +456,14 @@ class ElasticSearchDriver(DriverInterface):
         :param record: the record that is going to be saved
         :type record: dictionary
         :return: the ID of the record
+        :type: str
         """
         def clinical_add_withid():
             if self._is_id_taken(self.database,record['_id']):
                 raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
             myid = str(self.client.index(index=self.database,doc_type=self.collection_name,id=record['_id'],
-                                body=self._to_json(record),op_type='create',refresh=self.refresh,timeout=self.insert_timeout)['_id'])
+                                body=self._to_json(record),op_type='create',refresh=self.refresh,
+                                         timeout=self.insert_timeout)['_id'])
             self._store_ids(record)
             return myid
 
@@ -457,13 +496,28 @@ class ElasticSearchDriver(DriverInterface):
              raise DuplicatedKeyError('A record with ID %s already exists' % record['_id'])
 
     def _get_ids(self,baseid):
+        """
+        search for the baseid in the lookup table and return the record if it exists
+
+        :param baseid: base id without the version part
+        :type  baseid: str
+        :return: source of the record
+        :type   : dict
+        """
         try:
             if self.client.exists(index=self.database_ids,doc_type=self.doc_ids,id=baseid):
                 return self.client.get_source(index=self.database_ids,doc_type=self.doc_ids,id=baseid)
             return None
         except elasticsearch.NotFoundError:
             return None
+
     def _store_ids(self,record):
+        """
+        store a record in the lookup table by its baseid
+
+        :param record: record to store in the lookup table
+        :type  record: dict
+        """
         if self._is_patient_record(record):
             baseid=record['_id']
         else:
@@ -482,11 +536,17 @@ class ElasticSearchDriver(DriverInterface):
             existing_record=dict()
             existing_record['ids']=[[record['_id'],ind,doct]]
             self.client.index(index=self.database_ids,doc_type=self.doc_ids,id=baseid,
-                                        body=existing_record,op_type='create',refresh=self.refresh,timeout=self.insert_timeout)
+                                        body=existing_record,op_type='create',refresh=self.refresh,
+                              timeout=self.insert_timeout)
 
 
     def _erase_ids(self,id2e):
-#       search for the given id2e otherwise for the baseid
+        """
+        delete a record in the lookup table given its id or baseid
+
+        :param id2e: id or baseid in the lookup table
+        :type  id2e: str
+        """
         existing_record=self._get_ids(id2e)
         if existing_record:
             old_value=existing_record['ids']
@@ -512,10 +572,17 @@ class ElasticSearchDriver(DriverInterface):
             else:
                 raise MissingRevisionError("A record with ID %s does not exist in archive" % id)
 
-#    @profile
-    def pack_record(self,records,rectype_clinical):
-        #the records must be of the same type!
-        #all patient records or all clinical records
+    def pack_records(self,records,rectype_clinical):
+        """
+        pack records for the bulk insertion
+        the records must be of the same type
+
+        :param records: records to be packed
+        :type records : list of dict
+        :param rectype_clinical: whether the first record a clinical record
+        :type rectype_clinical: bool
+        :return:
+        """
         first="{\"create\":{\"_index\":\""+self.database
         puzzle=""
         for dox in records:
@@ -536,15 +603,26 @@ class ElasticSearchDriver(DriverInterface):
 
 
     def _is_id_taken(self,indextc,idtc,collection_nametc=None):
+        """
+        given the database, collection and id returns a bool which says if that record exists
+
+        :param indextc: database (index)
+        :type indextc: str
+        :param idtc: id
+        :type idtc: str
+        :param collection_nametc: collection (doc_type)
+        :type collection_nametc: str
+        :return: bool
+        """
         if collection_nametc:
             return self.client.exists(index=indextc,doc_type=collection_nametc,id=idtc)
         else:
             return self.client.exists(index=indextc,id=idtc)
 
-#    @profile
+
     def add_records(self,records,skip_existing_duplicated=False):
         """
-        Save a list of records within ElasticSearch and return records' IDs
+        Save a list of records in ES and return records' IDs
 
         :param records: the list of records that is going to be saved
         :type record: list
@@ -578,15 +656,14 @@ class ElasticSearchDriver(DriverInterface):
                     notduplicatedlist.append(r)
         if duplicatedlist and not skip_existing_duplicated:
             raise DuplicatedKeyError('The following IDs are already in use: %s' % duplicatedlistid)
-        #create a bulk list
-        bulklist = self.pack_record(notduplicatedlist,rectype_clinical)
-        bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh=self.refresh,timeout=self.insert_timeout)
+        bulklist = self.pack_records(notduplicatedlist,rectype_clinical)
+        bulkanswer = self.client.bulk(body=bulklist,index=self.database,refresh=self.refresh,
+                                      timeout=self.insert_timeout)
         failuresid=[]
         errtype=[]
         nerrors=0
         successfulid=[]
         if(bulkanswer['errors']): # there are errors
-            #manual roll back
             for b in bulkanswer['items']:
                 if(b['create'].has_key('error')):
                     failuresid.append(str(b['create']['_id']))
@@ -600,8 +677,6 @@ class ElasticSearchDriver(DriverInterface):
                     self._select_doc_type(r['ehr_structure_id'])
                 self._store_ids(r)
                 self.delete_record(s)
-#            duplicatedlist.extend([records_map[e] for e in failuresid])
-#            return successfulid,duplicatedlist
             return [],duplicatedlist
         else:
             for r in notduplicatedlist:
@@ -610,28 +685,32 @@ class ElasticSearchDriver(DriverInterface):
                 self._store_ids(r)
             return [b['create']['_id'] for b in bulkanswer['items']],duplicatedlist
 
-    def add_records2(self, records, skip_existing_duplicated=False):
-        """
-        Save a list of records within ElasticSearch and return records' IDs
-
-        :param records: the list of records that is going to be saved
-        :type records: list
-        :param skip_existing_duplicated: ignore duplicated key errors and save records with a unique ID
-        :type skip_existing_duplicated: bool
-        :return: a list of records' IDs and a list of records that caused a duplicated key error
-        """
-        self._check_batch(records, '_id')
-        self.__check_connection()
-        return super(ElasticSearchDriver, self).add_records(records, skip_existing_duplicated)
-
-#    @profile
-
     def get_record_by_id(self, record_id):
         """
+        Choose which routine to get record by id
+
+        :param query:
+        :param fields:
+        :param limit:
+        :return:
+        """
+        if self.grbi == "current":
+            res=self.get_record_by_id_current(record_id)
+        elif self.grbi == "lookuptable":
+            res=self.get_record_by_id_lookup(record_id)
+        else:
+            print "\nbad grbi:"+self.grbi+" using \"current\" instead"
+            res=self.get_record_by_id_current(record_id)
+        return res
+
+    def get_record_by_id_current(self, record_id):
+        """
         Retrieve a record using its ID
+        Approach 1: look for the id in the current database
 
         :param record_id: the ID of the record
-        :return: the record of None if no match was found for the given record
+        :type record_id: str
+        :return: the record or None if no match was found for the given record
         :rtype: dictionary or None
 
         """
@@ -642,15 +721,16 @@ class ElasticSearchDriver(DriverInterface):
                 res = self.client.get_source(index=self.database,id=newid)
             else:
                 res =self.client.get_source(index=self.database,id=record_id)
-            return self.my_decode(res)
+            return decode_dict(res)
         except elasticsearch.NotFoundError:
             return None
 
 
 
-    def get_record_by_id2(self, record_id):
+    def get_record_by_id_lookup(self, record_id):
         """
         Retrieve a record using its ID
+        Approach 2: look for the id in the lookup table then with the coordinates found there get the record
 
         :param record_id: the ID of the record
         :return: the record of None if no match was found for the given record
@@ -659,19 +739,17 @@ class ElasticSearchDriver(DriverInterface):
         """
         self.__check_connection()
         try:
-            #find in ids
             if isinstance(record_id,dict):
                 rid=record_id['_id']+"_"+str(record_id['_version'])
             else:
                 rid=record_id
-            #search for the id
             existing_record=self._get_ids(rid)
             if existing_record:
                 er=existing_record['ids']
                 f=[elem for elem in er if elem[0]==rid]
                 if f:
                     found=f[0]
-                    return self.my_decode(self.client.get_source(index=found[1],doc_type=found[2],id=found[0]))
+                    return decode_dict(self.client.get_source(index=found[1],doc_type=found[2],id=found[0]))
                 else:
                     return None
             else:
@@ -683,13 +761,12 @@ class ElasticSearchDriver(DriverInterface):
                     if not f:
                         return None
                     found=f[0]
-                    return self.my_decode(self.client.get_source(index=found[1],doc_type=found[2],id=found[0]))
+                    return decode_dict(self.client.get_source(index=found[1],doc_type=found[2],id=found[0]))
                 else:
                     return None
         except elasticsearch.NotFoundError:
             return None
 
-#    @profile
     def get_record_by_version(self, record_id, version):
         """
         Retrieve a record using its ID and version number
@@ -702,7 +779,6 @@ class ElasticSearchDriver(DriverInterface):
         """
         self.__check_connection()
         try:
-            #find in ids
             if isinstance(record_id,dict):
                 rid=record_id['_id']+"_"+str(record_id['_version'])
             else:
@@ -713,7 +789,6 @@ class ElasticSearchDriver(DriverInterface):
                 er=existing_record['ids']
                 f=[elem for elem in er if elem[0]==rid]
                 if not f:
-                    #check if ehr has it
                     f2=[elem for elem in er if elem[0]==baseid]
                     if not f2:
                         return None
@@ -721,13 +796,13 @@ class ElasticSearchDriver(DriverInterface):
                     rec=self.client.get_source(index=found[1],doc_type=found[2],id=found[0])
                     if rec.has_key('version'):
                         if rec['version'] == version:
-                            return self.my_decode(rec)
+                            return decode_dict(rec)
                     return None
                 found=f[0]
                 rec=self.client.get_source(index=found[1],doc_type=found[2],id=found[0])
                 if rec.has_key('version'):
                     if rec['version'] == version:
-                        return self.my_decode(rec)
+                        return decode_dict(rec)
             return None
         except (elasticsearch.NotFoundError, elasticsearch.ConflictError,elasticsearch.TransportError) :
             return None
@@ -743,7 +818,6 @@ class ElasticSearchDriver(DriverInterface):
         """
         self.__check_connection()
         try:
-            #find in ids
             if isinstance(ehr_id,dict):
                 rid=ehr_id['_id']+"_"+str(ehr_id['_version'])
             else:
@@ -758,16 +832,15 @@ class ElasticSearchDriver(DriverInterface):
                 results=[]
                 for f in ff:
                     results.append(self.client.get_source(index=f[1],doc_type=f[2],id=f[0]))
-                return ( self.my_decode(results[i]) for i in range(0,len(results)) )
+                return ( decode_dict(results[i]) for i in range(0,len(results)) )
             return None
         except (elasticsearch.NotFoundError, elasticsearch.ConflictError,elasticsearch.TransportError) :
             return None
 
-#    @profile
     def get_all_records(self):
         """
         Retrieve all records within current collection.
-        For Elasticsearch within current database
+        For ES within current database
 
         :return: all the records stored in the current collection
         :rtype: list
@@ -777,10 +850,9 @@ class ElasticSearchDriver(DriverInterface):
         restot = self.client.search(index=self.database,body=query)['hits']['hits']
         res = [p['_source'] for p in restot]
         if res != []:
-            return ( self.my_decode(res[i]) for i in range(0,len(res)) )
+            return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
 
-#    @profile
     def get_records_by_value(self, field, value):
         """
         Retrieve all records whose field *field* matches the given value
@@ -800,10 +872,9 @@ class ElasticSearchDriver(DriverInterface):
         restot = self.client.search(index=self.database,body=myquery)['hits']['hits']
         res = [p['_source'] for p in restot]
         if res != []:
-            return ( self.my_decode(res[i]) for i in range(0,len(res)) )
+            return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
 
-#    @profile
     def get_records_by_values(self, field, values):
         """
         Retrieve all records whose field *field* matches one of the given values
@@ -826,10 +897,27 @@ class ElasticSearchDriver(DriverInterface):
             return ( decode_dict(res[i]) for i in range(0,len(res)) )
         return None
 
-#    @profile
     def delete_record(self, record_id):
         """
+        Choose which routine to delete record by id
+
+        :param query:
+        :param fields:
+        :param limit:
+        :return:
+        """
+        if self.dere == "search":
+            self.delete_record_current(record_id)
+        elif self.dere == "lookuptable":
+            self.delete_record_lookup(record_id)
+        else:
+            print "\nbad dere:"+self.dere+" using \"lookuptable\" instead"
+            self.delete_record_lookup(record_id)
+
+    def delete_record_lookup(self, record_id):
+        """
         Delete an existing record
+        Approach 1:find the coordinates of the record in the lookup table. Delete it and erase it from the lookup table.
 
         :param record_id: record's ID
         """
@@ -863,15 +951,10 @@ class ElasticSearchDriver(DriverInterface):
             else:
                 raise MissingRevisionError("A record with ID %s does not exist in ids archive" % record_id)
 
-    def delete_records_by_id(self, records_id):
-        self.logger.debug('deleting documents %r' % records_id)
-        query1="{ \"query\":  {  \"terms\" : {\"_id\" : "+str(records_id) +" }  } }"
-        query = query1.replace("'","\"")
-        return self.delete_records_by_query(query)
-
-    def delete_record2(self, record_id):
+    def delete_record_search(self, record_id):
         """
         Delete an existing record
+        Approach 2: Use delete by query to search and delete on all databases the record with given id
 
         :param record_id: record's ID
         """
@@ -888,9 +971,39 @@ class ElasticSearchDriver(DriverInterface):
         except elasticsearch.NotFoundError:
             return None
 
+    def delete_records_by_id(self, records_id):
+        """
+        Delete existing records with the same given id
+
+        :param records_id: records' IDS
+        """
+        self.logger.debug('deleting documents %r' % records_id)
+        query1="{ \"query\":  {  \"terms\" : {\"_id\" : "+str(records_id) +" }  } }"
+        query = query1.replace("'","\"")
+        return self.delete_records_by_query(query)
+
     def delete_later_versions(self, record_id, version_to_keep=0):
         """
+        Choose which routine to delete later versions of a record with given id
+
+        :param query:
+        :param fields:
+        :param limit:
+        :return:
+        """
+        if self.dlv == "search":
+            return self.delete_later_versions_search(record_id, version_to_keep)
+        elif self.dlv == "lookuptable":
+            return self.delete_later_versions_lookup(record_id, version_to_keep)
+        else:
+            print "\nbad dlv:"+self.dlv+" using \"lookuptable\" instead"
+            return self.delete_later_versions_lookup(record_id)
+
+
+    def delete_later_versions_lookup(self, record_id, version_to_keep):
+        """
         Delete versions newer than version_to_keep for the given record ID.
+        Approach 1: use the lookup table to find the coordinates of all record revisions for the given id
 
         :param record_id: ID of the record
         :param version_to_keep: the older version that will be preserved, if 0
@@ -906,7 +1019,6 @@ class ElasticSearchDriver(DriverInterface):
         baseid=rid.rsplit('_', 1)[0]
         existing_record=self._get_ids(baseid)
         counter=0
-#        self._select_lookup_db(self.database)
         if existing_record:
             er=existing_record['ids']
             new_er=[]
@@ -929,10 +1041,10 @@ class ElasticSearchDriver(DriverInterface):
         else:
             return 0
 
-#    @profile
-    def delete_later_versions2(self, record_id, version_to_keep=0):
+    def delete_later_versions_search(self, record_id, version_to_keep):
         """
         Delete versions newer than version_to_keep for the given record ID.
+        Approach 2: it use queries to find the record revisions for the given id
 
         :param record_id: ID of the record
         :param version_to_keep: the older version that will be preserved, if 0
@@ -958,7 +1070,6 @@ class ElasticSearchDriver(DriverInterface):
                     counter=counter+1
         return counter
 
-#    @profile
     def delete_records_by_query(self, query):
         """
         Delete all records that match the given query
@@ -985,7 +1096,6 @@ class ElasticSearchDriver(DriverInterface):
             return None
 
 
-#    @profile
     def update_field(self, record_id, field_label, field_value, update_timestamp_label=None,
                      increase_version=False):
         """
@@ -1019,21 +1129,23 @@ class ElasticSearchDriver(DriverInterface):
             if increase_version:
                 newversion = record_to_update['version']+1
                 record_to_update['version']=newversion
-                res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,timeout=self.insert_timeout)
+                res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,
+                                        id=record_id,timeout=self.insert_timeout)
                 if(self._is_clinical_record_revision(record_to_update)):
                     self.logger.debug('updated %s document',res[u'_id'].rsplit('_', 1)[0])
                 else:
                     self.logger.debug('updated %s document', res[u'_id'])
             else:
                 if(self._is_clinical_record_revision(record_to_update)):
-                    res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,timeout=self.insert_timeout)
+                    res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,
+                                            id=record_id,timeout=self.insert_timeout)
                     self.logger.debug('updated %s document',res[u'_id'].rsplit('_', 1)[0])
                 else:
-                    res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,timeout=self.insert_timeout)
+                    res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,
+                                            id=record_id,timeout=self.insert_timeout)
                     self.logger.debug('updated %s document', res[u'_id'])
             return last_update
 
-#    @profile
     def replace_record(self, record_id, new_record, update_timestamp_label=None):
         """
         Replace record with *record_id* with the given *new_record*
@@ -1063,10 +1175,10 @@ class ElasticSearchDriver(DriverInterface):
         else:
             newid=record_id
         new_record['_id']=newid
-        res = self.client.index(index=self.database,doc_type=self.collection_name,body=new_record,id=record_id,timeout=self.insert_timeout)
+        res = self.client.index(index=self.database,doc_type=self.collection_name,body=new_record,
+                                id=record_id,timeout=self.insert_timeout)
         return last_update
 
-#    @profile
     def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None,
                     increase_version=False):
         """
@@ -1091,13 +1203,17 @@ class ElasticSearchDriver(DriverInterface):
             last_update = None
         if(not self._is_patient_record(record_to_update)):
             self._select_doc_type(record_to_update['ehr_structure_id'])
-        res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,id=record_id,timeout=self.insert_timeout)
+        res = self.client.index(index=self.database,doc_type=self.collection_name,body=record_to_update,
+                                id=record_id,timeout=self.insert_timeout)
         self.logger.debug('updated %s document', res[u'_id'])
         return last_update
 
-#    @profile
     def extend_list(self, record_id, list_label, items, update_timestamp_label,
                     increase_version=False):
+        """
+        Add values provided with the *items* field to the list with label *list_label*
+        of the record with ID *record_id* and update the timestamp in field *update_timestamp_label*
+        """
         return super(ElasticSearchDriver, self).extend_list(record_id, list_label, items,
                                                             update_timestamp_label, increase_version)
 
@@ -1134,8 +1250,14 @@ class ElasticSearchDriver(DriverInterface):
         self.logger.debug('updated %s document', res[u'_id'])
         return last_update
 
-#    @profile
     def _map_operand(self, left, right, operand):
+        """
+        map operand from AQL to ES
+        :param left: left part of the expression
+        :param right: right part of the expression
+        :param operand: operand
+        :return: mapped expression in ES syntax
+        """
         def cast_right_operand(rigth_operand):
             if rigth_operand.isdigit():
                 return int(rigth_operand)
@@ -1148,7 +1270,7 @@ class ElasticSearchDriver(DriverInterface):
                     pass
             return rigth_operand
 
-        # map an AQL operand to the equivalent MongoDB one
+        # map an AQL operand to the equivalent ES one
         operands_map = {
             '>': 'gt',
             '>=': 'gte',
@@ -1166,24 +1288,29 @@ class ElasticSearchDriver(DriverInterface):
         else:
             raise ValueError('The operand %s is not supported' % operand)
 
-#    @profile
     def _parse_expression(self, expression):
-        # replace all invalid characters
+        """
+        replace invalid characters in expression
+        :param expression:
+        :return: expression cleaned
+        """
         for not_allowed_char, allowed_char in self.ENCODINGS_MAP.iteritems():
             expression = expression.replace(not_allowed_char, allowed_char)
         q = expression.replace('/', '.')
         return q
 
-#    @profile
     def _parse_simple_expression(self, expression):
         return super(ElasticSearchDriver, self)._parse_simple_expression(expression)
 
-#    @profile
     def _parse_match_expression(self, expr):
         return super(ElasticSearchDriver, self)._parse_match_expression(expr)
 
-#    @profile
     def _normalize_path(self, path):
+        """
+        transform the path to be easily traversed
+        :param path:
+        :return: path normalized
+        """
         for original_value, encoded_value in self.ENCODINGS_MAP.iteritems():
             path = path.replace(original_value, encoded_value)
         if path.startswith('/'):
@@ -1194,6 +1321,11 @@ class ElasticSearchDriver(DriverInterface):
 
 #    @profile
     def _build_path(self, path):
+        """
+        build path for ehr archetype
+        :param path:
+        :return:
+        """
         path = list(path)
         path[0] = 'ehr_data'
         tmp_path = '.archetype_details.'.join([self._normalize_path(x) for x in path])
@@ -1209,12 +1341,25 @@ class ElasticSearchDriver(DriverInterface):
 
 #    @profile
     def _get_archetype_class_path(self, path):
+        """
+        get archetype class path joined
+        :param path:
+        :return:
+        """
         path_pieces = path.split('.')
         path_pieces[-1] = 'archetype_class'
         return '.'.join(path_pieces)
 
 #    @profile
     def _calculate_condition_expression(self, condition, variables_map, containment_mapping):
+        """
+        Calculate a condition expression
+
+        :param condition:
+        :param variables_map:
+        :param containment_mapping:
+        :return: dict with condition translated in ES syntax
+        """
         query = dict()
         paths = self._build_paths(containment_mapping)
         expressions = dict()
@@ -1260,8 +1405,13 @@ class ElasticSearchDriver(DriverInterface):
                     query.update(e)
         return query
 
-#    @profile
     def _compute_predicate(self, predicate):
+        """
+        Compute a predicate (archetype or expression)
+
+        :param predicate:
+        :return: dict with predicate translated in ES syntax
+        """
         query = dict()
         if type(predicate) == Predicate:
             pred_ex = predicate.predicate_expression
@@ -1285,9 +1435,17 @@ class ElasticSearchDriver(DriverInterface):
             raise PredicateException("No predicate expression found")
         return query
 
-#    @profile
     def _calculate_ehr_expression(self, ehr_class_expression, query_params, patients_collection,
                                   ehr_collection):
+        """
+        Calculate a ehr expression
+
+        :param ehr_class_expression:
+        :param query_params:
+        :param patients_collection:
+        :param ehr_collection:
+        :return:ehr expression in ES syntax
+        """
         # Resolve predicate expressed for EHR AQL expression
         query = dict()
         if ehr_class_expression.predicate:
@@ -1316,6 +1474,16 @@ class ElasticSearchDriver(DriverInterface):
 #    @profile
     def _calculate_location_expression(self, location, query_params, patients_collection,
                                        ehr_collection, aliases_mapping):
+        """
+        Calculate a location expression
+
+        :param location:
+        :param query_params:
+        :param patients_collection:
+        :param ehr_collection:
+        :param aliases_mapping:
+        :return: location expression translated in ES syntax
+        """
         query = dict()
         if location.class_expression:
             ce = location.class_expression
@@ -1332,17 +1500,28 @@ class ElasticSearchDriver(DriverInterface):
             raise MissingLocationExpressionError("Query must have a location expression")
         return query
 
-
-#    @profile
     def _map_ehr_selection(self, path, ehr_var):
+        """
+        translates ehr selection
+        :param path:
+        :param ehr_var:
+        :return: dict with ehr selection translated
+        """
         path = path.replace('%s.' % ehr_var, '')
         if path == 'ehr_id.value':
             return {'patient_id': True}
         if path == 'uid.value':
             return {'_id': True}
 
-#    @profile
     def _calculate_selection_expression(self, selection, variables_map, containment_mapping):
+        """
+        Calculate a selection expression
+
+        :param selection:
+        :param variables_map:
+        :param containment_mapping:
+        :return: selection expression translated in ES syntax
+        """
         query = {'_id': False}
         paths = self._build_paths(containment_mapping)
         results_aliases = {}
@@ -1360,7 +1539,6 @@ class ElasticSearchDriver(DriverInterface):
                                                                    var.variable.path.value)
         return query, results_aliases
 
-#    @profile
     def _split_results(self, query_result):
         for key, value in query_result.iteritems():
             if isinstance(value, dict):
@@ -1375,6 +1553,14 @@ class ElasticSearchDriver(DriverInterface):
 
 
     def get_records_by_query(self, query, fields=None, limit=0):
+        """
+        Choose which routine to get records by query
+
+        :param query:
+        :param fields:
+        :param limit:
+        :return:
+        """
         if self.grbq == "from":
             res=self.get_records_by_query_from(query,fields,limit)
         elif self.grbq == "scan":
@@ -1384,10 +1570,11 @@ class ElasticSearchDriver(DriverInterface):
             res=self.get_records_by_query_scan(query,fields,limit)
         return res
 
-#    @profile
     def get_records_by_query_scan(self, query,fields=None,limit=0):
         """
         Retrieve all records matching the given query
+        Approach 1: using scroll for number of records greater than threshold
+
         :param limit: the max number of total results to be returned
         :type limit: integer
         :param fields: the fields to be retrieved
@@ -1443,6 +1630,8 @@ class ElasticSearchDriver(DriverInterface):
     def get_records_by_query_from(self, query,fields=None,limit=0):
         """
         Retrieve all records matching the given query
+        Approach 2: using from for number of records greater than threshold
+
         :param limit: the max number of total results to be returned
         :type limit: integer
         :param fields: the fields to be retrieved
@@ -1502,6 +1691,15 @@ class ElasticSearchDriver(DriverInterface):
 
 #    @profile
     def _run_aql_query(self, query, fields, aliases, collection):
+        """
+        Run the AQL query
+
+        :param query:
+        :param fields:
+        :param aliases:
+        :param collection:
+        :return: records matching the query given
+        """
         self.logger.debug("Running query\n%s\nwith filters\n%s", query, fields)
         rs = ResultSet()
         for path, alias in aliases.iteritems():
@@ -1531,6 +1729,13 @@ class ElasticSearchDriver(DriverInterface):
         return rs
 
     def _run_aql_count(self, query, collection):
+        """
+        Run the AQL count query
+
+        :param query:
+        :param collection:
+        :return: count of records matching the query given
+        """
         self.logger.debug("Running count query\n%s\nwith filters\n%s", query)
         if self.is_connected:
             original_collection = self.collection
@@ -1547,32 +1752,17 @@ class ElasticSearchDriver(DriverInterface):
         return qcount
 
     def _collate_selected_fields(self,sfields):
+        """
+        routine for transform field for selection in a ES format
+
+        :param sfields:
+        :return:
+        """
         lfields=[]
         for sf in sfields:
             if sfields[sf] == True:
                 lfields.append(sf)
         return ",".join(lfields)
-
-#    @profile
-    def apply_selection(self,record,fields):
-        q={}
-        for f in fields:
-            if fields[f] == True:
-                if f in record:
-                    q.update({f : record[f]})
-        return q
-
-#    @profile
-    def apply_selection_and_aliases(self,record,fields,aliases):
-        q={}
-        for f in fields:
-            if fields[f] == True:
-                if f in record:
-                    if f in aliases:
-                        q.update({aliases[f] : record[f]})
-                    else:
-                        q.update({f : record[f]})
-        return q
 
     def build_queries(self, query_model, patients_repository, ehr_repository, query_params=None):
         return super(ElasticSearchDriver, self).build_queries(query_model, patients_repository, ehr_repository,
@@ -1588,12 +1778,24 @@ class ElasticSearchDriver(DriverInterface):
         return super(ElasticSearchDriver, self)._get_structures_hash_map(queries)
 
     def _get_structures_selector(self, structure_ids):
+        """
+        Return the structure selector in ES syntax
+
+        :param structure_ids:
+        :return:dict with structures selector
+        """
         if len(structure_ids) == 1:
             return {"\"must\" : {\"term\" : {\"ehr_structure_id\" : \""+str(structure_ids[0])+"\"} }": "$%nothing%$"}
         else:
             return {"\"must\" : {\"terms\" : {\"ehr_structure_id\" : "+str([structure_ids])+",\"execution\" : \"or\" } }" : "$%nothing%$"}
 
     def _aggregate_queries(self, queries):
+        """
+        Try to simplify queries by aggregation
+
+        :param queries:
+        :return:aggregated queries
+        """
         aggregated_queries = list()
         queries_hash_map = self._get_queries_hash_map(queries)
         structures_hash_map = self._get_structures_hash_map(queries)
@@ -1607,13 +1809,10 @@ class ElasticSearchDriver(DriverInterface):
             qs=",".join(ql)
             qtot=" \"query\" : { \"filtered\" : {"+qs + "}}"
             qtot={ qtot : "$%nothing%$"}
-#            query['condition'].update(qtot)
             query['condition']=qtot
-#            query['condition'].update(self._get_structures_selector(structures))
             aggregated_queries.append(query)
         return aggregated_queries
 
-#    @profile
     def execute_query(self, query_model, patients_repository, ehr_repository,
                       query_params=None, count_only=False, query_processes=1):
         """
@@ -1633,7 +1832,6 @@ class ElasticSearchDriver(DriverInterface):
                                      query_params)
         aggregated_queries = self._aggregate_queries(queries)
         total_queries=[]
-        #finalize queries creation
         for query in aggregated_queries:
             single_query={}
             query_string=self._clean_piece(query['condition'])
@@ -1648,7 +1846,14 @@ class ElasticSearchDriver(DriverInterface):
             return self._regular_queries(total_queries,ehr_repository,query_processes)
 
     def _regular_queries(self,total_queries,ehr_repository,query_processes):
+        """
+        Call the routines to perform a single processor or multiprocessor query
 
+        :param total_queries:
+        :param ehr_repository:
+        :param query_processes:
+        :return:
+        """
         total_results = ResultSet()
         if query_processes == 1 or len(total_queries) == 1:
             for i in range(0,len(total_queries)):
@@ -1664,7 +1869,13 @@ class ElasticSearchDriver(DriverInterface):
         return total_results
 
     def _count_only_queries(self,total_queries,ehr_repository):
+        """
+        Call the routine to perform a count query
 
+        :param total_queries:
+        :param ehr_repository:
+        :return:
+        """
         count=0
         for i in range(0,len(total_queries)):
             cresult = self._run_aql_count(total_queries[i]['condition'], collection=ehr_repository)
@@ -1672,6 +1883,12 @@ class ElasticSearchDriver(DriverInterface):
         return count
 #    @profile
     def _final_check(self,qtot):
+        """
+        Final check on parentheses
+
+        :param qtot:
+        :return:
+        """
         ql=list(qtot)
         ob=0
         oq=0
@@ -1685,7 +1902,6 @@ class ElasticSearchDriver(DriverInterface):
             elif i=="]":
                 oq=oq-1
         if ob != 0:
-            #drop or add parentheses from the right and hopefully it will work
             if ob>0:
                 for i in range(ob):
                     ql.append("}")
@@ -1693,7 +1909,6 @@ class ElasticSearchDriver(DriverInterface):
                 for i in range(ob):
                     ql.pop(len(ql) - 1 - ql[::-1].index("}"))
         if oq !=0:
-            #drop or add parentheses from the right and hopefully it will work
             if oq>0:
                 for i in range(oq):
                     ql.append("]")
@@ -1703,10 +1918,13 @@ class ElasticSearchDriver(DriverInterface):
         qtot="".join(ql)
         return qtot
 
-
-
-#    @profile
     def _clean_piece(self,piece):
+        """
+        clean a piece of expression from artifacts used to build it
+
+        :param piece:
+        :return:
+        """
         def cleanp(p):
             newp = str(p)
             newpr=newp[::-1]
@@ -1845,8 +2063,13 @@ class ElasticSearchDriver(DriverInterface):
             newpiece=newpiece+cleanp(p)+","
         newpiece=newpiece.strip(",")+"}"
         return newpiece
-#    @profile
+
     def get_selection_hash(self,selection):
+        """
+        get hash for selection
+        :param selection:
+        :return: hash of selection
+        """
         sel_hash = md5()
         sel_hash.update(json.dumps(selection))
         return sel_hash.hexdigest()
