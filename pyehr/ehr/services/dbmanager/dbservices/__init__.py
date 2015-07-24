@@ -3,7 +3,7 @@ from pyehr.utils import get_logger
 from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 from pyehr.ehr.services.dbmanager.dbservices.wrappers import PatientRecord, ClinicalRecord
 from pyehr.ehr.services.dbmanager.errors import CascadeDeleteError, RedundantUpdateError,\
-    RecordRestoreUnecessaryError, OperationNotAllowedError, ConfigurationError
+    RecordRestoreUnnecessaryError, OperationNotAllowedError, ConfigurationError
 from pyehr.ehr.services.dbmanager.dbservices.version_manager import VersionManager
 
 from collections import Counter
@@ -246,7 +246,7 @@ class DBServices(object):
 
     def _check_unecessary_restore(self, ehr_record):
         if ehr_record.version == 1:
-            raise RecordRestoreUnecessaryError('Record %s already at original revision' %
+            raise RecordRestoreUnnecessaryError('Record %s already at original revision' %
                                                ehr_record.record_id)
         elif ehr_record.version == 0:
             raise OperationNotAllowedError('Record %s is not mapped in the DB, unable to restore' %

@@ -429,6 +429,23 @@ class MongoDriverPM2(DriverInterface):
         self._check_connection()
         return (decode_dict(rec) for rec in self.collection.find(selector, fields, limit=limit))
 
+    def get_values_by_record_id(self, record_id, values_list):
+        """
+        Retrieve values in *values_list* from record with ID *record_id*
+
+        :param record_id: the ID of the record that must be selected
+        :type record_id: str
+        :param values_list: a list of field labels that must be extracted from the record
+        :type values_list: list
+        :return: a dictionary with *values_list* elements as keys
+        :rtype: dict
+        """
+        self._check_connection()
+        selector = dict([(value, 1) for value in values_list])
+        if '_id' not in values_list:
+            selector['_id'] = 0
+        return self.collection.find_one(record_id, selector)
+
     def count_records_by_query(self, selector):
         """
         Retrieve the number of records matching the given query
