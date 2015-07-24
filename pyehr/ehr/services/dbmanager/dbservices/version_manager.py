@@ -200,8 +200,10 @@ class VersionManager(object):
         with drf.get_driver() as driver:
             old_rec_struct = driver.get_values_by_record_id(record_id, ["ehr_structure_id"])["ehr_structure_id"]
             driver.delete_record(record_id)
-            self.index_service.decrease_structure_counter(old_rec_struct)
             driver.add_record(driver.encode_record(original_record))
+            if old_rec_struct != original_record.structure_id:
+                self.index_service.decrease_structure_counter(old_rec_struct)
+                self.index_service.increase_structure_counter(original_record.structure_id)
         drf = self._get_drivers_factory(True)
         with drf.get_driver() as driver:
             del_count = driver.delete_later_versions(record_id, revision-1)
