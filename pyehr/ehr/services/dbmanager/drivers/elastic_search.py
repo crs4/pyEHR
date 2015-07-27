@@ -1168,15 +1168,13 @@ class ElasticSearchDriver(DriverInterface):
             new_record.pop('_id')
         except KeyError:
             pass
-        if(not self._is_patient_record(new_record)):
-            self._select_doc_type(new_record['ehr_structure_id'])
         if(isinstance(record_id,dict)):
             newid=record_id['_id']+"_"+str(record_id['_version'])
         else:
             newid=record_id
         new_record['_id']=newid
-        res = self.client.index(index=self.database,doc_type=self.collection_name,body=new_record,
-                                id=record_id,timeout=self.insert_timeout)
+        self.delete_record(record_id)
+        self.add_record(new_record)
         return last_update
 
     def add_to_list(self, record_id, list_label, item_value, update_timestamp_label=None,
