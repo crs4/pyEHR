@@ -435,7 +435,7 @@ class DBService(object):
             ehr_record = params.get('ehr_record')
             if ehr_record is None:
                 self._missing_mandatory_field('ehr_record')
-            ehr_record = ClinicalRecord.from_json(ehr_record)
+            ehr_record = ClinicalRecord.from_json(json.loads(ehr_record))
             ehr_record = self.dbs.update_ehr_record(ehr_record)
             response_body = {
                 'SUCCESS': True,
