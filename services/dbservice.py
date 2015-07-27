@@ -46,6 +46,8 @@ class DBService(object):
         get('/patient/<patient_id>')(self.get_patient)
         get('/patient/load_ehr_records')(self.load_ehr_records)
         get('/ehr/<patient_id>/<ehr_record_id>')(self.get_ehr_record)
+        # ---- POST METHODS ----
+        post('/ehr/update')(self.update_ehr_record)
         # ---- UTILITIES ----
         post('/check/status/dbservice')(self.test_server)
         get('/check/status/dbservice')(self.test_server)
@@ -421,6 +423,37 @@ class DBService(object):
         except ValueError, ve:
             # TODO: check this, not quite sure about the 400 error code...
             self._error(str(ve), 400)
+
+    @exceptions_handler
+    def update_ehr_record(self):
+        """
+        Update an existing EHR record with the version given in the "ehr_record" field
+        of JSON parameters of the POST request.
+        """
+        params = request.json
+        try:
+            ehr_record = params.get('ehr_record')
+            if ehr_record is None:
+                self._missing_mandatory_field('ehr_record')
+            ehr_record = ClinicalRecord.from_json(ehr_record)
+            ehr_record = self.dbs.update_ehr_record(ehr_record)
+            response_body = {
+                'SUCCESS': True,
+                'RECORD': ehr_record.to_json()
+            }
+            return self._success(response_body)
+        except pyehr_errors.InvalidJsonStructureError:
+            msg = 'Invalid Clinical Record record, unable to save'
+            self._error(msg, 500)
+        except pyehr_errors.RedundantUpdateError:
+            msg = 'Redundant update, old and new records are identical'
+            self._error(msg, 500)
+        except pyehr_errors.OptimisticLockError, opt_locl_err:
+            msg = opt_locl_err.message
+            self._error(msg, 500)
+        except pyehr_errors.OperationNotAllowedError, op_na_err:
+            msg = op_na_err.message
+            self._error(msg, 500)
 
     def start_service(self, host, port, engine, debug=False):
         self.logger.info('Starting DBService daemon with DEBUG set to %s', debug)
