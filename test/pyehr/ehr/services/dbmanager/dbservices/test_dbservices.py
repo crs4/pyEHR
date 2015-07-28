@@ -101,7 +101,7 @@ class TestDBServices(unittest.TestCase):
         pat_rec_2 = dbs.save_patient(self.create_random_patient())
         ehr_rec, pat_rec_2 = dbs.save_ehr_record(ehr_rec, pat_rec_2)
         self.assertEqual(len(pat_rec_2.ehr_records), 1)
-        # clenup
+        # cleanup
         dbs.delete_patient(pat_rec_1)
         dbs.delete_patient(pat_rec_2, cascade_delete=True)
 
