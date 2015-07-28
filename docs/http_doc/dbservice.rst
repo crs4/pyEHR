@@ -488,6 +488,112 @@ API Methods
          }
        }
 
+.. http:post:: /ehr/update
+
+   Use the given EHR record to update an existing one stored in the database. Provided record must
+   be a valid and complete one (like the ones returned by a GET request) with valid ID (used to lookup
+   the record that will be replaced) and a VERSION that must be greater than or equal to 1 (otherwise
+   the record will be considered as "unmapped" and won't be used).
+   If given record is identical to the one that will be replaced, no update operation will be performed
+   (avoiding useless updates).
+   If an older version of the EHR record is used to update the existing one (*version* and *last_update*
+   fields are lower than the ones of the record in the DB), and Optimistic Lock Error will be returned
+   and no update will be performed.
+   If the update is performed correctly, the new version of the EHR document will be returned with
+   the response as a JSON document.
+
+   :query ehr_record: a JSON document with the EHR record that will be used to update an existing
+                      one (record's ID will be used to choose which record will be updated).
+   :reqheader Content-Type: application/json
+   :resheader Content-Type: application/json
+   :statuscode 200: record sucessfully updated. If a Redundant Update Error or an Optimistick Lock
+                    Error is raised, return a JSON document with a `SUCCESS` field set to False
+                    and a `MESSAGE` field used to describe the error.
+   :statuscode 400: missing mandatory field `ehr_record`
+   :statuscode 500: EHR record's structure can't be mapped properly to a ClinicalRecord object; a non
+                    persistent EHR record is used to update an existing one; generic server error
+
+   **Update example**
+
+   The following record is mapped in the DB and is the one that will be updated
+
+   .. sourcecode:: json
+
+      {
+        "record_id": "74d740cb2c914f32adc3dbc371ceb8a8",
+        "patient_id": "TEST_PATIENT",
+        "creation_time": 1438076222.165714,
+        "last_update": 1438076222.165714,
+        "version": 1,
+        "active": true,
+        "ehr_data": {
+           "archetype_class": "openEHR-EHR-OBSERVATION.test-observation.v1",
+           "archetype_details": {
+              "at0001": "value1",
+              "at0002": "value2"
+           }
+        }
+      }
+
+   The updated record that will be passed to the HTTP server will be
+
+   .. sourcecode:: json
+
+      {
+        "record_id": "74d740cb2c914f32adc3dbc371ceb8a8",
+        "patient_id": "TEST_PATIENT",
+        "creation_time": 1438076222.165714,
+        "last_update": 1438076222.165714,
+        "version": 1,
+        "active": true,
+        "ehr_data": {
+           "archetype_class": "openEHR-EHR-OBSERVATION.test-observation.v1",
+           "archetype_details": {
+              "at0001": "new_value1",
+              "at0002": "value2",
+              "at0003": {
+                 "archetype_class": "openEHR-EHR-OBSERVATION.test-inner-observation.v1",
+                 "ehr_data": {
+                    "at100.1": "value1.1",
+                    "at100.2": "value1.2"
+                 }
+              }
+           }
+        }
+      }
+
+   *Note well*  that `version`, `record_id` and `last_update` field should be left untouched
+
+   The response from the HTTP server will be
+
+   .. sourcecode:: json
+
+      {
+        "SUCCESS": true,
+        "RECORD": {
+          "record_id": "74d740cb2c914f32adc3dbc371ceb8a8",
+          "patient_id": "TEST_PATIENT",
+          "creation_time": 1438076222.165714,
+          "last_update": 1442144124.141244,
+          "version": 2,
+          "active": true,
+          "ehr_data": {
+            "archetype_class": "openEHR-EHR-OBSERVATION.test-observation.v1",
+            "archetype_details": {
+              "at0001": "new_value1",
+              "at0002": "value2",
+              "at0003": {
+                "archetype_class": "openEHR-EHR-OBSERVATION.test-inner-observation.v1",
+                "ehr_data": {
+                  "at100.1": "value1.1",
+                  "at100.2": "value1.2"
+                }
+              }
+            }
+          }
+        }
+      }
+
 .. http:put:: /batch/save/patient
 
    Save a patient and one or more related EHRs passed as a JSON document. If EHRs have a
