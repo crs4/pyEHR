@@ -680,14 +680,15 @@ API Methods
         {
           "record_id": "GOOD_PATIENT",
           "active": true,
-          "version": 1,
           "creation_time": 1399905956.765149,
           "last_update": 1399905956.765149,
           "ehr_records": [
             {
+              "record_id": "74d740cb2c914f32adc3dbc371ceb8a8",
               "active": true,
               "creation_time": 1399905956.765149,
               "last_update": 1399905956.765149,
+              "version": 1,
               "ehr_data": {
                 "archetype_class": "openEHR.TEST-EVALUATION.v1",
                 "archetype_details": {
