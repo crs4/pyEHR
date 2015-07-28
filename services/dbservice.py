@@ -431,6 +431,7 @@ class DBService(object):
         of JSON parameters of the POST request.
         """
         params = request.json
+        response_body = None
         try:
             ehr_record = params.get('ehr_record')
             if ehr_record is None:
@@ -441,19 +442,25 @@ class DBService(object):
                 'SUCCESS': True,
                 'RECORD': ehr_record.to_json()
             }
-            return self._success(response_body)
         except pyehr_errors.InvalidJsonStructureError:
             msg = 'Invalid Clinical Record record, unable to save'
             self._error(msg, 500)
         except pyehr_errors.RedundantUpdateError:
-            msg = 'Redundant update, old and new records are identical'
-            self._error(msg, 500)
+            response_body = {
+                'MESSAGE': 'Redundant update, old and new records are identical',
+                'SUCCESS': False
+            }
         except pyehr_errors.OptimisticLockError, opt_locl_err:
-            msg = opt_locl_err.message
-            self._error(msg, 500)
+            response_body = {
+                'MESSAGE': opt_locl_err.message,
+                'SUCCESS': False
+            }
         except pyehr_errors.OperationNotAllowedError, op_na_err:
             msg = op_na_err.message
             self._error(msg, 500)
+        finally:
+            if response_body:
+                return self._success(response_body)
 
     def start_service(self, host, port, engine, debug=False):
         self.logger.info('Starting DBService daemon with DEBUG set to %s', debug)

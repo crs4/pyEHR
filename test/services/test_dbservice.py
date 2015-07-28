@@ -344,7 +344,8 @@ class TestDBService(unittest.TestCase):
         # redundant update error
         results = requests.post(self._get_path(self.ehr_paths['update']),
                                 json=self._build_ehr_update_request(ehr_record))
-        self.assertEqual(results.status_code, requests.codes.server_error)
+        self.assertEqual(results.status_code, requests.codes.ok)
+        self.assertFalse(results.json()['SUCCESS'])
         # good update
         ehr_record['ehr_data']['archetype_details']['at1003'] = {
             'archetype_class': 'openEHR-EHR-OBSERVATION.dummy_observation.v1',
@@ -367,7 +368,8 @@ class TestDBService(unittest.TestCase):
         ehr_record['ehr_data']['archetype_details']['at0002'] = 'new_new_val2'
         results = requests.post(self._get_path(self.ehr_paths['update']),
                                 json=self._build_ehr_update_request(ehr_record))
-        self.assertEqual(results.status_code, requests.codes.server_error)
+        self.assertEqual(results.status_code, requests.codes.ok)
+        self.assertFalse(results.json()['SUCCESS'])
         # try to update a non persistent record (version = 0)
         ehr_record['version'] = 0
         results = requests.post(self._get_path(self.ehr_paths['update']),
