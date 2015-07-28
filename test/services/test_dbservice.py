@@ -1,10 +1,10 @@
 import os, unittest, requests, sys, time
+from copy import copy
 try:
     import simplejson as json
 except ImportError:
     import json
 from pyehr.utils.services import get_service_configuration
-from pyehr.ehr.services.dbmanager.dbservices.index_service import IndexService
 
 CONF_FILE = os.getenv('SERVICE_CONFIG_FILE')
 
@@ -25,7 +25,8 @@ class TestDBService(unittest.TestCase):
         self.ehr_paths = {
             'add': 'ehr',
             'delete': 'ehr',
-            'get': 'ehr'
+            'get': 'ehr',
+            'update': 'ehr/update'
         }
         self.batch_path = {
             'save_patient': 'batch/save/patient',
@@ -68,6 +69,12 @@ class TestDBService(unittest.TestCase):
         request = {}
         if cascade_delete:
             request['cascade_delete'] = cascade_delete
+        return request
+
+    def _build_ehr_update_request(self, ehr_record):
+        request = {
+            'ehr_record': json.dumps(ehr_record)
+        }
         return request
 
     def _build_patient_batch_request(self, patient_batch):
@@ -314,6 +321,58 @@ class TestDBService(unittest.TestCase):
         self.assertEqual(results.status_code, requests.codes.ok)
         self.assertEqual(str(results.json()['RECORD']['record_id']), ehr_record_id)
         self.assertEqual(str(results.json()['RECORD']['patient_id']), 'TEST_PATIENT')
+        # cleanup
+        results = requests.delete(self._get_path(self.patient_paths['delete'], patient_id='TEST_PATIENT',
+                                                 action='delete'),
+                                  json=self._build_delete_patient_request(cascade_delete=True))
+        self.assertEqual(results.status_code, requests.codes.ok)
+
+    def test_update_ehr_record(self):
+        # create a patient and an EHR record
+        results = requests.put(self._get_path(self.patient_paths['add']),
+                               json=self._build_add_patient_request(patient_id='TEST_PATIENT'))
+        self.assertEqual(results.status_code, requests.codes.ok)
+        ehr_record = {
+            'archetype_class': 'openEHR-EHR-COMPOSITION.dummy_composition.v1',
+            'archetype_details': {'at0001': 'val1', 'at0002': 'val2'}
+        }
+        results = requests.put(self._get_path(self.ehr_paths['add']),
+                               json=self._build_add_ehr_request(patient_id='TEST_PATIENT',
+                                                                ehr_record=ehr_record))
+        self.assertEqual(results.status_code, requests.codes.ok)
+        ehr_record = results.json()['RECORD']
+        # redundant update error
+        results = requests.post(self._get_path(self.ehr_paths['update']),
+                                json=self._build_ehr_update_request(ehr_record))
+        self.assertEqual(results.status_code, requests.codes.server_error)
+        # good update
+        ehr_record['ehr_data']['archetype_details']['at1003'] = {
+            'archetype_class': 'openEHR-EHR-OBSERVATION.dummy_observation.v1',
+            'archetype_details': {'at1001': 'val01', 'at1002': 'val02'}
+        }
+        results = requests.post(self._get_path(self.ehr_paths['update']),
+                                json=self._build_ehr_update_request(ehr_record))
+        self.assertEqual(results.status_code, requests.codes.ok)
+        self.assertGreater(results.json()['RECORD']['version'], ehr_record['version'])
+        self.assertGreater(results.json()['RECORD']['last_update'], ehr_record['last_update'])
+        ehr_record = results.json()['RECORD']
+        # optimistic lock error
+        ehr_record_2 = copy(ehr_record)
+        ehr_record_2['ehr_data']['archetype_details']['at0001'] = 'new_val1'
+        ehr_record_2['ehr_data']['archetype_details']['at0002'] = 'new_val2'
+        results = requests.post(self._get_path(self.ehr_paths['update']),
+                                json=self._build_ehr_update_request(ehr_record_2))
+        self.assertEqual(results.status_code, requests.codes.ok)
+        ehr_record['ehr_data']['archetype_details']['at0001'] = 'new_new_val1'
+        ehr_record['ehr_data']['archetype_details']['at0002'] = 'new_new_val2'
+        results = requests.post(self._get_path(self.ehr_paths['update']),
+                                json=self._build_ehr_update_request(ehr_record))
+        self.assertEqual(results.status_code, requests.codes.server_error)
+        # try to update a non persistent record (version = 0)
+        ehr_record['version'] = 0
+        results = requests.post(self._get_path(self.ehr_paths['update']),
+                                json=self._build_ehr_update_request(ehr_record))
+        self.assertEqual(results.status_code, requests.codes.server_error)
         # cleanup
         results = requests.delete(self._get_path(self.patient_paths['delete'], patient_id='TEST_PATIENT',
                                                  action='delete'),
