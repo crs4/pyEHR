@@ -1,6 +1,6 @@
 # pyEHR
 
-pyEHR is a a scalable clinical data management toolkit for biomedical research projects based on openEHR standard for clinical data definition.
+pyEHR is a a scalable clinical data access layer intended for building data management systems for secondary use of structured heterogeneous biomedical and clinical data.
 
 ## Documentation
 
