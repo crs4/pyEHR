@@ -14,7 +14,7 @@ env:
   matrix:
     - DB_ENGINE=mongodb PYMONGO="pymongo==2.8"
     - DB_ENGINE=mongodb PYMONGO="pymongo"
-    - DB_ENGINE=elasticsearch ELASTICSEARCH="elasticsearch=1.5"
+    - DB_ENGINE=elasticsearch ELASTICSEARCH="elasticsearch==1.5"
 
 before_install:
   # install BaseX server and start it
