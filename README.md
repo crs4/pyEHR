@@ -48,7 +48,7 @@ run:
 ```
 python module for elasticsearch:
 ```sh
-sudo pip install elasticsearch
+sudo pip install -Iv elasticsearch==1.5.0
 ```
 export environment variable with driver configuration:
 ```sh
