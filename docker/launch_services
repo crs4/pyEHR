@@ -1,0 +1,14 @@
+#!/bin/bash 
+
+if [[ -f /tmp/pyehr_dbservice.pid ]]; then
+	rm /tmp/pyehr_dbservice.pid
+fi
+
+if [[ -f /tmp/pyehr_queryservice.pid ]]; then
+	rm /tmp/pyehr_queryservice.pid
+fi
+
+mongod --fork --logpath=/var/log/mongo
+basexhttp -S
+nohup python /opt/pyEHR/services/dbservice.py --config $SERVICE_CONFIG_FILE --log-file /var/log/pyehr_dbservice.log --log-level DEBUG > /dev/null 2>&1 &
+nohup python /opt/pyEHR/services/queryservice.py --config $SERVICE_CONFIG_FILE --log-file /var/log/pyehr_queryservice.log --log-level DEBUG  > /dev/null 2>&1 
